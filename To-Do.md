@@ -58,7 +58,7 @@ Upstash Redis (optional, in-memory fallback), Cloudflare Turnstile.
 | 4.5 | ✅ Done | Message encryption, reports, system_prompt column lockdown |
 | 5 | ✅ Done | Security audit fixes (all C/H/M issues) + AI director tuning + hardening |
 | 6 | ✅ Done | Vibe Check + reputation + smart refund |
-| 7 | ⏳ Pending | DMs hardening |
+| 7 | ✅ Done | DMs hardening + user blocks + report panel |
 | 8 | ⏳ Pending | Stripe monetization |
 | 9 | ⏳ Pending | Safety/legal final pass |
 | 10 | ⏳ Pending | Polish (mechanics) |
@@ -375,3 +375,34 @@ Re-read every file from phases 0–5. Found and fixed 7 bugs:
 5. **`components/FadeToBlack.tsx`** — Vibe Check second screen: after the reveal/move-on outcome is shown, a "Rate this scene" button transitions to the rating form (4 emoji vibes: 🔥/😊/😐/🥶, optional one-word tags up to 3, reason dropdown). Submitting calls `submitMatchRating`, then "Continue" routes via `onVibeCheckComplete`.
 
 6. **`app/chat/[id]/page.tsx`** — Removed auto-route to `/dm` (Vibe Check now handles routing). Added `handleVibeCheckComplete` (routes to `/dm` if both revealed, else `/lobby`). Passed `onVibeCheckComplete` to FadeToBlack. Removed unused `revealRoutingRef`.
+
+---
+
+## ✅ Phase 7 — COMPLETED (DMs hardening + user blocks)
+
+**Verification:** `tsc --noEmit` ✅ `eslint` ✅ `next build` ✅ — all exit 0.
+
+### Pre-audit (phases 0–6) — 3 bugs found and fixed
+
+1. **B1 (Phase 4 bug):** `FadeToBlack` showed a "Reveal Myself" button for AI matches — but AI matches have no human partner to reveal back, so the user would click Reveal and get stuck in the "waiting for them…" state forever. **Fixed:** `FadeToBlack` now accepts an `isAiMatch` prop; the Reveal button is hidden for AI matches; the Move On button becomes "Continue" with the subtitle "Rate the scene and leave". The chat page passes `match.is_ai_match`.
+
+2. **B2 (Phase 6 bug):** `resolve_refund` included `'boring'` in the `partner_afk` confirmation list. A partner saying "boring" didn't confirm they went AFK — that's a mismatch and should be flagged for review. **Fixed:** only `'i_left'` and `'instant_disconnect'` count as the partner confirming they disconnected.
+
+3. **B3 (Phase 6 dead code):** `resolve_refund` declared `wronged_id` but never used it. **Removed.** Also added an explicit AI-match bail (`user_b IS NULL → RETURN`) so the function returns early instead of running a no-row SELECT on `r_b` then falling through.
+
+### Files changed in Phase 7
+
+1. **`lib/supabase/schema.sql`** — Added:
+   - `user_blocks` table (blocker_id, blocked_id, unique index, RLS: owner can view/insert/delete their own blocks only). Silent block — the blocked user is not notified.
+   - `claim_match` RPC updated to refuse matching two users where either has blocked the other.
+   - `connection_tickets` UPDATE REVOKE from authenticated reaffirmed (Phase 8 will write to it via service_role).
+
+2. **`lib/actions/blocks.ts`** (NEW) — `blockUser` (idempotent upsert), `unblockUser` (delete), `listMyBlocks` (join to profiles for anonymous display info).
+
+3. **`lib/actions/messages.ts`** — New `sendDMMessage` action: verifies `match.status='revealed'` server-side (closes H4 — the previous DM access guard was client-only and bypassable), refuses media/attachment patterns (image/video/audio file extensions, base64 data URIs, image-host URLs) so DMs stay text-only per spec. Delegates to `sendMessage` for the full sanitize+scrub+block+RPC pipeline.
+
+4. **`app/dm/[id]/page.tsx`** — Switched from `sendMessage` to `sendDMMessage`. Added a Report panel (textarea + submit button) wired to `reportConversation` — closes the safety loop on DMs. User can report a conversation for moderation; the last 100 messages are decrypted and snapshotted via the `report_conversation` RPC.
+
+5. **`components/FadeToBlack.tsx`** — Added `isAiMatch` prop (B1 fix); hide Reveal button for AI matches.
+
+6. **`app/chat/[id]/page.tsx`** — Pass `match.is_ai_match` to FadeToBlack.
