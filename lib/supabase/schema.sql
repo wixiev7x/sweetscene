@@ -1197,10 +1197,12 @@ DECLARE
   r_b match_ratings%ROWTYPE;
   contribution INT;
   refund_amount INT;
-  wronged_id UUID;
 BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id;
   IF NOT FOUND THEN RETURN; END IF;
+
+  -- AI matches (user_b IS NULL) don't get refunds.
+  IF m_row.user_b IS NULL THEN RETURN; END IF;
 
   SELECT * INTO r_a FROM match_ratings
     WHERE match_id = p_match_id AND rater_id = m_row.user_a;
@@ -1232,15 +1234,11 @@ BEGIN
 
   -- Rule: one partner_afk → refund 50% to the wronged party.
   -- The wronged party is the one who DIDN'T go AFK.
+  -- If user_a says 'partner_afk' (user_b went AFK), user_b must confirm
+  -- by saying 'i_left' (they agree they left). 'boring' is NOT a
+  -- confirmation — treat as a mismatch and flag for review.
   IF r_a.reason = 'partner_afk' AND r_b.reason NOT IN ('partner_afk') THEN
-    -- user_a claims user_b went AFK. If user_b's rating confirms
-    -- (reason = 'i_left' or anything that doesn't contradict), refund user_a.
-    -- Wait — the AFK kicker's rating should confirm. user_a says "partner_afk"
-    -- meaning user_b went AFK. user_b's reason should be checked.
-    -- Actually: if user_a says partner_afk, it means user_b was AFK.
-    -- If user_b's reason is 'i_left' or 'partner_afk' (they agree they were AFK),
-    -- refund user_a.
-    IF r_b.reason IN ('i_left', 'partner_afk', 'boring') THEN
+    IF r_b.reason IN ('i_left', 'instant_disconnect') THEN
       refund_amount := contribution / 2; -- 50% of their contribution
       UPDATE profiles SET tokens_balance = tokens_balance + refund_amount
         WHERE id = m_row.user_a;
@@ -1257,7 +1255,7 @@ BEGIN
   END IF;
 
   IF r_b.reason = 'partner_afk' AND r_a.reason NOT IN ('partner_afk') THEN
-    IF r_a.reason IN ('i_left', 'partner_afk', 'boring') THEN
+    IF r_a.reason IN ('i_left', 'instant_disconnect') THEN
       refund_amount := contribution / 2;
       UPDATE profiles SET tokens_balance = tokens_balance + refund_amount
         WHERE id = m_row.user_b;

@@ -743,6 +743,7 @@ if ("error" in sendResult) {
           isRevealed={revealState.hasRevealed}
           partnerRevealed={revealState.partnerRevealed}
           partnerMovedOn={revealState.partnerMovedOn}
+          isAiMatch={match.is_ai_match}
           onReveal={handleReveal}
           onMoveOn={handleMoveOn}
           onVibeCheckComplete={handleVibeCheckComplete}

@@ -8,6 +8,7 @@ type FadeToBlackProps = {
   isRevealed: boolean;
   partnerRevealed: boolean;
   partnerMovedOn: boolean;
+  isAiMatch: boolean;
   onReveal: () => void;
   onMoveOn: () => void;
   onVibeCheckComplete: () => void;
@@ -23,12 +24,17 @@ type FadeToBlackProps = {
  * optional one-word tags, + a reason dropdown. Submitting the rating
  * calls submitMatchRating, then "Continue" routes the user to /dm or
  * /lobby via the onVibeCheckComplete callback.
+ *
+ * Phase 7 re-audit: AI matches don't have a human partner to reveal to,
+ * so the Reveal button is hidden when isAiMatch=true. The user only sees
+ * "Move On" → Vibe Check → /lobby.
  */
 export default function FadeToBlack({
   matchId,
   isRevealed,
   partnerRevealed,
   partnerMovedOn,
+  isAiMatch,
   onReveal,
   onMoveOn,
   onVibeCheckComplete,
@@ -352,22 +358,26 @@ export default function FadeToBlack({
       <>
         <div className="bg-gradient-to-r from-transparent via-purple-500/30 to-transparent h-px w-48 mx-auto my-8" />
         <p className="text-lg text-gray-400 font-light mb-10">
-          Do you want to see who they really are?
+          {isAiMatch
+            ? "The scene has ended."
+            : "Do you want to see who they really are?"}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          {/* REVEAL button */}
-          <div className="flex flex-col items-center gap-1">
-            <button
-              type="button"
-              onClick={onReveal}
-              className="px-8 py-4 rounded-xl font-medium text-base text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 active:scale-95 transform transition-all duration-300"
-            >
-              Reveal Myself
-            </button>
-            <span className="text-xs text-purple-300/50">
-              They&apos;ll see your anonymous profile
-            </span>
-          </div>
+          {/* REVEAL button — hidden for AI matches (no human partner). */}
+          {!isAiMatch && (
+            <div className="flex flex-col items-center gap-1">
+              <button
+                type="button"
+                onClick={onReveal}
+                className="px-8 py-4 rounded-xl font-medium text-base text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 active:scale-95 transform transition-all duration-300"
+              >
+                Reveal Myself
+              </button>
+              <span className="text-xs text-purple-300/50">
+                They&apos;ll see your anonymous profile
+              </span>
+            </div>
+          )}
 
           {/* MOVE ON button */}
           <div className="flex flex-col items-center gap-1">
@@ -376,10 +386,10 @@ export default function FadeToBlack({
               onClick={handleMoveOn}
               className="px-8 py-4 rounded-xl font-medium text-base text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-gray-300 active:scale-95 transform transition-all duration-300"
             >
-              Move On
+              {isAiMatch ? "Continue" : "Move On"}
             </button>
             <span className="text-xs text-gray-600">
-              Part ways without revealing
+              {isAiMatch ? "Rate the scene and leave" : "Part ways without revealing"}
             </span>
           </div>
         </div>
