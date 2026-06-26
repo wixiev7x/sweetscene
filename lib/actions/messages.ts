@@ -21,6 +21,11 @@ import { rateLimit } from "@/lib/utils/ratelimit";
  *   - decryptMessageContent verifies ciphertext belongs to the match (M1).
  *   - reportConversation wraps report_conversation RPC (M5).
  *   - Rate limiting on sendMessage and decrypt (H8/H9).
+ *
+ * Phase 7:
+ *   - sendDMMessage wraps sendMessage + verifies match.status='revealed'
+ *     server-side (closes H4 — DM access guard was client-only) + refuses
+ *     media/attachment URL patterns (no images/voice/video in DMs).
  * ════════════════════════════════════════════════════════════════════ */
 
 type DecryptedMessage = {
@@ -323,4 +328,85 @@ export async function reportConversation(
   }
 
   return { success: true };
+}
+
+/* ════════════════════════════════════════════════════════════════════
+ * Phase 7 — DM-specific message action.
+ *
+ * DM messages flow through `sendDMMessage` which:
+ *   1. Verifies the match status is 'revealed' server-side (H4 — the
+ *      previous guard was client-only).
+ *   2. Refuses media/attachment patterns (no images/voice/video links
+ *      or base64 data URIs in DMs — per the spec, DMs are text-only).
+ *   3. Delegates to `sendMessage` for the full sanitize+scrub+block+
+ *      encrypt+RPC pipeline.
+ * ════════════════════════════════════════════════════════════════════ */
+
+/* Patterns that look like media/attachment attempts. DMs are text-only
+   per the spec — no image links, voice notes, video links, or base64
+   data URIs. The regexes are intentionally conservative to avoid
+   blocking legitimate text that happens to contain "mp3" etc. */
+const MEDIA_PATTERNS: RegExp[] = [
+  /* image/video/audio file extensions in a URL-ish context. */
+  /\.(png|jpe?g|gif|webp|svg|bmp|mp4|webm|mov|avi|mp3|wav|ogg|m4a|opus)(\?[^\s]*)?$/i,
+  /* base64 data URIs (data:image/..., data:video/..., data:audio/...). */
+  /^data:(?:image|video|audio)\/[^,]+,/i,
+  /* common image-host root paths. */
+  /\b(?:imgur\.com\/|i\.imgur\.com\/|media\.discordapp\.net\/|cdn\.discordapp\.com\/attachments\/)/i,
+];
+
+function containsMediaPattern(text: string): boolean {
+  for (const pattern of MEDIA_PATTERNS) {
+    if (pattern.test(text)) return true;
+  }
+  return false;
+}
+
+type SendDMMessageResult =
+  | { messageId: string; content: string }
+  | { error: string };
+
+/**
+ * Sends a DM message. Verifies the match is revealed (server-side,
+ * not just client-side — closes H4) and refuses media/attachment
+ * patterns so DMs stay text-only. Delegates the actual send (encrypt,
+ * insert via send_human_message RPC) to `sendMessage`.
+ */
+export async function sendDMMessage(
+  matchId: string,
+  content: string
+): Promise<SendDMMessageResult> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  /* H4: verify the match is revealed + the caller is a participant,
+     server-side. The client check on /dm/[id] is bypassable. */
+  const { data: match } = await supabase
+    .from("matches")
+    .select("id")
+    .eq("id", matchId)
+    .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
+    .eq("status", "revealed")
+    .single();
+
+  if (!match) return { error: "DM not available" };
+
+  /* Phase 7: refuse media/attachment patterns. */
+  if (containsMediaPattern(content)) {
+    return { error: "DMs are text-only. No media or attachment links." };
+  }
+
+  /* Delegate to sendMessage for the full sanitize+scrub+block+RPC pipeline. */
+  const result = await sendMessage(matchId, content);
+
+  if ("error" in result) return { error: result.error };
+
+  return {
+    messageId: result.messageId,
+    content: result.content,
+  };
 }

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useMounted } from "@/lib/utils/useMounted";
 import { containsBlockedTerm, sanitizeAndScrub } from "@/lib/utils/safety";
-import { sendMessage, getMatchMessages, decryptMessageContent } from "@/lib/actions/messages";
+import { sendDMMessage, getMatchMessages, decryptMessageContent, reportConversation } from "@/lib/actions/messages";
 import ChatBox from "@/components/ChatBox";
 import MessageList from "@/components/MessageList";
 
@@ -55,6 +55,10 @@ export default function DMPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
+  const [reporting, setReporting] = useState(false);
+  const [showReportBox, setShowReportBox] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportMsg, setReportMsg] = useState("");
   const mounted = useMounted();
 
   const characterNameMap = useRef<Map<string, string>>(new Map());
@@ -239,8 +243,9 @@ export default function DMPage() {
     setSending(true);
     setError("");
 
-    /* Send via the encrypted message action. DMs cost 0 tokens. */
-    const result = await sendMessage(matchId, scrubbed);
+    /* Phase 7: send via sendDMMessage (verifies revealed + refuses media).
+       DMs cost 0 tokens. */
+    const result = await sendDMMessage(matchId, scrubbed);
 
     if ("error" in result) {
       setError(result.error);
@@ -263,6 +268,25 @@ export default function DMPage() {
     }
 
     setSending(false);
+  }
+
+  /* ── Phase 7: report conversation ── */
+  async function handleReport() {
+    if (!reportReason.trim()) {
+      setReportMsg("Please enter a reason.");
+      return;
+    }
+    setReporting(true);
+    setReportMsg("");
+    const result = await reportConversation(matchId, reportReason.trim());
+    setReporting(false);
+    if ("error" in result) {
+      setReportMsg(result.error);
+    } else {
+      setReportMsg("Report submitted. Thank you.");
+      setShowReportBox(false);
+      setReportReason("");
+    }
   }
 
   if (!mounted) return null;
@@ -387,11 +411,59 @@ export default function DMPage() {
           </div>
 
           {/* right */}
-          <p className="hidden sm:block text-xs text-gray-600 italic shrink-0">
-            No AI &bull; No Token Limit
-          </p>
+          <div className="flex items-center gap-3 shrink-0">
+            <p className="hidden sm:block text-xs text-gray-600 italic">
+              No AI &bull; No Token Limit
+            </p>
+            {/* Phase 7: report conversation button */}
+            <button
+              type="button"
+              onClick={() => setShowReportBox((v) => !v)}
+              className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-red-500/5"
+            >
+              &#9873; Report
+            </button>
+          </div>
         </div>
       </header>
+
+      {/* ── Phase 7: Report panel ── */}
+      {showReportBox && (
+        <div className="relative z-10 px-6 py-3 border-b border-white/5 bg-red-500/5">
+          <p className="text-xs text-gray-400 mb-2">
+            Report this conversation for moderation. The last 100 messages will be
+            decrypted and sent to our team.
+          </p>
+          <textarea
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            rows={2}
+            maxLength={500}
+            placeholder="Why are you reporting? (e.g. harassment, doxxing, illegal content)"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-red-500/40 resize-none"
+          />
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              type="button"
+              onClick={handleReport}
+              disabled={reporting}
+              className="text-xs bg-red-500/10 border border-red-500/30 text-red-400 px-3 py-1.5 rounded-lg hover:bg-red-500/20 transition-all disabled:opacity-50"
+            >
+              {reporting ? "Submitting..." : "Submit Report"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowReportBox(false)}
+              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+            >
+              Cancel
+            </button>
+            {reportMsg && (
+              <span className="text-xs text-gray-500 italic">{reportMsg}</span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── DECORATIVE BANNER ── */}
       <div className="relative z-0 py-2 px-6 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent border-b border-white/5">

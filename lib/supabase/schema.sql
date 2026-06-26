@@ -1394,3 +1394,85 @@ BEGIN
   WHERE p.id = auth.uid();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ════════════════════════════════════════════════════════════════════
+-- Phase 7 — DMs hardening + user blocks
+-- Append-only migration. Run this block in the Supabase SQL Editor.
+-- ════════════════════════════════════════════════════════════════════
+
+-- ── connection_tickets column-level security ──
+-- The owner can read connection_tickets via get_own_profile, but cannot
+-- UPDATE it directly. Only service_role RPCs (free-tier monthly grant
+-- in Phase 8, Stripe webhook in Phase 8) can modify it.
+REVOKE UPDATE (connection_tickets) ON profiles FROM authenticated;
+REVOKE UPDATE (connection_tickets) ON profiles FROM anon;
+-- Note: UPDATE was already REVOKE'd in the Phase 6 block above, but
+-- this re-asserts it for clarity since Phase 8 will write to it.
+
+-- ── messages SELECT RLS: tighten to revealed-only for DM access ──
+-- The existing SELECT policy allows participants of any match to read
+-- all messages. For DM rooms (revealed matches), this is correct —
+-- both participants can read. For active (in-scene) matches, the chat
+-- page reads via getMatchMessages server action (decrypts server-side)
+-- — direct client SELECT only returns ciphertext, so the policy is
+-- safe. We keep the existing SELECT policy unchanged.
+-- The INSERT policy already requires status IN ('active','revealed')
+-- (Phase 5a) — DM messages (revealed matches) are correctly allowed.
+
+-- ── user_blocks: prevent two users from being matched ──
+-- When a user blocks another, the claim_match RPC refuses to pair them.
+-- The blocked user is NOT notified (silent block). The blocker can
+-- unblock by deleting the row.
+CREATE TABLE IF NOT EXISTS user_blocks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  blocker_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  blocked_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- One block per (blocker, blocked) direction.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_blocks_unique
+  ON user_blocks(blocker_id, blocked_id);
+
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocker_id ON user_blocks(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_user_blocks_blocked_id ON user_blocks(blocked_id);
+
+ALTER TABLE user_blocks ENABLE ROW LEVEL SECURITY;
+
+-- Users can view + insert + delete their own blocks only.
+CREATE POLICY "Users can view own blocks"
+  ON user_blocks FOR SELECT
+  USING (blocker_id = auth.uid());
+
+CREATE POLICY "Users can insert own blocks"
+  ON user_blocks FOR INSERT
+  WITH CHECK (blocker_id = auth.uid());
+
+CREATE POLICY "Users can delete own blocks"
+  ON user_blocks FOR DELETE
+  USING (blocker_id = auth.uid());
+
+-- ── Update claim_match to refuse matching blocked users ──
+-- The existing claim_match RPC sets user_b only if user_b IS NULL,
+-- status='active', and user_a <> auth.uid(). We add a check: refuse
+-- if either user has blocked the other.
+CREATE OR REPLACE FUNCTION claim_match(p_match_id UUID)
+RETURNS TABLE(id UUID) AS $$
+BEGIN
+  UPDATE matches
+  SET user_b = auth.uid(),
+      shared_pool = shared_pool * 2,
+      last_activity = now()
+  WHERE id = p_match_id
+    AND user_b IS NULL
+    AND status = 'active'
+    AND user_a <> auth.uid()
+    -- Refuse if either user has blocked the other.
+    AND NOT EXISTS (
+      SELECT 1 FROM user_blocks
+      WHERE (blocker_id = auth.uid() AND blocked_id = matches.user_a)
+         OR (blocker_id = matches.user_a AND blocked_id = auth.uid())
+    )
+  RETURNING matches.id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
