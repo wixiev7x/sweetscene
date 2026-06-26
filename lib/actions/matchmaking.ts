@@ -4,6 +4,17 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/ratelimit";
 
+/* ════════════════════════════════════════════════════════════════════
+ * Phase 5a — Matchmaking with atomic token deduction.
+ *
+ * Token accounting is now atomic via the deduct_tokens SECURITY
+ * DEFINER RPC, closing the TOCTOU double-spend (H5). Profile reads
+ * go through get_own_profile (B6) since tokens_balance/is_vip are
+ * REVOKED from authenticated. VIP is re-checked server-side (C4).
+ * Scenario tags are validated against an allowlist before PostgREST
+ * interpolation (M3).
+ * ════════════════════════════════════════════════════════════════════ */
+
 type FindMatchResult =
   | { matchId: string; waiting?: boolean }
   | { error: string };
@@ -11,6 +22,60 @@ type FindMatchResult =
 type CreateAIMatchResult =
   | { matchId: string; isAiMatch: true }
   | { error: string };
+
+/**
+ * Allowlist of valid scenario tags. Any tag not in this set is
+ * rejected before being interpolated into a PostgREST filter literal,
+ * closing M3 (PostgREST filter injection). Phase 10 will extract this
+ * to a shared lib/config/constants.ts.
+ */
+const VALID_SCENARIO_TAGS = new Set([
+  "hospital",
+  "coffee_shop",
+  "mansion",
+  "library",
+  "gym",
+  "noir_office",
+  "restaurant",
+  "fitness",
+  "clinic",
+  "home",
+  "service",
+  "mystery",
+]);
+
+/**
+ * Validates that every tag in `tags` is in the allowlist. Returns the
+ * filtered list, or null if any tag is invalid.
+ */
+function validateTags(tags: string[]): string[] | null {
+  const filtered = tags.filter((t) => typeof t === "string" && t.length > 0);
+  for (const t of filtered) {
+    if (!VALID_SCENARIO_TAGS.has(t)) return null;
+  }
+  return filtered;
+}
+
+/**
+ * Reads the caller's profile via the get_own_profile SECURITY DEFINER
+ * RPC. The columns tokens_balance and is_vip are REVOKED from
+ * authenticated, so a direct client SELECT returns NULL for them.
+ * This RPC returns the full row for the owner only.
+ */
+async function readOwnProfile(
+  supabase: Awaited<ReturnType<typeof createClient>>
+): Promise<{
+  tokens_balance: number;
+  is_vip: boolean;
+} | null> {
+  const { data } = await supabase.rpc("get_own_profile");
+  if (!data || !Array.isArray(data) || data.length === 0) return null;
+  const row = data[0] as {
+    tokens_balance: number;
+    is_vip: boolean;
+  };
+  return row;
+}
 
 /**
  * Picks 1-3 public character IDs whose scenario tags overlap with the
@@ -50,10 +115,16 @@ async function pickCharacterIds(
  * tier and overlapping scenario tags. If none found, creates a new
  * match and waits for another player to join.
  *
- * Token accounting: each participant contributes `sharedPool` tokens
- * into the shared pool. user_a funds their half on creation; user_b
- * tops the pool up by `sharedPool` on join. The final pool is
- * therefore `2 * sharedPool` for a fully joined human match.
+ * Token accounting: tokens are deducted atomically via the
+ * deduct_tokens RPC — no read-check-write race window. If the match
+ * INSERT fails after deduction, the tokens are refunded via the
+ * add_tokens RPC. On claim, if deduct_tokens returns NULL (insufficient
+ * funds caused by a concurrent deduction), the match is un-claimed
+ * via unclaim_match so another user can try.
+ *
+ * VIP enforcement: the `deep` tier requires is_vip, re-checked
+ * server-side (C4) so a user can't call the action directly with
+ * tier='deep' to bypass the client gate.
  */
 export async function findMatch(
   tier: "quick" | "deep",
@@ -70,20 +141,29 @@ export async function findMatch(
     return { error: "Too many requests. Slow down." };
   }
 
+  /* M3: validate tags before PostgREST interpolation. */
+  const validTags = validateTags(tags);
+  if (!validTags || validTags.length === 0) {
+    return { error: "Invalid scenario tags" };
+  }
+
+  /* B6: read profile via RPC (tokens_balance REVOKED from authenticated). */
+  const profile = await readOwnProfile(supabase);
+  if (!profile) return { error: "Profile not found" };
+
   const sharedPool = tier === "quick" ? 2000 : 10000;
-  const characterIds = await pickCharacterIds(supabase, tags);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("tokens_balance")
-    .eq("id", user.id)
-    .single();
+  /* C4: re-check VIP for deep tier server-side. */
+  if (tier === "deep" && !profile.is_vip) {
+    return { error: "Deep Dive is VIP only" };
+  }
 
-  if (!profile || profile.tokens_balance < sharedPool) {
+  if (profile.tokens_balance < sharedPool) {
     return { error: "Not enough tokens" };
   }
 
-  const tagLiteral = `{${tags.join(",")}}`;
+  const tagLiteral = `{${validTags.join(",")}}`;
+  const characterIds = await pickCharacterIds(supabase, validTags);
 
   const { data: existingMatch } = await supabase
     .from("matches")
@@ -106,11 +186,17 @@ export async function findMatch(
     });
 
     if (claimed && Array.isArray(claimed) && claimed.length > 0) {
-      /* Token deduction for user_b on successful join. */
-      await supabase
-        .from("profiles")
-        .update({ tokens_balance: profile.tokens_balance - sharedPool })
-        .eq("id", user.id);
+      /* H5: atomic token deduction — no read-check-write race. */
+      const { data: deductResult } = await supabase.rpc("deduct_tokens", {
+        p_amount: sharedPool,
+      });
+
+      if (!deductResult || !Array.isArray(deductResult) || deductResult.length === 0) {
+        /* Deduction failed (insufficient funds due to a concurrent race).
+           Un-claim the match so another user can try. */
+        await supabase.rpc("unclaim_match", { p_match_id: existingMatch.id });
+        return { error: "Not enough tokens" };
+      }
 
       return { matchId: existingMatch.id };
     }
@@ -118,12 +204,22 @@ export async function findMatch(
     /* Lost the race — fall through to create a new match. */
   }
 
+  /* H5: deduct tokens atomically BEFORE creating the match. If the
+     match INSERT fails, refund via add_tokens. */
+  const { data: deductResult } = await supabase.rpc("deduct_tokens", {
+    p_amount: sharedPool,
+  });
+
+  if (!deductResult || !Array.isArray(deductResult) || deductResult.length === 0) {
+    return { error: "Not enough tokens" };
+  }
+
   const { data: newMatch, error: insertError } = await supabase
     .from("matches")
     .insert({
       user_a: user.id,
       tier,
-      scenario_tags: tags,
+      scenario_tags: validTags,
       shared_pool: sharedPool,
       status: "active",
       character_ids: characterIds,
@@ -132,13 +228,13 @@ export async function findMatch(
     .single();
 
   if (insertError || !newMatch) {
+    /* Refund the deducted tokens. */
+    await supabase.rpc("add_tokens", {
+      p_user_id: user.id,
+      p_amount: sharedPool,
+    });
     return { error: "Failed to create match" };
   }
-
-  await supabase
-    .from("profiles")
-    .update({ tokens_balance: profile.tokens_balance - sharedPool })
-    .eq("id", user.id);
 
   return { matchId: newMatch.id, waiting: true };
 }
@@ -147,6 +243,9 @@ export async function findMatch(
  * Creates an AI-only match with 1-3 AI characters whose scenario tags
  * overlap with the requested tags. If no matching characters exist,
  * picks 2 random characters from the defaults.
+ *
+ * Same atomic token deduction and server-side VIP re-check (C4) as
+ * findMatch.
  */
 export async function createAIMatch(
   tier: "quick" | "deep",
@@ -163,24 +262,37 @@ export async function createAIMatch(
     return { error: "Too many requests. Slow down." };
   }
 
+  /* M3: validate tags. */
+  const validTags = validateTags(tags);
+  if (!validTags || validTags.length === 0) {
+    return { error: "Invalid scenario tags" };
+  }
+
+  /* B6: read profile via RPC. */
+  const profile = await readOwnProfile(supabase);
+  if (!profile) return { error: "Profile not found" };
+
   const sharedPool = tier === "quick" ? 2000 : 10000;
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("tokens_balance")
-    .eq("id", user.id)
-    .single();
+  /* C4: re-check VIP for deep tier server-side. */
+  if (tier === "deep" && !profile.is_vip) {
+    return { error: "Deep Dive is VIP only" };
+  }
 
-  if (!profile || profile.tokens_balance < sharedPool) {
+  if (profile.tokens_balance < sharedPool) {
     return { error: "Not enough tokens" };
   }
 
-  const characterIds = await pickCharacterIds(supabase, tags);
+  const characterIds = await pickCharacterIds(supabase, validTags);
 
-  await supabase
-    .from("profiles")
-    .update({ tokens_balance: profile.tokens_balance - sharedPool })
-    .eq("id", user.id);
+  /* H5: atomic deduction. */
+  const { data: deductResult } = await supabase.rpc("deduct_tokens", {
+    p_amount: sharedPool,
+  });
+
+  if (!deductResult || !Array.isArray(deductResult) || deductResult.length === 0) {
+    return { error: "Not enough tokens" };
+  }
 
   const { data: newMatch, error: insertError } = await supabase
     .from("matches")
@@ -188,7 +300,7 @@ export async function createAIMatch(
       user_a: user.id,
       is_ai_match: true,
       tier,
-      scenario_tags: tags,
+      scenario_tags: validTags,
       shared_pool: sharedPool,
       status: "active",
       character_ids: characterIds,
@@ -197,6 +309,11 @@ export async function createAIMatch(
     .single();
 
   if (insertError || !newMatch) {
+    /* Refund the deducted tokens. */
+    await supabase.rpc("add_tokens", {
+      p_user_id: user.id,
+      p_amount: sharedPool,
+    });
     return { error: "Failed to create AI match" };
   }
 

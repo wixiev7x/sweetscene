@@ -8,20 +8,27 @@ import type {
 
 /**
  * DeepSeek V3 implementation of the `AIProvider` interface. Uses the
- * `deepseek-chat` model by default. The endpoint URL is centralised here
- * so no other file in the codebase needs to know the vendor's shape.
+ * `deepseek-chat` model by default. The endpoint URL comes from the
+ * `DEEPSEEK_ENDPOINT` env var (S2a) so it's not hardcoded.
  *
- * Reads `AI_API_KEY` first, then falls back to the legacy
- * `DEEPSEEK_API_KEY` env var for backward compatibility with the
- * pre-Phase-1 environment.
+ * Phase 5b:
+ *   - S2a: endpoint from env (default for backward compat).
+ *   - S7: 30-second AbortController timeout on the fetch.
+ *   - S13: legacy DEEPSEEK_API_KEY fallback removed — only AI_API_KEY.
  */
 
-const DEEPSEEK_ENDPOINT =
-  "https://api.deepseek.com/v1/chat/completions";
+function getEndpoint(): string {
+  return (
+    process.env.DEEPSEEK_ENDPOINT ||
+    "https://api.deepseek.com/v1/chat/completions"
+  );
+}
 
 function getKey(): string | undefined {
-  return process.env.AI_API_KEY || process.env.DEEPSEEK_API_KEY;
+  return process.env.AI_API_KEY;
 }
+
+const FETCH_TIMEOUT_MS = 30_000;
 
 export const deepseekProvider: AIProvider = {
   name: "deepseek",
@@ -44,8 +51,12 @@ export const deepseekProvider: AIProvider = {
       return { error: "AI_API_KEY not configured" };
     }
 
+    /* S7: 30-second timeout via AbortController. */
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
     try {
-      const response = await fetch(DEEPSEEK_ENDPOINT, {
+      const response = await fetch(getEndpoint(), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${key}`,
@@ -57,6 +68,7 @@ export const deepseekProvider: AIProvider = {
           max_tokens: config.maxTokens,
           temperature: config.temperature,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -72,8 +84,13 @@ export const deepseekProvider: AIProvider = {
       }
 
       return { content };
-    } catch {
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        return { error: "DeepSeek request timed out" };
+      }
       return { error: "DeepSeek request failed" };
+    } finally {
+      clearTimeout(timeout);
     }
   },
 };

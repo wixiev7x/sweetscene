@@ -4,7 +4,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { rateLimit } from "@/lib/utils/ratelimit";
-import { scrubInjection } from "@/lib/utils/safety";
+import { scrubInjection, sanitizeMessage } from "@/lib/utils/safety";
 import { encryptMessage, decryptMessage } from "@/lib/utils/crypto";
 import { buildSystemPrompt, parseExampleDialog } from "@/lib/ai/prompts";
 import { getProvider } from "@/lib/ai";
@@ -19,10 +19,17 @@ type AIResponseResult =
  * secret prompt wrapping, provider call, encrypted message insertion, and
  * token pool accounting.
  *
- * Messages are encrypted at rest — this action decrypts them server-side
- * when building the AI context, then encrypts the AI response before
- * inserting. The system_prompt is read via the admin client (service role)
- * because the column is REVOKED from authenticated users.
+ * Phase 5a changes:
+ *   - claim_ai_turn RPC atomically flips ai_turn_due before the AI call,
+ *     preventing double-fire (H6).
+ *   - apply_ai_turn RPC atomically inserts the AI message + updates the
+ *     match (pool, counter, status), replacing the server-side
+ *     matches.update that broke after the column REVOKE (C5).
+ *   - Context window bumped to 20 (A1) with rolling summary every 10
+ *     messages cached on matches.context_summary (A2).
+ *   - AI output is sanitized before encrypt+insert (S11).
+ *   - On AI error with a configured provider, inserts a graceful
+ *     "The character hesitates…" message instead of surfacing the error (A6).
  */
 export async function generateAIResponse(
   matchId: string
@@ -53,12 +60,25 @@ export async function generateAIResponse(
     return { error: "Not AI turn" };
   }
 
+  /* H6: atomically claim the AI turn. If another caller already won
+     the race, claim_ai_turn returns NULL and we abort. The RPC
+     flips ai_turn_due to false + returns the current shared_pool. */
+  const { data: claimData } = await supabase.rpc("claim_ai_turn", {
+    p_match_id: matchId,
+  });
+
+  if (!claimData || !Array.isArray(claimData) || claimData.length === 0) {
+    return { error: "AI turn already in progress" };
+  }
+
+  const claimedPool = (claimData[0] as { shared_pool: number }).shared_pool;
+
   const { data: recentMessages } = await supabase
     .from("messages")
     .select("*")
     .eq("match_id", matchId)
     .order("created_at", { ascending: false })
-    .limit(12);
+    .limit(20);
 
   const chatHistory = (recentMessages ?? []).reverse();
 
@@ -106,6 +126,65 @@ export async function generateAIResponse(
     { role: "system", content: fullSystemPrompt },
   ];
 
+  /* A2: rolling summary — when the context is full (20 messages),
+     prepend a cheap summary of the oldest messages so the AI retains
+     story continuity without sending the full history every turn.
+     The summary is cached on matches.context_summary and refreshed
+     every 10 messages to save tokens. */
+  if (
+    chatHistory.length >= 20 &&
+    match.human_message_count > 0 &&
+    match.human_message_count % 10 === 0
+  ) {
+    /* Build a summary of the oldest 14 messages. */
+    const toSummarize = chatHistory.slice(0, 14);
+    const summaryParts: string[] = [];
+    for (const msg of toSummarize) {
+      let plaintext = "";
+      try {
+        plaintext = decryptMessage(msg.content as string);
+      } catch {
+        plaintext = "";
+      }
+      const role = msg.sender_type === "human" ? "Human" : "AI";
+      summaryParts.push(`${role}: ${plaintext}`);
+    }
+
+    const summaryPrompt: AIMessage[] = [
+      {
+        role: "system",
+        content:
+          "Summarise the following roleplay scene in 2-3 sentences. Keep it concise and focused on the key events and emotional beats. Output ONLY the summary.",
+      },
+      { role: "user", content: summaryParts.join("\n") },
+    ];
+
+    const provider = getProvider();
+    const summaryResult = await provider.generate(summaryPrompt, {
+      maxTokens: 100,
+      temperature: 0.5,
+      model: "deepseek-chat",
+    });
+
+    if ("content" in summaryResult) {
+      const summaryText = `Story so far: ${summaryResult.content}`;
+      messages.push({ role: "system", content: summaryText });
+
+      /* Cache the summary on the match row. */
+      await admin
+        .from("matches")
+        .update({ context_summary: summaryResult.content } as never)
+        .eq("id", matchId)
+        .then();
+    }
+  } else if (match.context_summary) {
+    /* Use the cached summary if one exists and we didn't just refresh. */
+    messages.push({
+      role: "system",
+      content: `Story so far: ${match.context_summary}`,
+    });
+  }
+
   /* Decrypt message content before building the AI context. Each
      message's content is AES-256-GCM encrypted at rest. */
   for (const msg of chatHistory) {
@@ -129,40 +208,48 @@ export async function generateAIResponse(
     temperature: 0.9,
   });
 
+  /* A6: graceful refusal — if the provider is configured but returned
+     an error, insert a silent in-character placeholder instead of
+     surfacing a red error to the user. Only the server knows the
+     provider failed; the client sees the AI "hesitate". */
+  let aiText: string;
   if ("error" in aiResult) {
-    return { error: "AI response failed" };
+    if (!provider.isConfigured()) {
+      /* Provider not configured AND mock returned an error — shouldn't
+         happen, but return the error so the caller can handle it. */
+      return { error: "AI not configured" };
+    }
+    aiText = "The character hesitates and falls silent for a moment…";
+  } else {
+    /* S11: sanitize AI output before storing. The AI may reflect
+       prompt-injection patterns or PII from the conversation —
+       scrub both before encrypt+insert. */
+    aiText = scrubInjection(sanitizeMessage(aiResult.content));
   }
 
-  const aiText: string = aiResult.content;
   const estimatedTokens = provider.estimateTokens(aiText);
+  const newPool = claimedPool - estimatedTokens;
+  const endMatch = newPool <= 0;
 
-  /* Insert the AI message via the admin client — the messages INSERT
-     RLS policy only allows sender_type='human', so AI messages need
-     the service role to bypass RLS. Content is encrypted at rest. */
-  const insertPayload = {
-    match_id: matchId,
-    sender_type: "ai",
-    sender_id: null,
-    character_id: characterId,
-    content: encryptMessage(aiText),
-    tokens_used: estimatedTokens,
-  };
-  await admin.from("messages").insert(insertPayload as never).then();
+  const encryptedText = encryptMessage(aiText);
 
-  const newPool = match.shared_pool - estimatedTokens;
-  const updateData: Record<string, unknown> = {
-    ai_turn_due: false,
-    human_message_count: 0,
-    shared_pool: newPool,
-    last_activity: new Date().toISOString(),
-  };
+  /* C5/H6: apply_ai_turn RPC atomically inserts the AI message +
+     updates the match (ai_turn_due=false, human_message_count=0,
+     shared_pool=newPool, status='ended' if pool exhausted). This
+     replaces the server-side matches.update that broke after the
+     column REVOKE. */
+  const { data: applyResult } = await supabase.rpc("apply_ai_turn", {
+    p_match_id: matchId,
+    p_encrypted_text: encryptedText,
+    p_character_id: characterId,
+    p_tokens_used: estimatedTokens,
+    p_new_pool: newPool,
+    p_end_match: endMatch,
+  });
 
-  if (newPool <= 0) {
-    updateData.status = "ended";
-    updateData.ended_at = new Date().toISOString();
+  if (!applyResult || !Array.isArray(applyResult) || applyResult.length === 0) {
+    return { error: "Failed to apply AI turn" };
   }
-
-  await supabase.from("matches").update(updateData).eq("id", matchId);
 
   return { content: aiText, characterId };
 }
@@ -178,6 +265,10 @@ type SoloPlayResult =
  * is server-only. The system_prompt is read via the admin client
  * (column-level restricted from authenticated). Solo sessions are NOT
  * encrypted — the admin can inspect them for AI behaviour debugging.
+ *
+ * Phase 5a: H7 — verifies the caller can see the character (public,
+ * unlisted, or owned) before reading system_prompt via the admin
+ * client. Prevents any user from using a private character's prompt.
  */
 export async function getSoloPlayResponse(
   characterId: string,
@@ -193,6 +284,18 @@ export async function getSoloPlayResponse(
   if (!(await rateLimit(user.id))) {
     return { error: "Slow down. The director is thinking." };
   }
+
+  /* H7: visibility check via the USER client (RLS-enforced). The
+     character must be public, unlisted, or owned by the caller.
+     This runs BEFORE the admin read so a private character's
+     system_prompt is never exposed to a non-owner. */
+  const { data: visibleChar } = await supabase
+    .from("characters")
+    .select("id")
+    .eq("id", characterId)
+    .maybeSingle();
+
+  if (!visibleChar) return { error: "Character not found" };
 
   /* Read system_prompt via the admin client — REVOKED from authenticated. */
   const admin = createAdminClient();
@@ -245,39 +348,110 @@ export async function getSoloPlayResponse(
 
   if ("error" in aiResult) return { error: aiResult.error };
 
+  /* S11: sanitize AI output. */
+  const sanitizedContent = scrubInjection(sanitizeMessage(aiResult.content));
+
   return {
-    content: aiResult.content,
-    tokensUsed: provider.estimateTokens(aiResult.content),
+    content: sanitizedContent,
+    tokensUsed: provider.estimateTokens(sanitizedContent),
   };
 }
 
 type TurnstileResult = { success: boolean } | { error: string };
 
 /**
+ * Actions for the AI turn trigger system.
+ */
+
+type NudgeResult = { success: true } | { error: string };
+
+/**
+ * Flips ai_turn_due to true when a human message directly addresses a
+ * character by name (A3). Wraps the request_direct_turn SECURITY
+ * DEFINER RPC — server-side gated to participants + active match +
+ * ai_turn_due currently false.
+ */
+export async function requestDirectAITurn(
+  matchId: string
+): Promise<NudgeResult> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data, error } = await supabase.rpc("request_direct_turn", {
+    p_match_id: matchId,
+  });
+
+  if (error || !data || !Array.isArray(data) || data.length === 0) {
+    return { error: "Failed" };
+  }
+
+  return { success: true };
+}
+
+/**
+ * Silent AI nudge after 15 seconds of human inactivity (A4). Wraps the
+ * request_ai_nudge SECURITY DEFINER RPC — the RPC itself checks that
+ * now() - last_human_message_at > 15s so a client can't force-spam
+ * the AI. If the nudge fires, Realtime broadcasts the ai_turn_due flip
+ * and the chat page's AI-turn effect calls generateAIResponse.
+ */
+export async function requestAINudge(
+  matchId: string
+): Promise<NudgeResult> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  const { data, error } = await supabase.rpc("request_ai_nudge", {
+    p_match_id: matchId,
+  });
+
+  if (error || !data || !Array.isArray(data) || data.length === 0) {
+    return { error: "Failed" };
+  }
+
+  return { success: true };
+}
+
+/**
  * Verifies a Cloudflare Turnstile token. Returns { success: true }
  * only when the token is valid. When no TURNSTILE_SECRET_KEY is
- * configured (e.g. local dev), verification is skipped and the
- * login proceeds — so the app works without a Turnstile site key.
+ * configured in development, verification is skipped. In production
+ * with no key, verification fails-closed (S6).
  */
 export async function verifyTurnstile(token: string): Promise<TurnstileResult> {
   const secret = process.env.TURNSTILE_SECRET_KEY;
 
-  if (!secret) return { success: true };
+  if (!secret) {
+    /* S6: fail-closed in production, skip in development. */
+    if (process.env.NODE_ENV === "production") {
+      return { error: "Captcha not configured" };
+    }
+    return { success: true };
+  }
 
   if (!token) return { error: "Captcha required" };
 
   try {
-    const res = await fetch(
-      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          secret,
-          response: token,
-        }),
-      }
-    );
+    const verifyUrl =
+      process.env.TURNSTILE_VERIFY_URL ||
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+    const res = await fetch(verifyUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        secret,
+        response: token,
+      }),
+    });
 
     const data = await res.json();
     if (data?.success === true) return { success: true };

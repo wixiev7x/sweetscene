@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { getMyProfile } from "@/lib/actions/profile";
 import { findMatch, createAIMatch } from "@/lib/actions/matchmaking";
 import {
   startWaitingRoomSession,
@@ -183,12 +184,18 @@ export default function LobbyPage() {
         router.push("/login");
         return;
       }
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      if (data) setProfile(data as Profile);
+      /* B2: read profile via getMyProfile action — tokens_balance/is_vip
+         are REVOKED from authenticated direct SELECT. */
+      const profileResult = await getMyProfile();
+      if ("profile" in profileResult) {
+        setProfile({
+          anonymous_username: profileResult.profile.anonymous_username,
+          anonymous_pfp_url: profileResult.profile.anonymous_pfp_url,
+          reputation_score: profileResult.profile.reputation_score,
+          tokens_balance: profileResult.profile.tokens_balance,
+          is_vip: profileResult.profile.is_vip,
+        });
+      }
       setLoading(false);
     }
     fetchProfile();
@@ -398,17 +405,17 @@ export default function LobbyPage() {
 
   /* ── re-fetch profile ── */
   async function handleRefreshProfile() {
-    const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", user.id)
-      .single();
-    if (data) setProfile(data as Profile);
+    /* B2: use getMyProfile action (REVOKED columns). */
+    const profileResult = await getMyProfile();
+    if ("profile" in profileResult) {
+      setProfile({
+        anonymous_username: profileResult.profile.anonymous_username,
+        anonymous_pfp_url: profileResult.profile.anonymous_pfp_url,
+        reputation_score: profileResult.profile.reputation_score,
+        tokens_balance: profileResult.profile.tokens_balance,
+        is_vip: profileResult.profile.is_vip,
+      });
+    }
   }
 
   function getAvatarInitial(): string {

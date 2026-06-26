@@ -9,6 +9,7 @@ import { generateImage } from "@/lib/actions/images";
 import { requestReveal, moveOn as moveOnServer } from "@/lib/actions/reveal";
 import { heartbeat } from "@/lib/actions/presence";
 import { sendMessage, getMatchMessages, decryptMessageContent } from "@/lib/actions/messages";
+import { getMyProfile } from "@/lib/actions/profile";
 import { useMounted } from "@/lib/utils/useMounted";
 import ChatBox from "@/components/ChatBox";
 import MessageList from "@/components/MessageList";
@@ -119,6 +120,11 @@ export default function ChatPage() {
   /* guards one-time routing into the DM room upon mutual reveal */
   const revealRoutingRef = useRef(false);
 
+  /* ── A4: silence-nudge — tracks the last human send time so a
+     15-second idle interval can request an AI nudge. */
+  const lastSendTimeRef = useRef<number>(0);
+  const nudgeFiredRef = useRef(false);
+
   /* ── initial load ── */
   useEffect(() => {
     async function init() {
@@ -133,12 +139,22 @@ export default function ChatPage() {
       }
       setCurrentUserId(user.id);
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-      if (profileData) setProfile(profileData as ProfileRow);
+      /* Initialize the silence-nudge timer to page load time. */
+      lastSendTimeRef.current = Date.now();
+
+      /* B3: read profile via getMyProfile action (tokens_balance/is_vip
+         REVOKED from authenticated direct SELECT). */
+      const profileResult = await getMyProfile();
+      if ("profile" in profileResult) {
+        setProfile({
+          id: profileResult.profile.id,
+          anonymous_username: profileResult.profile.anonymous_username,
+          anonymous_pfp_url: profileResult.profile.anonymous_pfp_url,
+          reputation_score: profileResult.profile.reputation_score,
+          tokens_balance: profileResult.profile.tokens_balance,
+          is_vip: profileResult.profile.is_vip,
+        });
+      }
 
       const { data: matchData } = await supabase
         .from("matches")
@@ -405,6 +421,34 @@ export default function ChatPage() {
     };
   }, [matchId, mounted, currentUserId, router]);
 
+  /* ── A4: silence nudge — every 15s while the tab is visible and the
+     match is active, check if no human has sent a message in the last
+     15s. If so, call requestAINudge (server-side gated to >15s idle).
+     The nudgeFiredRef prevents repeated nudges until the next user
+     message resets it. */
+  useEffect(() => {
+    if (!matchId || !mounted) return;
+
+    const interval = setInterval(async () => {
+      if (document.visibilityState !== "visible") return;
+      if (!match || match.status !== "active") return;
+      if (match.ai_turn_due) return;
+
+      const idle = Date.now() - lastSendTimeRef.current;
+      if (idle > 15000 && !nudgeFiredRef.current) {
+        nudgeFiredRef.current = true;
+        try {
+          const { requestAINudge } = await import("@/lib/actions/ai_wrapper");
+          await requestAINudge(matchId);
+        } catch {
+          nudgeFiredRef.current = false;
+        }
+      }
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [matchId, mounted, match]);
+
   /* ── AI turn trigger ── */
   useEffect(() => {
     if (!match || !matchId) return;
@@ -434,14 +478,14 @@ export default function ChatPage() {
        display. */
     const sendResult = await sendMessage(matchId, text);
 
-    if ("error" in sendResult) {
+if ("error" in sendResult) {
       setError(sendResult.error);
       setSending(false);
       return;
     }
 
     /* Add the user's own message optimistically — Realtime will also
-       fire but we deduplicate by ID. */
+        fire but we deduplicate by ID. */
     const userMsg: ChatMessage = {
       id: sendResult.messageId,
       sender_type: "human",
@@ -457,34 +501,53 @@ export default function ChatPage() {
       return [...prev, userMsg];
     });
 
-    const newCount = match.human_message_count + 1;
-    const shouldAITurn = newCount >= match.ai_interval;
-
-    const supabase = createClient();
-    const { error: updateError } = await supabase
-      .from("matches")
-      .update({
-        human_message_count: shouldAITurn ? 0 : newCount,
-        ai_turn_due: shouldAITurn,
-        last_activity: new Date().toISOString(),
-      })
-      .eq("id", matchId);
-
-    if (updateError) {
-      setError("Failed to update match state");
-    }
-
+    /* C1/M2: the send_human_message RPC atomically incremented the
+       counter and computed ai_turn_due. We use the RPC's return
+       values to update local state optimistically — NO client-side
+       matches.update anymore. Realtime will deliver the authoritative
+       match row if the AI turn fires. */
     setMatch(
       (prev) =>
         prev
           ? {
               ...prev,
-              human_message_count: shouldAITurn ? 0 : newCount,
-              ai_turn_due: shouldAITurn,
+              human_message_count: sendResult.aiTurnDue ? 0 : sendResult.humanMessageCount,
+              ai_turn_due: sendResult.aiTurnDue,
               last_activity: new Date().toISOString(),
             }
           : prev
     );
+
+    /* A3: direct-address trigger — if the user's message contains
+       @<characterName> or @director/@ai/@narrator and no AI turn is
+       already due, call requestDirectAINudge to flip ai_turn_due
+       server-side. The Realtime match UPDATE then fires the effect. */
+    if (!sendResult.aiTurnDue) {
+      const text = sendResult.content.toLowerCase();
+      const characterNames = Array.from(characterNameMapRef.current.values());
+      const addressed = characterNames.some(
+        (name) => name && text.includes(`@${name.toLowerCase()}`)
+      ) ||
+        text.includes("@director") ||
+        text.includes("@ai") ||
+        text.includes("@narrator");
+
+      if (addressed) {
+        try {
+          const { requestDirectAITurn } = await import("@/lib/actions/ai_wrapper");
+          await requestDirectAITurn(matchId);
+          /* Optimistically flip ai_turn_due so the UI shows the
+             "AI is typing" state immediately. */
+          setMatch((prev) => (prev ? { ...prev, ai_turn_due: true } : prev));
+        } catch {
+          /* Non-fatal — the RPC is server-side gated. */
+        }
+      }
+    }
+
+    /* Track last send time for the silence-nudge interval. */
+    lastSendTimeRef.current = Date.now();
+    nudgeFiredRef.current = false;
 
     setSending(false);
   }

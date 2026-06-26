@@ -9,6 +9,7 @@ import {
   importCharacterCardAction,
 } from "@/lib/actions/characters";
 import { generateCharacterAvatar } from "@/lib/actions/avatars";
+import { getMyProfile } from "@/lib/actions/profile";
 
 const SCENARIO_TAGS = [
   "hospital",
@@ -86,12 +87,12 @@ export default function CreateCharacterPage() {
         router.push("/login");
         return;
       }
-      const { data } = await supabase
-        .from("profiles")
-        .select("is_vip")
-        .eq("id", user.id)
-        .single();
-      if (data) setProfile(data);
+      /* B4: read VIP status via getMyProfile action (is_vip REVOKED
+         from authenticated direct SELECT). */
+      const profileResult = await getMyProfile();
+      if ("profile" in profileResult) {
+        setProfile({ is_vip: profileResult.profile.is_vip });
+      }
     }
     fetchProfile();
   }, [router]);

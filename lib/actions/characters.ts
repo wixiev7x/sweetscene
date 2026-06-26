@@ -4,6 +4,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/ratelimit";
 import { wrapSystemPrompt } from "@/lib/ai/prompts";
+import { createAdminClient } from "@/lib/supabase/server-admin";
 import {
   importCharacterCard,
   exportCharacterCard,
@@ -103,6 +104,21 @@ export async function createCharacter(
 
   if (!(await rateLimit(user.id))) {
     return { error: "Too many requests. Slow down." };
+  }
+
+  /* C3: re-check VIP server-side for NSFW character creation. The
+     client gate is bypassable by calling the action directly. */
+  if (params.is_nsfw) {
+    const admin = createAdminClient();
+    const { data: profileRow } = (await admin
+      .from("profiles")
+      .select("is_vip")
+      .eq("id", user.id)
+      .single()) as { data: { is_vip: boolean } | null };
+
+    if (!profileRow || !profileRow.is_vip) {
+      return { error: "NSFW characters require VIP" };
+    }
   }
 
   const validationError = validateFields(params);

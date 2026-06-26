@@ -354,7 +354,7 @@ export async function appendSoloMessage(
 
   const { data: session } = await supabase
     .from("solo_sessions")
-    .select("id, character_id, messages, tokens_used")
+    .select("id, character_id, messages, tokens_used, is_waiting")
     .eq("id", sessionId)
     .eq("user_id", user.id)
     .single();
@@ -363,6 +363,15 @@ export async function appendSoloMessage(
 
   const char = await resolveCharacter(supabase, session.character_id as string);
   if (!char) return { error: "Character not found" };
+
+  /* S17/M8: waiting-room sessions are capped at 30 user messages so
+     the free waiting-room chat doesn't become an unlimited AI
+     substitute. Regular solo sessions keep the 50-entry cap. */
+  const currentMsgs = (session.messages as SoloMessage[]) ?? [];
+  const userMsgCount = currentMsgs.filter((m) => m.role === "user").length;
+  if (session.is_waiting === true && userMsgCount >= 30) {
+    return { error: "Waiting room limit reached — enter your match or start an AI scene" };
+  }
 
   const scrubbed = scrubInjection(content);
   const now = new Date().toISOString();
@@ -414,10 +423,13 @@ export async function appendSoloMessage(
   const estimatedTokens = provider.estimateTokens(aiText);
   const newTokensUsed = (session.tokens_used as number) + estimatedTokens;
 
-  const { error: updateError } = await supabase
-    .from("solo_sessions")
-    .update({ messages: newMessages, tokens_used: newTokensUsed })
-    .eq("id", sessionId);
+  /* Column REVOKE on (tokens_used, messages) means we must use the
+     update_solo_session SECURITY DEFINER RPC to write both columns. */
+  const { error: updateError } = await supabase.rpc("update_solo_session", {
+    p_session_id: sessionId,
+    p_messages: newMessages,
+    p_tokens_used: newTokensUsed,
+  });
 
   if (updateError) return { error: "Failed to save message" };
 
@@ -545,7 +557,7 @@ export async function regenerateGreeting(
 
   const { data: session } = await supabase
     .from("solo_sessions")
-    .select("id, character_id, messages")
+    .select("id, character_id, messages, tokens_used")
     .eq("id", sessionId)
     .eq("user_id", user.id)
     .single();
@@ -581,10 +593,14 @@ export async function regenerateGreeting(
     ];
   }
 
-  const { error } = await supabase
-    .from("solo_sessions")
-    .update({ messages: newMessages })
-    .eq("id", sessionId);
+  /* Column REVOKE on (messages) means we use the update_solo_session
+     RPC. Pass the unchanged tokens_used so it's not modified. */
+  const sessionTokens = (session.tokens_used as number) ?? 0;
+  const { error } = await supabase.rpc("update_solo_session", {
+    p_session_id: sessionId,
+    p_messages: newMessages,
+    p_tokens_used: sessionTokens,
+  });
 
   if (error) return { error: "Failed to update greeting" };
 

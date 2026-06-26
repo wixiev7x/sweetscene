@@ -32,10 +32,32 @@ const AUTH_TAG_LENGTH = 16;
  * string key works regardless of length. Falls back to a dev-only
  * key when the env var is missing — encrypted but NOT secure in dev.
  */
+/**
+ * Derives a 32-byte AES key from the env var. Uses SHA-256 so any
+ * string key works regardless of length.
+ *
+ * S1: In production, the env var MUST be set — there is no fallback
+ * key. In development, a dev-only key is used (with a console warning)
+ * so local dev works without configuring the env var.
+ */
 function getKey(): Buffer {
-  const raw =
-    process.env.MESSAGE_ENCRYPTION_KEY ??
-    "dev-only-key-change-in-production";
+  const raw = process.env.MESSAGE_ENCRYPTION_KEY;
+
+  if (!raw) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        "MESSAGE_ENCRYPTION_KEY is required in production. " +
+          "Generate one with `openssl rand -hex 32` and set it in .env.local."
+      );
+    }
+    /* Dev-only fallback — NOT secure. */
+    console.warn(
+      "[crypto] MESSAGE_ENCRYPTION_KEY not set — using insecure dev key. " +
+        "Set MESSAGE_ENCRYPTION_KEY in .env.local for production."
+    );
+    return crypto.createHash("sha256").update("dev-only-key-change-in-production").digest();
+  }
+
   return crypto.createHash("sha256").update(raw).digest();
 }
 

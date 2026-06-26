@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { useMounted } from "@/lib/utils/useMounted";
-import { containsBlockedTerm } from "@/lib/utils/safety";
+import { containsBlockedTerm, sanitizeAndScrub } from "@/lib/utils/safety";
 import { sendMessage, getMatchMessages, decryptMessageContent } from "@/lib/actions/messages";
 import ChatBox from "@/components/ChatBox";
 import MessageList from "@/components/MessageList";
@@ -227,11 +227,20 @@ export default function DMPage() {
       return;
     }
 
+    /* Phase 5a: DMs now pass through sanitizeAndScrub — previously
+       DMs sent raw text, bypassing the URL/email/phone redaction and
+       the prompt-injection scrubber. */
+    const scrubbed = sanitizeAndScrub(text);
+    if (!scrubbed.trim()) {
+      setError("Empty message.");
+      return;
+    }
+
     setSending(true);
     setError("");
 
     /* Send via the encrypted message action. DMs cost 0 tokens. */
-    const result = await sendMessage(matchId, text);
+    const result = await sendMessage(matchId, scrubbed);
 
     if ("error" in result) {
       setError(result.error);

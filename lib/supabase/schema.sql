@@ -709,3 +709,275 @@ BEGIN
     AND length(p_username) <= 20;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ════════════════════════════════════════════════════════════════════
+-- Phase 5a — Application/RPC reconciliation
+-- Append-only migration. Run this block in the Supabase SQL Editor.
+-- Closes C1-C6, H1, H2, H5-H7, M1, M2, M5, M6, M8, M9, S17, B1-B6.
+-- ════════════════════════════════════════════════════════════════════
+
+-- ── get_own_profile: replace client SELECT * on profiles ──
+-- After the REVOKE on (tokens_balance, is_vip) from authenticated,
+-- a client SELECT * returns NULL for those columns. This RPC returns
+-- the caller's full row (SECURITY DEFINER bypasses column REVOKE).
+CREATE OR REPLACE FUNCTION get_own_profile()
+RETURNS TABLE (
+  id UUID,
+  anonymous_username TEXT,
+  anonymous_pfp_url TEXT,
+  reputation_score INT,
+  tokens_balance INT,
+  is_vip BOOLEAN,
+  created_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT p.id, p.anonymous_username, p.anonymous_pfp_url,
+         p.reputation_score, p.tokens_balance, p.is_vip, p.created_at
+  FROM profiles p
+  WHERE p.id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── send_human_message: atomic INSERT + counter + ai_turn_due ──
+-- Replaces the two-step client INSERT + client matches.update that
+-- raced (M2) and allowed arbitrary column writes (C1). Combines
+-- message insertion, counter increment, and ai_turn_due flip in one
+-- transaction. Verifies participant + status='active' + ai_turn_due
+-- is false (prevents spamming during AI turns — H1). Returns the new
+-- message id, human_message_count, and ai_turn_due so the client can
+-- update its optimistic state without any DB write.
+CREATE OR REPLACE FUNCTION send_human_message(
+  p_match_id UUID,
+  p_encrypted_content TEXT
+) RETURNS TABLE (
+  success BOOLEAN,
+  message_id UUID,
+  human_message_count INT,
+  ai_turn_due BOOLEAN
+) AS $$
+DECLARE
+  m_row matches%ROWTYPE;
+  msg_id UUID;
+  new_count INT;
+  should_ai BOOLEAN;
+BEGIN
+  SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
+
+  IF NOT FOUND THEN RETURN; END IF;
+  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF m_row.status <> 'active' THEN RETURN; END IF;
+  IF m_row.ai_turn_due = true THEN RETURN; END IF;
+
+  new_count := m_row.human_message_count + 1;
+  should_ai := new_count >= m_row.ai_interval;
+
+  INSERT INTO messages (match_id, sender_type, sender_id, character_id, content, tokens_used)
+  VALUES (p_match_id, 'human', auth.uid(), NULL, p_encrypted_content, 0)
+  RETURNING id INTO msg_id;
+
+  UPDATE matches
+  SET human_message_count = new_count,
+      ai_turn_due = should_ai,
+      last_human_message_at = now(),
+      last_activity = now()
+  WHERE id = p_match_id;
+
+  RETURN QUERY SELECT true, msg_id, new_count, should_ai;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── apply_ai_turn: atomic AI message INSERT + match update ──
+-- After claim_ai_turn atomically flips ai_turn_due to false, the
+-- server action generates the AI response, encrypts it, and calls
+-- this RPC to insert the message + update the match (pool, counter,
+-- status) in one transaction. Closes C5/H6 double-fire and the
+-- server-side UPDATE-after-REVOKE break. p_end_match flips status to
+-- 'ended' when the pool is exhausted.
+CREATE OR REPLACE FUNCTION apply_ai_turn(
+  p_match_id UUID,
+  p_encrypted_text TEXT,
+  p_character_id UUID,
+  p_tokens_used INT,
+  p_new_pool INT,
+  p_end_match BOOLEAN
+) RETURNS TABLE (success BOOLEAN) AS $$
+DECLARE
+  m_row matches%ROWTYPE;
+BEGIN
+  SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
+
+  IF NOT FOUND THEN RETURN; END IF;
+  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF m_row.status <> 'active' THEN RETURN; END IF;
+
+  INSERT INTO messages (match_id, sender_type, sender_id, character_id, content, tokens_used)
+  VALUES (p_match_id, 'ai', NULL, p_character_id, p_encrypted_text, p_tokens_used);
+
+  UPDATE matches
+  SET ai_turn_due = false,
+      human_message_count = 0,
+      shared_pool = p_new_pool,
+      last_activity = now(),
+      status = CASE WHEN p_end_match THEN 'ended' ELSE status END,
+      ended_at = CASE WHEN p_end_match THEN now() ELSE ended_at END
+  WHERE id = p_match_id;
+
+  RETURN QUERY SELECT true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── request_direct_turn: flip ai_turn_due for @character addressing ──
+-- Called when a human message directly addresses a character by name
+-- (e.g., "@Director, what do you think?"). Flips ai_turn_due to true
+-- only if the match is active and no AI turn is already pending.
+CREATE OR REPLACE FUNCTION request_direct_turn(p_match_id UUID)
+RETURNS TABLE (success BOOLEAN) AS $$
+DECLARE
+  m_row matches%ROWTYPE;
+BEGIN
+  SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
+
+  IF NOT FOUND THEN RETURN; END IF;
+  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF m_row.status <> 'active' THEN RETURN; END IF;
+  IF m_row.ai_turn_due = true THEN RETURN; END IF;
+
+  UPDATE matches SET ai_turn_due = true, last_activity = now()
+  WHERE id = p_match_id;
+
+  RETURN QUERY SELECT true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── request_ai_nudge: silence-nudge after 15s of inactivity ──
+-- Flips ai_turn_due to true ONLY if no human message has been sent in
+-- the last 15 seconds. Prevents the AI from nudging while conversation
+-- is still flowing. Server-side gated so the client can't force-spam.
+CREATE OR REPLACE FUNCTION request_ai_nudge(p_match_id UUID)
+RETURNS TABLE (success BOOLEAN) AS $$
+DECLARE
+  m_row matches%ROWTYPE;
+BEGIN
+  SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
+
+  IF NOT FOUND THEN RETURN; END IF;
+  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF m_row.status <> 'active' THEN RETURN; END IF;
+  IF m_row.ai_turn_due = true THEN RETURN; END IF;
+  IF m_row.last_human_message_at IS NULL THEN RETURN; END IF;
+  IF now() - m_row.last_human_message_at < INTERVAL '15 seconds' THEN RETURN; END IF;
+
+  UPDATE matches SET ai_turn_due = true, last_activity = now()
+  WHERE id = p_match_id;
+
+  RETURN QUERY SELECT true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── report_conversation: verify participant before filing report ──
+-- Closes M5 (reportConversation accepted any matchId). Verifies the
+-- caller is a participant of the match before inserting the report.
+CREATE OR REPLACE FUNCTION report_conversation(
+  p_match_id UUID,
+  p_reason TEXT,
+  p_evidence JSONB
+) RETURNS TABLE (success BOOLEAN) AS $$
+DECLARE
+  m_row matches%ROWTYPE;
+  evidence_capped JSONB;
+BEGIN
+  SELECT * INTO m_row FROM matches WHERE id = p_match_id;
+
+  IF NOT FOUND THEN RETURN; END IF;
+  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+
+  IF NOT p_reason IS NULL AND length(trim(p_reason)) = 0 THEN RETURN; END IF;
+
+  evidence_capped := COALESCE(p_evidence, '[]'::jsonb);
+
+  INSERT INTO reports (reporter_id, match_id, reason, evidence_snapshot)
+  VALUES (auth.uid(), p_match_id, trim(p_reason), evidence_capped);
+
+  RETURN QUERY SELECT true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── update_solo_session: atomic messages + tokens update ──
+-- After column REVOKE on solo_sessions.tokens_used and messages, the
+-- owner can't directly UPDATE these columns via the client. This RPC
+-- is the only write path. Verifies owner = auth.uid().
+CREATE OR REPLACE FUNCTION update_solo_session(
+  p_session_id UUID,
+  p_messages JSONB,
+  p_tokens_used INT
+) RETURNS TABLE (success BOOLEAN) AS $$
+BEGIN
+  UPDATE solo_sessions
+  SET messages = p_messages, tokens_used = p_tokens_used
+  WHERE id = p_session_id AND user_id = auth.uid();
+
+  RETURN QUERY SELECT true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── add_tokens: refund helper for failed match creation ──
+-- Called from matchmaking server actions when a match INSERT fails
+-- after tokens were already deducted. SECURITY DEFINER because the
+-- action already verified the user. Takes p_user_id as parameter.
+CREATE OR REPLACE FUNCTION add_tokens(p_user_id UUID, p_amount INT)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE profiles SET tokens_balance = tokens_balance + p_amount
+  WHERE id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── unclaim_match: reset user_b on failed post-claim token deduction ──
+-- If claim_match succeeded but deduct_tokens returned NULL (insufficient
+-- funds due to a race), this resets the match back to waiting so another
+-- user can claim it. Only resets if user_b is still set AND status active.
+CREATE OR REPLACE FUNCTION unclaim_match(p_match_id UUID)
+RETURNS VOID AS $$
+BEGIN
+  UPDATE matches
+  SET user_b = NULL, shared_pool = shared_pool / 2, last_activity = now()
+  WHERE id = p_match_id
+    AND user_b IS NOT NULL
+    AND status = 'active';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── solo_sessions column REVOKE: prevent self-resetting tokens/messages ──
+-- The owner can SELECT tokens_used + messages (for display) but cannot
+-- UPDATE them directly — all writes must go through update_solo_session.
+-- Closes L17 (tokens_used self-reset).
+REVOKE UPDATE (tokens_used, messages) ON solo_sessions FROM authenticated;
+REVOKE UPDATE (tokens_used, messages) ON solo_sessions FROM anon;
+
+-- ── Tighten messages INSERT RLS: require status IN ('active','revealed') ──
+-- The 4.5/5 block already added this policy, but DROP + recreate ensures
+-- idempotency. Messages can only be inserted into active (in-scene) or
+-- revealed (post-reveal DM) matches. Closes M6.
+DROP POLICY IF EXISTS "Participants can insert human messages" ON messages;
+DROP POLICY IF EXISTS "Participants can insert human messages into active matches" ON messages;
+CREATE POLICY "Participants can insert human messages into active matches"
+  ON messages FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM matches m
+      WHERE m.id = messages.match_id
+        AND (m.user_a = auth.uid() OR m.user_b = auth.uid())
+        AND (m.status = 'active' OR m.status = 'revealed')
+    )
+    AND sender_type = 'human'
+    AND sender_id = auth.uid()
+  );
+
+-- Note: AI messages (sender_type='ai') are inserted via the
+-- apply_ai_turn SECURITY DEFINER RPC which bypasses RLS — the INSERT
+-- policy above correctly allows only human messages from clients.
+
+-- Note: The heartbeat update on matches.last_activity still works
+-- post-REVOKE because last_activity is the one column NOT in the
+-- REVOKE list. No touch_match_activity RPC is needed.

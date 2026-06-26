@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { getMyProfile, updateMyUsername, signOut } from "@/lib/actions/profile";
 
 type ProfileData = {
   id: string;
@@ -88,15 +89,20 @@ export default function ProfilePage() {
         return;
       }
 
-      const { data: profileData } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (profileData) {
-        const p = profileData as ProfileData;
-        setProfile(p);
+      /* B1: read profile via getMyProfile action — tokens_balance/is_vip
+         are REVOKED from authenticated direct SELECT. */
+      const profileResult = await getMyProfile();
+      if ("profile" in profileResult) {
+        const p = profileResult.profile;
+        setProfile({
+          id: p.id,
+          anonymous_username: p.anonymous_username,
+          anonymous_pfp_url: p.anonymous_pfp_url,
+          reputation_score: p.reputation_score,
+          tokens_balance: p.tokens_balance,
+          is_vip: p.is_vip,
+          created_at: p.created_at,
+        });
         setNewUsername(p.anonymous_username);
       }
 
@@ -128,14 +134,12 @@ export default function ProfilePage() {
     setSaving(true);
     setError("");
 
-    const supabase = createClient();
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ anonymous_username: trimmed })
-      .eq("id", profile.id);
+    /* Use the updateMyUsername server action — wraps the
+       update_profile_username RPC (column-restricted). */
+    const result = await updateMyUsername(trimmed);
 
-    if (updateError) {
-      setError("Failed to update username");
+    if ("error" in result) {
+      setError(result.error);
     } else {
       setProfile((prev) =>
         prev ? { ...prev, anonymous_username: trimmed } : prev
@@ -154,10 +158,9 @@ export default function ProfilePage() {
     setError("");
   }
 
-  /* ── sign out ── */
+  /* ── sign out (S5: server action clears session cookies) ── */
   async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await signOut();
     router.push("/");
   }
 

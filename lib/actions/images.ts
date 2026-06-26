@@ -12,6 +12,10 @@ type GenerateImageResult = { imageUrl: string } | { error: string };
  * Generates a romantic scene image from the last 5 chat messages.
  * VIP only. Uses Pollinations.ai with Gemini fallback and a foggy
  * placeholder if both fail.
+ *
+ * Phase 5a: VIP check via get_own_profile RPC (B5 — is_vip REVOKED
+ * from authenticated direct SELECT). Gemini + Unsplash URLs from env
+ * (S2b).
  */
 export async function generateImage(
   matchId: string
@@ -23,13 +27,15 @@ export async function generateImage(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("is_vip")
-    .eq("id", user.id)
-    .single();
+  /* B5: read VIP via get_own_profile RPC (is_vip REVOKED from
+     authenticated direct SELECT). */
+  const { data: profileData } = await supabase.rpc("get_own_profile");
+  if (!profileData || !Array.isArray(profileData) || profileData.length === 0) {
+    return { error: "Profile not found" };
+  }
+  const profile = profileData[0] as { is_vip: boolean };
 
-  if (!profile || !profile.is_vip) {
+  if (!profile.is_vip) {
     return { error: "VIP only feature" };
   }
 
@@ -99,8 +105,10 @@ export async function generateImage(
   }
 
   try {
+    /* S2b: Gemini endpoint from env (with a default for backward compat). */
+    const geminiEndpoint = process.env.GEMINI_ENDPOINT || "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
     const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      `${geminiEndpoint}?key=${process.env.GEMINI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -136,8 +144,10 @@ export async function generateImage(
     // Fall through to foggy fallback
   }
 
+  /* S2b: Unsplash fallback from env. */
   return {
     imageUrl:
+      process.env.UNSPLASH_FALLBACK_IMAGE ||
       "https://images.unsplash.com/photo-1488861854035-ce89116c420e?w=512&h=512&fit=crop",
   };
 }
