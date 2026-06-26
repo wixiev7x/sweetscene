@@ -325,3 +325,25 @@ owner's full row; migrate all reads to a `getMyProfile()` action.
 - S22: Realtime subscription rate-limit.
 - S23: crypto server-only import note.
 - L13–L18: partner UUID exposure, unlisted sharing, constant duplication (Phase 6/7/10).
+
+---
+
+## ✅ Phase 5 Re-Audit — COMPLETED
+
+Re-read every file from phases 0–5. Found and fixed 7 bugs:
+
+1. **F1 (Critical):** `apply_ai_turn` RPC accepted `p_new_pool` as a parameter — any authenticated user could call `supabase.rpc("apply_ai_turn", ...)` to set the pool to any value and inject fake AI messages. **Fixed:** pool now computed server-side inside the RPC (reads `shared_pool` with `FOR UPDATE`, subtracts `p_tokens_used`). RPC signature changed — `p_new_pool`/`p_end_match` removed, `p_caller_id` added. RPC is now `service_role`-only (`REVOKE EXECUTE FROM authenticated`). The server action calls it via the admin client.
+
+2. **F2 (Critical):** `add_tokens` RPC accepted any `p_user_id` — any user could call `supabase.rpc("add_tokens", { p_user_id: myId, p_amount: 999999 })` to give themselves unlimited tokens (same class as C2 that Phase 5 was supposed to close). **Fixed:** `REVOKE EXECUTE FROM authenticated/anon` → `service_role`-only. Matchmaking calls via admin client.
+
+3. **F3 (Critical):** `unclaim_match` had no caller verification — any user could kick someone from a match. **Fixed:** accepts `p_caller_id`, verifies `user_b = p_caller_id`. `REVOKE EXECUTE → service_role`-only.
+
+4. **F4 (High):** `appendSoloMessage` in `solo.ts` didn't sanitize AI output before storing (S11 was only half-applied — `getSoloPlayResponse` sanitized but `appendSoloMessage` didn't). **Fixed:** now calls `scrubInjection(sanitizeMessage(aiResult.content))`.
+
+5. **F5 (Medium):** `update_solo_session` returned `success=true` even when no row was updated (wrong session_id/wrong user). **Fixed:** uses `GET DIAGNOSTICS ROW_COUNT` to return the actual result.
+
+6. **F6 (Medium):** `report_conversation` had a NULL-reason logic bug (`IF NOT p_reason IS NULL AND ...` should have been `IF p_reason IS NULL OR ...`). Wrong condition would cause a NOT NULL constraint violation instead of a clean return. **Fixed.**
+
+7. **F7 (Low):** `crypto.ts` had a duplicate JSDoc comment block from the S1 edit. **Removed.**
+
+**Verification after re-audit fixes:** `tsc --noEmit` ✅ `eslint` ✅ `next build` ✅ — all exit 0.
