@@ -57,7 +57,7 @@ Upstash Redis (optional, in-memory fallback), Cloudflare Turnstile.
 | 4 | ✅ Done | Play-while-waiting + AFK kick + anonymous partner view |
 | 4.5 | ✅ Done | Message encryption, reports, system_prompt column lockdown |
 | 5 | ✅ Done | Security audit fixes (all C/H/M issues) + AI director tuning + hardening |
-| 6 | ⏳ Pending | Vibe Check + reputation + smart refund |
+| 6 | ✅ Done | Vibe Check + reputation + smart refund |
 | 7 | ⏳ Pending | DMs hardening |
 | 8 | ⏳ Pending | Stripe monetization |
 | 9 | ⏳ Pending | Safety/legal final pass |
@@ -347,3 +347,31 @@ Re-read every file from phases 0–5. Found and fixed 7 bugs:
 7. **F7 (Low):** `crypto.ts` had a duplicate JSDoc comment block from the S1 edit. **Removed.**
 
 **Verification after re-audit fixes:** `tsc --noEmit` ✅ `eslint` ✅ `next build` ✅ — all exit 0.
+
+---
+
+## ✅ Phase 6 — COMPLETED (Vibe Check + reputation + smart refund)
+
+**Verification:** `tsc --noEmit` ✅ `eslint` ✅ `next build` ✅ — all exit 0.
+
+### Files changed
+
+1. **`lib/supabase/schema.sql`** — Added:
+   - `match_ratings` table (vibe/tags/reason/wants_reveal, unique per match+rater, RLS: insert+select own only).
+   - `reputation_events` table (append-only audit trail, no RLS for authenticated → service_role-only).
+   - `profiles` new columns: `reputation_tier`, `recent_ratings`, `earned_tags`, `connection_tickets` (all REVOKE'd from authenticated UPDATE).
+   - `submit_match_rating` RPC — verifies participant + ended/revealed, inserts rating, calls recompute_tier + resolve_refund when both ratings exist.
+   - `recompute_tier` RPC — aggregates last 10 ratings (electric=+2, warm=+1, neutral=0, cold=-2), sets tier (new/regular/trusted/legendary), derives earned_tags from tag frequency every 5 ratings. Internal-only (REVOKE EXECUTE from authenticated).
+   - `resolve_refund` RPC — smart refund rules (mutual_end=no refund, partner_afk=50% refund to wronged party, mismatch=flag for review). Logs to reputation_events. Internal-only.
+   - `end_match` RPC — ends active match + inserts preliminary rating. Service_role-only.
+   - `get_own_profile` updated to return the new columns.
+
+2. **`lib/actions/ratings.ts`** (NEW) — `submitMatchRating` (wraps submit_match_rating RPC, validates vibe/reason/tags), `getMyReputation` (returns tier + earned_tags via get_own_profile).
+
+3. **`lib/actions/match.ts`** (NEW) — `unmatch` action (ends match mid-scene via end_match RPC, service_role-only).
+
+4. **`lib/actions/profile.ts`** — `MyProfile` type updated with `reputation_tier`, `earned_tags`, `connection_tickets`, `recent_ratings`.
+
+5. **`components/FadeToBlack.tsx`** — Vibe Check second screen: after the reveal/move-on outcome is shown, a "Rate this scene" button transitions to the rating form (4 emoji vibes: 🔥/😊/😐/🥶, optional one-word tags up to 3, reason dropdown). Submitting calls `submitMatchRating`, then "Continue" routes via `onVibeCheckComplete`.
+
+6. **`app/chat/[id]/page.tsx`** — Removed auto-route to `/dm` (Vibe Check now handles routing). Added `handleVibeCheckComplete` (routes to `/dm` if both revealed, else `/lobby`). Passed `onVibeCheckComplete` to FadeToBlack. Removed unused `revealRoutingRef`.
