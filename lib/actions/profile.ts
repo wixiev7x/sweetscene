@@ -21,8 +21,12 @@ export type MyProfile = {
   anonymous_username: string;
   anonymous_pfp_url: string | null;
   reputation_score: number;
+  reputation_tier: string;
   tokens_balance: number;
   is_vip: boolean;
+  recent_ratings: unknown;
+  earned_tags: string[];
+  connection_tickets: number;
   created_at: string;
 };
 

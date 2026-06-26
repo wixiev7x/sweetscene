@@ -1008,3 +1008,391 @@ CREATE POLICY "Participants can insert human messages into active matches"
 -- Note: The heartbeat update on matches.last_activity still works
 -- post-REVOKE because last_activity is the one column NOT in the
 -- REVOKE list. No touch_match_activity RPC is needed.
+
+-- ════════════════════════════════════════════════════════════════════
+-- Phase 6 — Vibe Check + reputation + smart refund
+-- Append-only migration. Run this block in the Supabase SQL Editor.
+-- ════════════════════════════════════════════════════════════════════
+
+-- ── profiles: new columns for reputation + earned tags + tickets ──
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS reputation_tier TEXT
+  NOT NULL DEFAULT 'new'
+  CHECK (reputation_tier IN ('new', 'regular', 'trusted', 'legendary'));
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS recent_ratings JSONB
+  NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS earned_tags TEXT[]
+  NOT NULL DEFAULT '{}';
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS connection_tickets INT
+  NOT NULL DEFAULT 0;
+
+-- Revoke UPDATE/SELECT on the new sensitive columns (same pattern as
+-- tokens_balance/is_vip — only the owner can read via get_own_profile,
+-- only service_role RPCs can write).
+REVOKE UPDATE (reputation_tier, recent_ratings, earned_tags, connection_tickets)
+  ON profiles FROM authenticated;
+REVOKE UPDATE (reputation_tier, recent_ratings, earned_tags, connection_tickets)
+  ON profiles FROM anon;
+
+-- ── match_ratings: one Vibe Check rating per (match, rater) ──
+CREATE TABLE IF NOT EXISTS match_ratings (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  match_id UUID NOT NULL REFERENCES matches(id) ON DELETE CASCADE,
+  rater_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  vibe TEXT CHECK (vibe IN ('electric', 'warm', 'neutral', 'cold')),
+  tags TEXT[] NOT NULL DEFAULT '{}',
+  reason TEXT CHECK (
+    reason IN ('partner_afk', 'boring', 'i_left', 'mutual_end', 'good_end', 'instant_disconnect')
+  ),
+  wants_reveal BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- One rating per (match, rater) — upserts use this as the conflict target.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_match_ratings_unique
+  ON match_ratings(match_id, rater_id);
+
+CREATE INDEX IF NOT EXISTS idx_match_ratings_rater_id ON match_ratings(rater_id);
+
+-- RLS: insert by self only, select own only.
+ALTER TABLE match_ratings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can insert own match ratings"
+  ON match_ratings FOR INSERT
+  WITH CHECK (rater_id = auth.uid());
+
+CREATE POLICY "Users can view own match ratings"
+  ON match_ratings FOR SELECT
+  USING (rater_id = auth.uid());
+
+CREATE POLICY "Users can update own match ratings"
+  ON match_ratings FOR UPDATE
+  USING (rater_id = auth.uid())
+  WITH CHECK (rater_id = auth.uid());
+
+-- ── reputation_events: append-only audit trail ──
+-- Only the service_role (admin) can read these. Users cannot.
+CREATE TABLE IF NOT EXISTS reputation_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profile_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  delta INT NOT NULL DEFAULT 0,
+  reason TEXT NOT NULL,
+  match_id UUID REFERENCES matches(id) ON DELETE SET NULL,
+  amount INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_reputation_events_profile_id
+  ON reputation_events(profile_id);
+
+ALTER TABLE reputation_events ENABLE ROW LEVEL SECURITY;
+-- No SELECT/INSERT/UPDATE/DELETE policy for authenticated → RLS blocks
+-- all access. Only service_role (which bypasses RLS) can read/write.
+
+-- ── recompute_tier: internal, called from submit_match_rating ──
+-- Reads the last 10 match_ratings for p_profile_id, computes an
+-- aggregate score (electric=+2, warm=+1, neutral=0, cold=-2), and
+-- sets reputation_tier based on thresholds. Writes recent_ratings
+-- JSONB for decay math. Also re-derives earned_tags from tag
+-- frequency after every 5 ratings.
+-- Service_role-only: NOT callable by authenticated users directly.
+CREATE OR REPLACE FUNCTION recompute_tier(p_profile_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  v_count INT;
+  v_score INT := 0;
+  v_tier TEXT;
+  v_recent JSONB;
+  v_tag_counts JSONB := '{}'::jsonb;
+  v_tag TEXT;
+  v_top_tags TEXT[];
+BEGIN
+  SELECT COUNT(*) INTO v_count
+  FROM match_ratings WHERE rater_id = p_profile_id;
+
+  -- Compute aggregate score from the last 10 ratings.
+  SELECT COALESCE(SUM(
+    CASE vibe
+      WHEN 'electric' THEN 2
+      WHEN 'warm' THEN 1
+      WHEN 'neutral' THEN 0
+      WHEN 'cold' THEN -2
+      ELSE 0
+    END
+  ), 0) INTO v_score
+  FROM (
+    SELECT vibe FROM match_ratings
+    WHERE rater_id = p_profile_id
+    ORDER BY created_at DESC
+    LIMIT 10
+  ) recent;
+
+  -- Tier thresholds.
+  IF v_score < 5 THEN
+    v_tier := 'new';
+  ELSIF v_score < 15 THEN
+    v_tier := 'regular';
+  ELSIF v_score < 30 THEN
+    v_tier := 'trusted';
+  ELSE
+    v_tier := 'legendary';
+  END IF;
+
+  -- Snapshot the last 10 ratings as JSONB for decay math.
+  SELECT COALESCE(jsonb_agg(
+    jsonb_build_object('vibe', vibe, 'reason', reason, 'created_at', created_at)
+  ), '[]'::jsonb) INTO v_recent
+  FROM (
+    SELECT vibe, reason, created_at FROM match_ratings
+    WHERE rater_id = p_profile_id
+    ORDER BY created_at DESC
+    LIMIT 10
+  ) recent;
+
+  -- Derive earned tags from tag frequency after every 5 ratings.
+  IF v_count > 0 AND v_count % 5 = 0 THEN
+    v_top_tags := ARRAY[]::TEXT[];
+    -- Count tag frequencies across all the user's ratings.
+    FOR v_tag IN
+      SELECT unnest(tags) FROM match_ratings WHERE rater_id = p_profile_id
+    LOOP
+      v_tag_counts := v_tag_counts || jsonb_build_object(v_tag,
+        COALESCE((v_tag_counts->v_tag)::int, 0) + 1);
+    END LOOP;
+    -- Top 3 tags by frequency.
+    SELECT array_agg(tag ORDER BY freq DESC) INTO v_top_tags
+    FROM (
+      SELECT key AS tag, (value::text)::int AS freq
+      FROM jsonb_each_text(v_tag_counts)
+      ORDER BY freq DESC
+      LIMIT 3
+    ) top;
+    IF v_top_tags IS NULL THEN v_top_tags := ARRAY[]::TEXT[]; END IF;
+    UPDATE profiles
+    SET reputation_tier = v_tier, recent_ratings = v_recent, earned_tags = v_top_tags
+    WHERE id = p_profile_id;
+  ELSE
+    UPDATE profiles
+    SET reputation_tier = v_tier, recent_ratings = v_recent
+    WHERE id = p_profile_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE EXECUTE ON FUNCTION recompute_tier(UUID) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION recompute_tier(UUID) FROM anon;
+
+-- ── resolve_refund: internal, called when both ratings exist ──
+-- Reads both ratings for a match and determines the refund:
+--   Both mutual_end or good_end → no refund.
+--   One partner_afk (wronged party) → refund 50% of their contribution.
+--   Both i_left → no refund.
+--   Mismatch (partner_afk vs good_end) → no refund, flag for review.
+-- Logs every outcome to reputation_events.
+-- Service_role-only: NOT callable by authenticated users directly.
+CREATE OR REPLACE FUNCTION resolve_refund(p_match_id UUID)
+RETURNS VOID AS $$
+DECLARE
+  m_row matches%ROWTYPE;
+  r_a match_ratings%ROWTYPE;
+  r_b match_ratings%ROWTYPE;
+  contribution INT;
+  refund_amount INT;
+  wronged_id UUID;
+BEGIN
+  SELECT * INTO m_row FROM matches WHERE id = p_match_id;
+  IF NOT FOUND THEN RETURN; END IF;
+
+  SELECT * INTO r_a FROM match_ratings
+    WHERE match_id = p_match_id AND rater_id = m_row.user_a;
+  SELECT * INTO r_b FROM match_ratings
+    WHERE match_id = p_match_id AND rater_id = m_row.user_b;
+
+  -- Both ratings must exist.
+  IF NOT FOUND THEN RETURN; END IF;
+
+  -- Determine the initial contribution (per user = half the pool).
+  contribution := m_row.shared_pool / 2;
+
+  -- Rule: both mutual_end or good_end → no refund.
+  IF (r_a.reason IN ('mutual_end', 'good_end'))
+     AND (r_b.reason IN ('mutual_end', 'good_end')) THEN
+    INSERT INTO reputation_events (profile_id, delta, reason, match_id, amount)
+    VALUES (m_row.user_a, 0, 'no_refund_both_good', p_match_id, 0),
+           (m_row.user_b, 0, 'no_refund_both_good', p_match_id, 0);
+    RETURN;
+  END IF;
+
+  -- Rule: both i_left → no refund.
+  IF r_a.reason = 'i_left' AND r_b.reason = 'i_left' THEN
+    INSERT INTO reputation_events (profile_id, delta, reason, match_id, amount)
+    VALUES (m_row.user_a, 0, 'no_refund_both_left', p_match_id, 0),
+           (m_row.user_b, 0, 'no_refund_both_left', p_match_id, 0);
+    RETURN;
+  END IF;
+
+  -- Rule: one partner_afk → refund 50% to the wronged party.
+  -- The wronged party is the one who DIDN'T go AFK.
+  IF r_a.reason = 'partner_afk' AND r_b.reason NOT IN ('partner_afk') THEN
+    -- user_a claims user_b went AFK. If user_b's rating confirms
+    -- (reason = 'i_left' or anything that doesn't contradict), refund user_a.
+    -- Wait — the AFK kicker's rating should confirm. user_a says "partner_afk"
+    -- meaning user_b went AFK. user_b's reason should be checked.
+    -- Actually: if user_a says partner_afk, it means user_b was AFK.
+    -- If user_b's reason is 'i_left' or 'partner_afk' (they agree they were AFK),
+    -- refund user_a.
+    IF r_b.reason IN ('i_left', 'partner_afk', 'boring') THEN
+      refund_amount := contribution / 2; -- 50% of their contribution
+      UPDATE profiles SET tokens_balance = tokens_balance + refund_amount
+        WHERE id = m_row.user_a;
+      INSERT INTO reputation_events (profile_id, delta, reason, match_id, amount)
+      VALUES (m_row.user_a, 0, 'refund_partner_afk', p_match_id, refund_amount),
+             (m_row.user_b, -1, 'afk_kicked', p_match_id, 0);
+    ELSE
+      -- Mismatch — flag for review.
+      INSERT INTO reputation_events (profile_id, delta, reason, match_id, amount)
+      VALUES (m_row.user_a, 0, 'refund_mismatch_review', p_match_id, 0),
+             (m_row.user_b, 0, 'refund_mismatch_review', p_match_id, 0);
+    END IF;
+    RETURN;
+  END IF;
+
+  IF r_b.reason = 'partner_afk' AND r_a.reason NOT IN ('partner_afk') THEN
+    IF r_a.reason IN ('i_left', 'partner_afk', 'boring') THEN
+      refund_amount := contribution / 2;
+      UPDATE profiles SET tokens_balance = tokens_balance + refund_amount
+        WHERE id = m_row.user_b;
+      INSERT INTO reputation_events (profile_id, delta, reason, match_id, amount)
+      VALUES (m_row.user_b, 0, 'refund_partner_afk', p_match_id, refund_amount),
+             (m_row.user_a, -1, 'afk_kicked', p_match_id, 0);
+    ELSE
+      INSERT INTO reputation_events (profile_id, delta, reason, match_id, amount)
+      VALUES (m_row.user_a, 0, 'refund_mismatch_review', p_match_id, 0),
+             (m_row.user_b, 0, 'refund_mismatch_review', p_match_id, 0);
+    END IF;
+    RETURN;
+  END IF;
+
+  -- Default: no refund.
+  INSERT INTO reputation_events (profile_id, delta, reason, match_id, amount)
+  VALUES (m_row.user_a, 0, 'no_refund_default', p_match_id, 0),
+         (m_row.user_b, 0, 'no_refund_default', p_match_id, 0);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE EXECUTE ON FUNCTION resolve_refund(UUID) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION resolve_refund(UUID) FROM anon;
+
+-- ── submit_match_rating: the public-facing Vibe Check action ──
+-- Verifies the caller is a participant, the match is ended/revealed,
+-- and no rating exists yet for this (match, rater). Inserts the
+-- rating. If BOTH ratings now exist, calls recompute_tier for both
+-- users and resolve_refund for the match.
+CREATE OR REPLACE FUNCTION submit_match_rating(
+  p_match_id UUID,
+  p_vibe TEXT,
+  p_tags TEXT[],
+  p_reason TEXT,
+  p_wants_reveal BOOLEAN
+) RETURNS TABLE (success BOOLEAN) AS $$
+DECLARE
+  m_row matches%ROWTYPE;
+  existing_count INT;
+  partner_id UUID;
+BEGIN
+  SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN; END IF;
+
+  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF m_row.status NOT IN ('ended', 'revealed') THEN RETURN; END IF;
+
+  -- Already rated?
+  SELECT COUNT(*) INTO existing_count
+  FROM match_ratings
+  WHERE match_id = p_match_id AND rater_id = auth.uid();
+  IF existing_count > 0 THEN RETURN; END IF;
+
+  -- Insert the rating.
+  INSERT INTO match_ratings (match_id, rater_id, vibe, tags, reason, wants_reveal)
+  VALUES (p_match_id, auth.uid(), p_vibe, p_tags, p_reason, p_wants_reveal);
+
+  -- Determine the partner.
+  partner_id := CASE WHEN m_row.user_a = auth.uid() THEN m_row.user_b ELSE m_row.user_a END;
+
+  -- If both ratings exist, recompute tiers + resolve refund.
+  SELECT COUNT(*) INTO existing_count
+  FROM match_ratings WHERE match_id = p_match_id;
+
+  IF existing_count >= 2 THEN
+    -- For AI matches (user_b IS NULL), skip partner recompute.
+    IF partner_id IS NOT NULL THEN
+      PERFORM recompute_tier(auth.uid());
+      PERFORM recompute_tier(partner_id);
+    ELSE
+      PERFORM recompute_tier(auth.uid());
+    END IF;
+    PERFORM resolve_refund(p_match_id);
+  ELSE
+    -- Only one rating so far — recompute the caller's tier.
+    PERFORM recompute_tier(auth.uid());
+  END IF;
+
+  RETURN QUERY SELECT true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ── end_match: internal helper to set match status to 'ended' ──
+-- Called by the unmatch action. Service_role-only.
+CREATE OR REPLACE FUNCTION end_match(
+  p_match_id UUID,
+  p_reason TEXT,
+  p_caller_id UUID
+) RETURNS TABLE (success BOOLEAN) AS $$
+DECLARE
+  m_row matches%ROWTYPE;
+BEGIN
+  SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
+  IF NOT FOUND THEN RETURN; END IF;
+  IF m_row.user_a <> p_caller_id AND m_row.user_b <> p_caller_id THEN RETURN; END IF;
+  IF m_row.status <> 'active' THEN RETURN; END IF;
+
+  UPDATE matches
+  SET status = 'ended', ended_at = now(), last_activity = now()
+  WHERE id = p_match_id;
+
+  -- Insert a preliminary rating for the caller with the disconnect reason.
+  INSERT INTO match_ratings (match_id, rater_id, vibe, tags, reason, wants_reveal)
+  VALUES (p_match_id, p_caller_id, 'neutral', ARRAY[]::TEXT[], p_reason, false)
+  ON CONFLICT (match_id, rater_id) DO NOTHING;
+
+  RETURN QUERY SELECT true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE EXECUTE ON FUNCTION end_match(UUID, TEXT, UUID) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION end_match(UUID, TEXT, UUID) FROM anon;
+
+-- ── Update get_own_profile to include the new columns ──
+CREATE OR REPLACE FUNCTION get_own_profile()
+RETURNS TABLE (
+  id UUID,
+  anonymous_username TEXT,
+  anonymous_pfp_url TEXT,
+  reputation_score INT,
+  reputation_tier TEXT,
+  tokens_balance INT,
+  is_vip BOOLEAN,
+  recent_ratings JSONB,
+  earned_tags TEXT[],
+  connection_tickets INT,
+  created_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT p.id, p.anonymous_username, p.anonymous_pfp_url,
+         p.reputation_score, p.reputation_tier, p.tokens_balance,
+         p.is_vip, p.recent_ratings, p.earned_tags, p.connection_tickets,
+         p.created_at
+  FROM profiles p
+  WHERE p.id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

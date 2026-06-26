@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { submitMatchRating, type Vibe as VibeType, type RatingReason } from "@/lib/actions/ratings";
 
 type FadeToBlackProps = {
   matchId: string;
@@ -9,12 +10,19 @@ type FadeToBlackProps = {
   partnerMovedOn: boolean;
   onReveal: () => void;
   onMoveOn: () => void;
+  onVibeCheckComplete: () => void;
 };
 
 /**
  * Cinematic fade-to-black overlay shown when a match ends. Presents the
  * user with the choice to reveal their identity or move on, with distinct
  * visual states for waiting, mutual reveal, rejection, and moving on.
+ *
+ * Phase 6: After the reveal/move-on outcome is shown, a "Rate this scene"
+ * button transitions to the Vibe Check second screen — 4 emoji vibes,
+ * optional one-word tags, + a reason dropdown. Submitting the rating
+ * calls submitMatchRating, then "Continue" routes the user to /dm or
+ * /lobby via the onVibeCheckComplete callback.
  */
 export default function FadeToBlack({
   matchId,
@@ -23,14 +31,196 @@ export default function FadeToBlack({
   partnerMovedOn,
   onReveal,
   onMoveOn,
+  onVibeCheckComplete,
 }: FadeToBlackProps) {
   const [userMovedOn, setUserMovedOn] = useState(false);
+  const [showVibeCheck, setShowVibeCheck] = useState(false);
+  const [vibeRating, setVibeRating] = useState<VibeType | null>(null);
+  const [vibeTags, setVibeTags] = useState<string[]>([]);
+  const [vibeReason, setVibeReason] = useState<RatingReason>("mutual_end");
+  const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
   function handleMoveOn() {
     setUserMovedOn(true);
   }
 
+  /* Whether to show the "Rate this scene" button. It appears when the
+     reveal/move-on flow has reached a terminal state. */
+  const terminalReached =
+    (isRevealed && partnerRevealed) ||
+    (isRevealed && partnerMovedOn) ||
+    userMovedOn;
+
+  async function handleSubmitVibe() {
+    if (!vibeRating) {
+      setError("Pick a vibe first");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+
+    const result = await submitMatchRating(matchId, {
+      vibe: vibeRating,
+      tags: vibeTags.filter((t) => t.trim().length > 0),
+      reason: vibeReason,
+      wantsReveal: isRevealed,
+    });
+
+    setSubmitting(false);
+
+    if ("error" in result) {
+      setError(result.error);
+    } else {
+      setSubmitted(true);
+    }
+  }
+
+  function renderVibeCheck() {
+    if (submitted) {
+      return (
+        <>
+          <p className="text-gray-300 text-lg font-light mt-4">
+            Thanks for rating.
+          </p>
+          <p className="text-gray-600 text-sm mt-2">
+            Your reputation helps us match you better.
+          </p>
+          <div className="mt-8">
+            <button
+              type="button"
+              onClick={onVibeCheckComplete}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium px-8 py-3 rounded-xl hover:from-purple-500 hover:to-pink-500 active:scale-95 transform transition-all duration-300 text-sm"
+            >
+              {isRevealed && partnerRevealed ? "Continue to DM &rarr;" : "Close &rarr;"}
+            </button>
+          </div>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <p className="text-lg text-gray-300 font-light mb-2 mt-4">
+          How was the scene?
+        </p>
+        <p className="text-xs text-gray-600 mb-6">Rate your experience before you go.</p>
+
+        {/* vibe emoji picker */}
+        <div className="flex items-center justify-center gap-6 mb-6">
+          {([
+            { v: "electric" as const, emoji: "\uD83D\uDD25", label: "Electric" },
+            { v: "warm" as const, emoji: "\uD83D\uDE0A", label: "Warm" },
+            { v: "neutral" as const, emoji: "\uD83D\uDE10", label: "Neutral" },
+            { v: "cold" as const, emoji: "\uD83E\uDD76", label: "Cold" },
+          ]).map(({ v, emoji, label }) => (
+            <button
+              key={v}
+              type="button"
+              onClick={() => setVibeRating(v)}
+              className={[
+                "flex flex-col items-center gap-1 p-3 rounded-2xl border transition-all duration-200",
+                vibeRating === v
+                  ? "border-purple-500/50 bg-purple-500/10 scale-110"
+                  : "border-white/10 bg-white/5 hover:border-white/20",
+              ].join(" ")}
+            >
+              <span className="text-3xl">{emoji}</span>
+              <span className="text-[10px] text-gray-500">{label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* reason dropdown */}
+        <div className="mb-4">
+          <p className="text-xs text-gray-600 mb-2">Why did it end?</p>
+          <select
+            value={vibeReason}
+            onChange={(e) => setVibeReason(e.target.value as RatingReason)}
+            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 cursor-pointer"
+          >
+            <option value="mutual_end">Mutual end</option>
+            <option value="good_end">Good ending</option>
+            <option value="partner_afk">Partner went AFK</option>
+            <option value="boring">It was boring</option>
+            <option value="i_left">I left</option>
+          </select>
+        </div>
+
+        {/* optional tags */}
+        <div className="mb-4">
+          <p className="text-xs text-gray-600 mb-2">
+            Optional: tag the vibe (up to 3 words)
+          </p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {vibeTags.map((tag, i) => (
+              <div key={i} className="flex items-center gap-1">
+                <input
+                  type="text"
+                  value={tag}
+                  onChange={(e) => {
+                    const next = [...vibeTags];
+                    next[i] = e.target.value.slice(0, 20);
+                    setVibeTags(next);
+                  }}
+                  placeholder="word"
+                  className="w-20 bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-purple-500/50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setVibeTags(vibeTags.filter((_, idx) => idx !== i))}
+                  className="text-xs text-gray-600 hover:text-red-400 transition-colors"
+                >
+                  &times;
+                </button>
+              </div>
+            ))}
+            {vibeTags.length < 3 && (
+              <button
+                type="button"
+                onClick={() => setVibeTags([...vibeTags, ""])}
+                className="text-xs text-purple-400 hover:text-purple-300 transition-colors px-2 py-1"
+              >
+                + tag
+              </button>
+            )}
+          </div>
+        </div>
+
+        {error && (
+          <p className="text-xs text-red-400 mb-3">{error}</p>
+        )}
+
+        {/* submit */}
+        <button
+          type="button"
+          onClick={handleSubmitVibe}
+          disabled={submitting || !vibeRating}
+          className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium px-8 py-3 rounded-xl hover:from-purple-500 hover:to-pink-500 active:scale-95 transform transition-all duration-300 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {submitting ? "Submitting..." : "Submit Rating"}
+        </button>
+
+        {/* skip */}
+        <button
+          type="button"
+          onClick={onVibeCheckComplete}
+          className="block text-xs text-gray-600 hover:text-gray-400 transition-colors mt-4"
+        >
+          Skip and continue
+        </button>
+      </>
+    );
+  }
+
   function renderContent() {
+    // ── Vibe Check second screen ──
+    if (showVibeCheck) {
+      return renderVibeCheck();
+    }
+
     // --- State E: user chose to move on ---
     if (userMovedOn) {
       return (
@@ -38,13 +228,24 @@ export default function FadeToBlack({
           <p className="text-gray-500 text-sm italic">
             You chose to move on.
           </p>
-          <div className="mt-8">
+          {terminalReached && (
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowVibeCheck(true)}
+                className="bg-white/5 border border-white/10 text-purple-400 px-6 py-3 rounded-xl hover:bg-white/10 active:scale-95 transform transition-all duration-300 text-sm"
+              >
+                Rate this scene &rarr;
+              </button>
+            </div>
+          )}
+          <div className="mt-4">
             <button
               type="button"
               onClick={onMoveOn}
-              className="bg-white/5 border border-white/10 text-gray-400 px-6 py-3 rounded-xl hover:bg-white/10 hover:text-gray-300 active:scale-95 transform transition-all duration-300 text-sm"
+              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
             >
-              Close
+              Skip and close
             </button>
           </div>
         </>
@@ -69,9 +270,17 @@ export default function FadeToBlack({
               They chose to reveal too.
             </p>
           </div>
-          <p className="text-gray-500 text-sm mt-3">
-            Taking you to your private room...
-          </p>
+          {terminalReached && (
+            <div className="mt-6">
+              <button
+                type="button"
+                onClick={() => setShowVibeCheck(true)}
+                className="bg-white/5 border border-white/10 text-purple-400 px-6 py-3 rounded-xl hover:bg-white/10 active:scale-95 transform transition-all duration-300 text-sm"
+              >
+                Rate this scene &rarr;
+              </button>
+            </div>
+          )}
         </>
       );
     }
@@ -86,13 +295,13 @@ export default function FadeToBlack({
           <p className="text-gray-700 text-sm mt-3">
             Sometimes the fog doesn&apos;t lift.
           </p>
-          <div className="mt-8">
+          <div className="mt-6">
             <button
               type="button"
-              onClick={onMoveOn}
-              className="bg-white/5 border border-white/10 text-gray-400 px-6 py-3 rounded-xl hover:bg-white/10 hover:text-gray-300 active:scale-95 transform transition-all duration-300 text-sm"
+              onClick={() => setShowVibeCheck(true)}
+              className="bg-white/5 border border-white/10 text-purple-400 px-6 py-3 rounded-xl hover:bg-white/10 active:scale-95 transform transition-all duration-300 text-sm"
             >
-              Close
+              Rate this scene &rarr;
             </button>
           </div>
         </>
@@ -191,7 +400,7 @@ export default function FadeToBlack({
 
       {/* content */}
       <div
-        className="relative z-10 flex flex-col items-center"
+        className="relative z-10 flex flex-col items-center max-w-md w-full"
         style={{
           animation: "fadeContentIn 1.5s ease-out 1.5s forwards",
           opacity: 0,

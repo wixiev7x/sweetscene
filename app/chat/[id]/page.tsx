@@ -117,9 +117,6 @@ export default function ChatPage() {
      from both firing generateAIResponse for the same turn ── */
   const aiTurnFiringRef = useRef(false);
 
-  /* guards one-time routing into the DM room upon mutual reveal */
-  const revealRoutingRef = useRef(false);
-
   /* ── A4: silence-nudge — tracks the last human send time so a
      15-second idle interval can request an AI nudge. */
   const lastSendTimeRef = useRef<number>(0);
@@ -403,14 +400,10 @@ export default function ChatPage() {
               partnerMovedOn: partnerMovedOn ?? prev.partnerMovedOn,
             }));
 
-            /* If both revealed, route to the DM room once. */
-            if (
-              updated.status === "revealed" &&
-              !revealRoutingRef.current
-            ) {
-              revealRoutingRef.current = true;
-              router.push(`/dm/${matchId}`);
-            }
+            /* Phase 6: auto-route to /dm is removed — the Vibe Check overlay
+               now handles routing via onVibeCheckComplete after the
+               user rates the scene. The revealRoutingRef is no longer
+               used for auto-routing. */
           }
         }
       )
@@ -585,14 +578,22 @@ if ("error" in sendResult) {
       partnerRevealed: result.partnerRevealed,
       partnerMovedOn: result.partnerMovedOn,
     });
-    if (result.status === "revealed") {
-      router.push(`/dm/${matchId}`);
-    }
+    /* Phase 6: no auto-route to /dm here — the Vibe Check overlay
+       handles routing after the user rates. */
   }
 
   async function handleMoveOn() {
     await moveOnServer(matchId);
-    router.push("/lobby");
+  }
+
+  /* ── Phase 6: Vibe Check completion — routes after the user rates
+     (or skips). If both revealed → /dm; otherwise → /lobby. */
+  function handleVibeCheckComplete() {
+    if (revealState.hasRevealed && revealState.partnerRevealed) {
+      router.push(`/dm/${matchId}`);
+    } else {
+      router.push("/lobby");
+    }
   }
 
   /* ── progress bar ── */
@@ -744,6 +745,7 @@ if ("error" in sendResult) {
           partnerMovedOn={revealState.partnerMovedOn}
           onReveal={handleReveal}
           onMoveOn={handleMoveOn}
+          onVibeCheckComplete={handleVibeCheckComplete}
         />
       )}
 
