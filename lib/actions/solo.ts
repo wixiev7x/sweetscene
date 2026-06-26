@@ -4,7 +4,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { rateLimit } from "@/lib/utils/ratelimit";
-import { scrubInjection } from "@/lib/utils/safety";
+import { scrubInjection, sanitizeMessage } from "@/lib/utils/safety";
 import { buildSystemPrompt, parseExampleDialog } from "@/lib/ai/prompts";
 import { getProvider } from "@/lib/ai";
 import type { AIMessage } from "@/lib/ai/provider";
@@ -408,7 +408,9 @@ export async function appendSoloMessage(
 
   if ("error" in aiResult) return { error: aiResult.error };
 
-  const aiText = aiResult.content;
+  /* S11: sanitize AI output before storing — same as getSoloPlayResponse.
+     Scrub injection patterns + redact PII so the AI can't reflect them. */
+  const aiText = scrubInjection(sanitizeMessage(aiResult.content));
   const aiMessage: SoloMessage = {
     role: "assistant",
     content: aiText,

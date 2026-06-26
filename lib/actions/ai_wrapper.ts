@@ -71,8 +71,6 @@ export async function generateAIResponse(
     return { error: "AI turn already in progress" };
   }
 
-  const claimedPool = (claimData[0] as { shared_pool: number }).shared_pool;
-
   const { data: recentMessages } = await supabase
     .from("messages")
     .select("*")
@@ -228,26 +226,23 @@ export async function generateAIResponse(
   }
 
   const estimatedTokens = provider.estimateTokens(aiText);
-  const newPool = claimedPool - estimatedTokens;
-  const endMatch = newPool <= 0;
-
   const encryptedText = encryptMessage(aiText);
 
-  /* C5/H6: apply_ai_turn RPC atomically inserts the AI message +
-     updates the match (ai_turn_due=false, human_message_count=0,
-     shared_pool=newPool, status='ended' if pool exhausted). This
-     replaces the server-side matches.update that broke after the
-     column REVOKE. */
-  const { data: applyResult } = await supabase.rpc("apply_ai_turn", {
+  /* C5/H6/F1: apply_ai_turn RPC atomically inserts the AI message +
+     computes the new pool server-side (p_new_pool is NOT accepted as a
+     parameter — the RPC reads shared_pool with FOR UPDATE and subtracts
+     p_tokens_used). This RPC is service_role-only — called via the admin
+     client so no authenticated user can call it directly to inject fake
+     AI messages or manipulate the pool. */
+  const { data: applyResult } = await admin.rpc("apply_ai_turn", {
     p_match_id: matchId,
     p_encrypted_text: encryptedText,
     p_character_id: characterId,
     p_tokens_used: estimatedTokens,
-    p_new_pool: newPool,
-    p_end_match: endMatch,
-  });
+    p_caller_id: user.id,
+  } as never);
 
-  if (!applyResult || !Array.isArray(applyResult) || applyResult.length === 0) {
+  if (!applyResult || !Array.isArray(applyResult) || (applyResult as unknown[]).length === 0) {
     return { error: "Failed to apply AI turn" };
   }
 

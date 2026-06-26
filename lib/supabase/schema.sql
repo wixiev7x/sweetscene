@@ -799,17 +799,21 @@ CREATE OR REPLACE FUNCTION apply_ai_turn(
   p_encrypted_text TEXT,
   p_character_id UUID,
   p_tokens_used INT,
-  p_new_pool INT,
-  p_end_match BOOLEAN
+  p_caller_id UUID
 ) RETURNS TABLE (success BOOLEAN) AS $$
 DECLARE
   m_row matches%ROWTYPE;
+  new_pool INT;
+  end_match BOOLEAN;
 BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
 
   IF NOT FOUND THEN RETURN; END IF;
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF m_row.user_a <> p_caller_id AND m_row.user_b <> p_caller_id THEN RETURN; END IF;
   IF m_row.status <> 'active' THEN RETURN; END IF;
+
+  new_pool := m_row.shared_pool - p_tokens_used;
+  end_match := new_pool <= 0;
 
   INSERT INTO messages (match_id, sender_type, sender_id, character_id, content, tokens_used)
   VALUES (p_match_id, 'ai', NULL, p_character_id, p_encrypted_text, p_tokens_used);
@@ -817,15 +821,22 @@ BEGIN
   UPDATE matches
   SET ai_turn_due = false,
       human_message_count = 0,
-      shared_pool = p_new_pool,
+      shared_pool = new_pool,
       last_activity = now(),
-      status = CASE WHEN p_end_match THEN 'ended' ELSE status END,
-      ended_at = CASE WHEN p_end_match THEN now() ELSE ended_at END
+      status = CASE WHEN end_match THEN 'ended' ELSE status END,
+      ended_at = CASE WHEN end_match THEN now() ELSE ended_at END
   WHERE id = p_match_id;
 
   RETURN QUERY SELECT true;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- F1/F2/F3 fix: restrict apply_ai_turn, add_tokens, unclaim_match to
+-- service_role only. These RPCs take caller-supplied IDs/amounts and
+-- MUST NOT be callable by authenticated users via supabase.rpc().
+-- The server actions call them via the admin (service-role) client.
+REVOKE EXECUTE ON FUNCTION apply_ai_turn(UUID, TEXT, UUID, INT, UUID) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION apply_ai_turn(UUID, TEXT, UUID, INT, UUID) FROM anon;
 
 -- ── request_direct_turn: flip ai_turn_due for @character addressing ──
 -- Called when a human message directly addresses a character by name
@@ -892,7 +903,7 @@ BEGIN
   IF NOT FOUND THEN RETURN; END IF;
   IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
 
-  IF NOT p_reason IS NULL AND length(trim(p_reason)) = 0 THEN RETURN; END IF;
+  IF p_reason IS NULL OR length(trim(p_reason)) = 0 THEN RETURN; END IF;
 
   evidence_capped := COALESCE(p_evidence, '[]'::jsonb);
 
@@ -912,12 +923,15 @@ CREATE OR REPLACE FUNCTION update_solo_session(
   p_messages JSONB,
   p_tokens_used INT
 ) RETURNS TABLE (success BOOLEAN) AS $$
+DECLARE
+  rows_affected INT;
 BEGIN
   UPDATE solo_sessions
   SET messages = p_messages, tokens_used = p_tokens_used
   WHERE id = p_session_id AND user_id = auth.uid();
 
-  RETURN QUERY SELECT true;
+  GET DIAGNOSTICS rows_affected = ROW_COUNT;
+  RETURN QUERY SELECT rows_affected > 0;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -933,20 +947,33 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- F2 fix: add_tokens is service_role-only. It accepts an arbitrary
+-- user_id, so if it were callable by authenticated users, anyone could
+-- give themselves unlimited tokens. The matchmaking action calls it via
+-- the admin (service-role) client.
+REVOKE EXECUTE ON FUNCTION add_tokens(UUID, INT) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION add_tokens(UUID, INT) FROM anon;
+
 -- ── unclaim_match: reset user_b on failed post-claim token deduction ──
 -- If claim_match succeeded but deduct_tokens returned NULL (insufficient
 -- funds due to a race), this resets the match back to waiting so another
 -- user can claim it. Only resets if user_b is still set AND status active.
-CREATE OR REPLACE FUNCTION unclaim_match(p_match_id UUID)
+-- F3 fix: verify the caller (p_caller_id) is user_b — only the user who
+-- just claimed can un-claim on their own failed deduction.
+CREATE OR REPLACE FUNCTION unclaim_match(p_match_id UUID, p_caller_id UUID)
 RETURNS VOID AS $$
 BEGIN
   UPDATE matches
   SET user_b = NULL, shared_pool = shared_pool / 2, last_activity = now()
   WHERE id = p_match_id
-    AND user_b IS NOT NULL
+    AND user_b = p_caller_id
     AND status = 'active';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- F3 fix: unclaim_match is service_role-only (takes p_caller_id).
+REVOKE EXECUTE ON FUNCTION unclaim_match(UUID, UUID) FROM authenticated;
+REVOKE EXECUTE ON FUNCTION unclaim_match(UUID, UUID) FROM anon;
 
 -- ── solo_sessions column REVOKE: prevent self-resetting tokens/messages ──
 -- The owner can SELECT tokens_used + messages (for display) but cannot

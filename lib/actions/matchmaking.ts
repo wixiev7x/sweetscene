@@ -2,6 +2,7 @@
 
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server-admin";
 import { rateLimit } from "@/lib/utils/ratelimit";
 
 /* ════════════════════════════════════════════════════════════════════
@@ -193,8 +194,13 @@ export async function findMatch(
 
       if (!deductResult || !Array.isArray(deductResult) || deductResult.length === 0) {
         /* Deduction failed (insufficient funds due to a concurrent race).
-           Un-claim the match so another user can try. */
-        await supabase.rpc("unclaim_match", { p_match_id: existingMatch.id });
+           Un-claim the match so another user can try. F3: unclaim_match
+           is service_role-only — called via the admin client. */
+        const admin = createAdminClient();
+        await admin.rpc("unclaim_match", {
+          p_match_id: existingMatch.id,
+          p_caller_id: user.id,
+        } as never);
         return { error: "Not enough tokens" };
       }
 
@@ -228,11 +234,12 @@ export async function findMatch(
     .single();
 
   if (insertError || !newMatch) {
-    /* Refund the deducted tokens. */
-    await supabase.rpc("add_tokens", {
+    /* Refund the deducted tokens. F2: add_tokens is service_role-only. */
+    const admin = createAdminClient();
+    await admin.rpc("add_tokens", {
       p_user_id: user.id,
       p_amount: sharedPool,
-    });
+    } as never);
     return { error: "Failed to create match" };
   }
 
@@ -309,11 +316,12 @@ export async function createAIMatch(
     .single();
 
   if (insertError || !newMatch) {
-    /* Refund the deducted tokens. */
-    await supabase.rpc("add_tokens", {
+    /* Refund the deducted tokens. F2: add_tokens is service_role-only. */
+    const admin = createAdminClient();
+    await admin.rpc("add_tokens", {
       p_user_id: user.id,
       p_amount: sharedPool,
-    });
+    } as never);
     return { error: "Failed to create AI match" };
   }
 

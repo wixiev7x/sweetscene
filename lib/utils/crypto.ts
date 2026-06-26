@@ -29,11 +29,6 @@ const AUTH_TAG_LENGTH = 16;
 
 /**
  * Derives a 32-byte AES key from the env var. Uses SHA-256 so any
- * string key works regardless of length. Falls back to a dev-only
- * key when the env var is missing — encrypted but NOT secure in dev.
- */
-/**
- * Derives a 32-byte AES key from the env var. Uses SHA-256 so any
  * string key works regardless of length.
  *
  * S1: In production, the env var MUST be set — there is no fallback
