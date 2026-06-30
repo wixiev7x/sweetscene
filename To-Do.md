@@ -444,3 +444,141 @@ This phase rebuilt the character system to match Character.AI / Janitor-style fi
 8. **`app/characters/page.tsx`** — Browse page: category filter chips, short_description display on cards (falls back to user_prompt), chat_count displayed (replaces connection_score on card face), new tags shown, popular sort now uses chat_count. Search includes short_description.
 
 9. **`app/play/[id]/page.tsx`** — Paywall UI: when `appendSoloMessage` returns a token-related error, a full-screen paywall modal appears with "You're out of tokens / Top up coming soon" and a "Back to Characters" link. Also fires when client-side TOKEN_BUDGET check triggers.
+
+---
+
+## FULL PROJECT AUDIT — What's left, what can be added
+
+**Status:** Phases 0–7 + 8A complete (8 of 14 phases). ~12,000+ LOC. 50+ files. 13 routes. Schema: 1,607 lines, 12 tables, 15+ RPCs. All tsc + eslint + next build pass clean.
+
+### What EXISTS and is functional (don't rebuild)
+- ✅ OAuth auth (Google + Discord) via Supabase, with Turnstile captcha + IP brute-force throttle
+- ✅ Matchmaking: findMatch, createAIMatch, claim_match RPC, play-while-waiting, AFK kick (pg_cron 90s)
+- ✅ Matched chat: encrypted messages (AES-256-GCM), realtime, AI director (3 triggers: every-6, direct-address, silence-nudge), rolling story summary
+- ✅ Solo play: persistent sessions, per-message token deduction, greeting opener, regenerate, rating, character chat prompts
+- ✅ Character system: Character.AI-style fields (short_description, full_personality, backstory, tags, category), AI avatars, card import/export
+- ✅ Fade to Black: dual-consent reveal via RPC, Vibe Check rating (4 emojis + tags + reason), reputation tiers (new/regular/trusted/legendary), earned tags, smart refunds
+- ✅ DMs: text-only (media blocked), server-side status=revealed check, report panel
+- ✅ User blocks: silent block, matchmaking exclusion
+- ✅ Security: column-level REVOKE, service_role-only RPCs, prompt-injection defense (3 layers), PII scrubbing, blocked terms, brute-force throttle, security headers, open-redirect fix, bounded rate-limit map, structured logger
+- ✅ Token economy: token_transactions ledger, deduct_tokens/deduct_message_tokens atomic RPCs
+
+### What EXISTS but is incomplete / has bugs
+- ⚠️ `match_characters_snapshot` table exists but is NEVER POPULATED — editing a character mid-match changes the AI for in-flight scenes
+- ⚠️ `uploadToStorage` in avatars.ts is a stub — no Supabase Storage integration
+- ⚠️ `TOKEN_BUDGET = 5000` in play page is client-only — server enforces per-message deduction but not the total session cap
+- ⚠️ `handleBuyVIP` in profile page is a placeholder — no payment wired
+- ⚠️ `logger.ts` Sentry hook is a no-op — no telemetry actually emits
+- ⚠️ `credit_tokens` RPC doesn't exist — `record_token_transaction` comments mention it for Phase 8
+- ⚠️ `getRevealState` returns raw partner UUID pre-reveal (L18, L13)
+- ⚠️ `unlisted` characters unreadable by non-creators (L14)
+- ⚠️ M7 deferred: solo JSONB read-modify-write race (two tabs, last write wins)
+- ⚠️ S21 open: server-admin.ts has no code-level auth guard wrapper
+- ⚠️ S22 deferred: no Realtime subscription rate-limit
+- ⚠️ L15/L16: tier/pool constants + scenario tag lists duplicated across 4+ files (no shared lib/config/constants.ts)
+
+### What is MISSING entirely (needs new phases)
+- ❌ NO payment integration (Phase 8 — NOWPayments)
+- ❌ NO legal pages: ToS, Privacy, DMCA, age verification (Phase 9)
+- ❌ NO admin dashboard / moderation UI (Phase 10)
+- ❌ NO notifications system (Phase 11)
+- ❌ NO tests — zero test files, zero test deps (Phase 12)
+- ❌ NO full-text search — ilike only, no relevance ranking, no fuzzy matching
+- ❌ NO PWA setup — no manifest, no service worker
+- ❌ NO email system — no transactional emails (welcome, ban, DM notification)
+- ❌ NO analytics/telemetry — logger is console-only, Sentry is a stub
+- ❌ NO design-system components — every page hand-rolls Tailwind
+- ❌ NO migration versioning — single 1,607-line schema.sql applied manually
+
+---
+
+## REMAINING PHASES — Detailed plan (6 phases)
+
+### Phase 8 — NOWPayments monetization (1 day)
+**Goal:** Real VIP checkout + token purchases via NOWPayments (crypto).
+
+- 8.1 `lib/nowpayments/server.ts` (NEW) — NOWPayments API client (server-only). Reads `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_API_BASE` from env.
+- 8.2 `lib/actions/billing.ts` (NEW) — `createVIPOrder()` → NOWPayments invoice (subscription), `createTokenOrder(quantity)` → one-time payment. Both auth-checked.
+- 8.3 `app/api/nowpayments/webhook/route.ts` (NEW) — IPN webhook handler. Verifies signature, handles `payment_confirmed` → grant VIP / credit tokens. Idempotent on payment ID.
+- 8.4 Schema — `credit_tokens` RPC (service_role-only). `nowpayments_events` idempotency table. `payments` table (order_id, user_id, status, amount, crypto_amount, currency, created_at).
+- 8.5 `app/profile/page.tsx` — wire "Become VIP" to `createVIPOrder` → redirect to NOWPayments URL.
+- 8.6 `app/play/[id]/page.tsx` — paywall modal "Top Up" button → `createTokenOrder` → redirect.
+- 8.7 Free-tier daily match cap: findMatch + createAIMatch count today's matches; if !is_vip AND count >= 3, refuse.
+- 8.8 .env.local — add `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_API_BASE`.
+- 8.9 Verify: tsc + eslint + next build.
+
+### Phase 9 — Safety & legal final pass (0.5 day)
+**Goal:** Launchable on safety grounds.
+
+- 9.1 `app/legal/terms/page.tsx` — real ToS copy (13+, NSFW opt-in, automated moderation, law-enforcement, no-media-in-DMs, refund policy). Get lawyer to review.
+- 9.2 `app/legal/privacy/page.tsx` — real Privacy Policy.
+- 9.3 `app/login/page.tsx` — required ToS checkbox before OAuth. Store `profiles.tos_accepted_at`.
+- 9.4 Birthday picker (13+ floor) replacing the 18+ yes/no gate in `app/page.tsx`. `profiles.age_cohort` column.
+- 9.5 NSFW opt-in popup — `setNsfwOptIn(true)` server action, RPC re-validates `age_cohort='adult'`. `profiles.nsfw_opt_in` column.
+- 9.6 "Leave scene" button in chat header — calls `unmatch(matchId, 'instant_disconnect')` with confirmation popup ("tokens will be deducted and rating will be down").
+- 9.7 Fix deferred: M7 (solo JSONB race via RPC), S21 (admin-client auth guard), S22 (realtime subscription rate-limit equivalent).
+- 9.8 Fix L13/L18: hash partner UUID in match_partners view + getRevealState.
+- 9.9 Fix L14: unlisted characters readable by non-creators who know the UUID.
+- 9.10 Verify: tsc + eslint + next build.
+
+### Phase 10 — Admin dashboard + moderation (0.5 day)
+**Goal:** Human tooling for the data infrastructure that already exists.
+
+- 10.1 `app/admin/page.tsx` — admin dashboard (gated by `profiles.is_admin` flag, new column).
+- 10.2 `lib/actions/admin.ts` (NEW) — `listReports`, `resolveReport`, `banUser`, `unbanUser`, `grantTokens`, `featureCharacter`, `unfeatureCharacter`. All service_role.
+- 10.3 `app/admin/reports/page.tsx` — report queue UI (reads reports table via admin client, shows decrypted evidence).
+- 10.4 `app/admin/users/page.tsx` — user search, ban/suspend, token grant/refund.
+- 10.5 `app/admin/characters/page.tsx` — feature/unfeature, hide, force-delete.
+- 10.6 Fix M7: populate `match_characters_snapshot` at match creation.
+- 10.7 Verify.
+
+### Phase 11 — Notifications + email (0.5 day)
+**Goal:** Offline engagement loop.
+
+- 11.1 Schema — `notifications` table (user_id, type, title, body, read_at, match_id, created_at). RLS: owner SELECT/UPDATE read_at.
+- 11.2 `lib/actions/notifications.ts` (NEW) — `getNotifications`, `markAsRead`, `createNotification` (internal). Called on match-found, reveal, new DM, rating received.
+- 11.3 `components/NotificationBell.tsx` — bell icon with unread count, dropdown list.
+- 11.4 Realtime notification channel — subscribe to `notifications` inserts.
+- 11.5 Optional: email integration (Resend/Postmark) for critical notifications. Defer if budget tight.
+- 11.6 Verify.
+
+### Phase 12 — Polish + PWA + Lovable handoff (1.5 days)
+**Goal:** Production-ready, installable, semantic for Lovable AI restyle.
+
+- 12.1 `lib/config/constants.ts` (NEW) — extract tier/pool constants + scenario tags (fix L15/L16).
+- 12.2 `components/` — extract reusable: `Navbar`, `Avatar`, `CharacterCard`, `TokenMeter`, `Modal`, `Button`, `Input`, `LoadingSpinner`, `EmptyState`, `Skeleton`.
+- 12.3 Framer Motion — install, wrap FadeToBlack entrance, Vibe Check modal, match-found toast.
+- 12.4 shadcn/ui adoption — `npx shadcn@latest init`, swap primitives.
+- 12.5 PWA — `app/manifest.ts`, `app/sw.ts` service worker, viewport meta in layout.
+- 12.6 Mobile responsive audit — fix horizontal overflow on chat/lobby.
+- 12.7 Full-text search — `pg_trgm` extension, GIN index on `characters.name` + `short_description`, fuzzy search.
+- 12.8 Wire `logger.ts` Sentry hook — install `@sentry/node`, set `SENTRY_DSN`.
+- 12.9 Wire `uploadToStorage` — Supabase Storage bucket for user-uploaded avatars.
+- 12.10 Semantic audit — `<div onClick>` → `<button>`, `aria-label` on icon buttons, `<label htmlFor>` on all inputs, real `<form onSubmit>` on create-character.
+- 12.11 `LOVABLE.md` — handoff doc explaining what's wired vs UI-only.
+- 12.12 Verify.
+
+### Phase 13 — Testing (0.5 day)
+**Goal:** Security-critical RPCs have test coverage.
+
+- 13.1 Install vitest + @testing-library/react.
+- 13.2 Unit tests for `crypto.ts` (encrypt/decrypt roundtrip, tamper detection).
+- 13.3 Unit tests for `safety.ts` (scrubInjection, containsBlockedTerm, sanitizeMessage).
+- 13.4 Unit tests for `ratelimit.ts` (in-memory limit, eviction).
+- 13.5 Integration tests for matchmaking RPCs (deduct_tokens, claim_match, send_human_message).
+- 13.6 E2E test: signup → create character → solo play → matchmaking → chat → reveal → DM.
+- 13.7 Verify.
+
+---
+
+## Build order (updated)
+
+1. ~~Phase 0–7 + 8A~~ ✅ DONE
+2. Phase 8 — NOWPayments (1 day)
+3. Phase 9 — Safety/legal (0.5 day)
+4. Phase 10 — Admin + moderation (0.5 day)
+5. Phase 11 — Notifications + email (0.5 day)
+6. Phase 12 — Polish + PWA + Lovable handoff (1.5 days)
+7. Phase 13 — Testing (0.5 day)
+
+**Total remaining: ~4.5 days. End-state LOC estimate: ~15–18k.**
