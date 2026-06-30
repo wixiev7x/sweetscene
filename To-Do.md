@@ -59,7 +59,8 @@ Upstash Redis (optional, in-memory fallback), Cloudflare Turnstile.
 | 5 | ✅ Done | Security audit fixes (all C/H/M issues) + AI director tuning + hardening |
 | 6 | ✅ Done | Vibe Check + reputation + smart refund |
 | 7 | ✅ Done | DMs hardening + user blocks + report panel |
-| 8 | ⏳ Pending | Stripe monetization |
+| 8A | ✅ Done | Character system rebuild (Character.AI-style fields, per-message tokens, paywall UI) |
+| 8 | ⏳ Pending | NOWPayments monetization (replaces Stripe) |
 | 9 | ⏳ Pending | Safety/legal final pass |
 | 10 | ⏳ Pending | Polish (mechanics) |
 
@@ -242,7 +243,7 @@ owner's full row; migrate all reads to a `getMyProfile()` action.
 ## Build order after Phase 5
 1. Phase 6 — Vibe Check + reputation + smart refund (1.5 days)
 2. Phase 7 — DMs hardening (0.5 day)
-3. Phase 8 — Stripe (1 day)
+3. Phase 8 — NOWPayments (replaces Stripe) (1 day)
 4. Phase 9 — Safety/legal + deferred S19–S23 (0.5 day)
 5. Phase 10 — Polish mechanics + Lovable handoff (1.5 days)
 
@@ -406,3 +407,40 @@ Re-read every file from phases 0–5. Found and fixed 7 bugs:
 5. **`components/FadeToBlack.tsx`** — Added `isAiMatch` prop (B1 fix); hide Reveal button for AI matches.
 
 6. **`app/chat/[id]/page.tsx`** — Pass `match.is_ai_match` to FadeToBlack.
+
+---
+
+## ✅ Phase 8A — COMPLETED (Character system rebuild)
+
+**Verification:** `tsc --noEmit` ✅ `eslint` ✅ `next build` ✅ — all exit 0, zero warnings.
+
+### What changed
+
+This phase rebuilt the character system to match Character.AI / Janitor-style fields and added per-message token accounting for solo play.
+
+### Files changed
+
+1. **`lib/ai/mock.ts`** — Removed all hardcoded archetype lines (maid, nurse, barista, librarian, yoga, chef, detective, trainer) and the roleplay-flavored default pool. Mock now returns a single neutral line that works in any character chat without faking a persona.
+
+2. **`lib/supabase/schema.sql`** — Added:
+   - `characters` new columns: `short_description`, `backstory`, `full_personality`, `tags TEXT[]`, `category TEXT` (companion/roleplay/adventure/romance/assistant/other), `chat_count INT`.
+   - Indexes on `category` and `chat_count DESC`.
+   - `chat_count` UPDATE REVOKE from authenticated (server-managed only via `increment_chat_count` RPC).
+   - `token_transactions` table (per-user ledger: delta, reason, match_id, payment_id, RLS: owner SELECT only).
+   - `increment_chat_count` RPC (service_role-only).
+   - `record_token_transaction` RPC (service_role-only internal ledger writer).
+   - `deduct_message_tokens` RPC (service_role-only, atomic decrement + ledger entry).
+
+3. **`lib/ai/prompts.ts`** — Added `buildCharacterChatPrompt()` for solo character chat. Unlike the matched-scene `buildSystemPrompt` (which frames the AI as an "actress in an uncensored novel"), this builder produces a Character.AI-style prompt from the new fields (name, full_personality, short_description, backstory). Includes anti-injection clause.
+
+4. **`lib/actions/characters.ts`** — Extended `CreateCharacterParams` with `short_description`, `full_personality`, `backstory`, `tags`, `category`. Added validation (MAX_SHORT_DESC=200, MAX_FULL_PERSONALITY=3000, MAX_BACKSTORY=3000, MAX_NEW_TAGS=10, VALID_CATEGORIES). Extended SELECT columns and filters in `getPublicCharacters` (category filter, personality search includes new fields).
+
+5. **`lib/actions/avatars.ts`** — Avatar generation now accepts a free-form user-written prompt (e.g. "red haired anime girl, green eyes, shy smile") with the SFW guard prepended. Added typed `uploadToStorage()` stub for future Supabase Storage integration (Phase 10).
+
+6. **`lib/actions/solo.ts`** — Per-message token deduction via `deduct_message_tokens` RPC (service_role-only, atomic). `increment_chat_count` RPC called on new session creation. `buildCharacterChatPrompt` used instead of `buildSystemPrompt` for solo character play. AI output sanitized before storing.
+
+7. **`app/create-character/page.tsx`** — Form extended with: short description, full personality (textarea), backstory (textarea), tags (comma-separated), category (dropdown). Avatar prompt is now free-form text. Reset function clears all new fields.
+
+8. **`app/characters/page.tsx`** — Browse page: category filter chips, short_description display on cards (falls back to user_prompt), chat_count displayed (replaces connection_score on card face), new tags shown, popular sort now uses chat_count. Search includes short_description.
+
+9. **`app/play/[id]/page.tsx`** — Paywall UI: when `appendSoloMessage` returns a token-related error, a full-screen paywall modal appears with "You're out of tokens / Top up coming soon" and a "Back to Characters" link. Also fires when client-side TOKEN_BUDGET check triggers.
