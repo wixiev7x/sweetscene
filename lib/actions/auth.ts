@@ -2,7 +2,7 @@
 
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { verifyTurnstile } from "@/lib/actions/ai_wrapper";
+import { verifyTurnstile } from "@/lib/utils/turnstile";
 import { rateLimitByIp } from "@/lib/utils/ratelimit";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -32,10 +32,9 @@ export async function signInWithProvider(
     return { error: "Too many login attempts. Please try again later." };
   }
 
-  if (!turnstileToken && process.env.TURNSTILE_SECRET_KEY) {
-    return { error: "Please complete the captcha" };
-  }
-
+  /* verifyTurnstile resolves the secret itself (dashboard, then env)
+     and fails closed in production, so an empty token just falls
+     through to it rather than being pre-checked against env here. */
   const captcha = await verifyTurnstile(turnstileToken);
   if ("error" in captcha) return { error: captcha.error };
 

@@ -4,6 +4,10 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { rateLimit } from "@/lib/utils/ratelimit";
+import { assertNotBanned } from "@/lib/utils/ban";
+import { notifyMatchFound } from "@/lib/notifications/dispatch";
+import { VALID_SCENARIO_TAG_SET, FREE_TIER_DAILY_MATCH_CAP, poolForTier } from "@/lib/config/constants";
+import { logger } from "@/lib/utils/logger";
 
 /* ════════════════════════════════════════════════════════════════════
  * Phase 5a — Matchmaking with atomic token deduction.
@@ -25,34 +29,13 @@ type CreateAIMatchResult =
   | { error: string };
 
 /**
- * Allowlist of valid scenario tags. Any tag not in this set is
- * rejected before being interpolated into a PostgREST filter literal,
- * closing M3 (PostgREST filter injection). Phase 10 will extract this
- * to a shared lib/config/constants.ts.
- */
-const VALID_SCENARIO_TAGS = new Set([
-  "hospital",
-  "coffee_shop",
-  "mansion",
-  "library",
-  "gym",
-  "noir_office",
-  "restaurant",
-  "fitness",
-  "clinic",
-  "home",
-  "service",
-  "mystery",
-]);
-
-/**
  * Validates that every tag in `tags` is in the allowlist. Returns the
- * filtered list, or null if any tag is invalid.
+ * filtered list, or null if any tag is invalid. (M3)
  */
 function validateTags(tags: string[]): string[] | null {
   const filtered = tags.filter((t) => typeof t === "string" && t.length > 0);
   for (const t of filtered) {
-    if (!VALID_SCENARIO_TAGS.has(t)) return null;
+    if (!VALID_SCENARIO_TAG_SET.has(t)) return null;
   }
   return filtered;
 }
@@ -68,14 +51,47 @@ async function readOwnProfile(
 ): Promise<{
   tokens_balance: number;
   is_vip: boolean;
+  age_cohort: string | null;
 } | null> {
   const { data } = await supabase.rpc("get_own_profile");
   if (!data || !Array.isArray(data) || data.length === 0) return null;
   const row = data[0] as {
     tokens_balance: number;
     is_vip: boolean;
+    age_cohort: string | null;
   };
   return row;
+}
+
+/**
+ * The cohort whose queue this user belongs in.
+ *
+ * An unrecorded age resolves to 'minor', matching the database trigger
+ * and `claim_match`. Guessing wrong that way costs a match; guessing
+ * the other way puts an adult in a scene with a child.
+ */
+function cohortOf(profile: { age_cohort: string | null }): "minor" | "adult" {
+  return profile.age_cohort === "adult" ? "adult" : "minor";
+}
+
+/**
+ * Counts how many matches the given user has created or joined today
+ * (UTC midnight to now). Used by the free-tier daily match cap.
+ */
+async function countTodayMatches(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string
+): Promise<number> {
+  const todayStart = new Date();
+  todayStart.setUTCHours(0, 0, 0, 0);
+
+  const { count } = await supabase
+    .from("matches")
+    .select("id", { count: "exact", head: true })
+    .or(`user_a.eq.${userId},user_b.eq.${userId}`)
+    .gte("created_at", todayStart.toISOString());
+
+  return count ?? 0;
 }
 
 /**
@@ -138,6 +154,9 @@ export async function findMatch(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  const banCheck = await assertNotBanned(supabase);
+  if ("error" in banCheck) return banCheck;
+
   if (!(await rateLimit(user.id))) {
     return { error: "Too many requests. Slow down." };
   }
@@ -152,11 +171,20 @@ export async function findMatch(
   const profile = await readOwnProfile(supabase);
   if (!profile) return { error: "Profile not found" };
 
-  const sharedPool = tier === "quick" ? 2000 : 10000;
+  const sharedPool = poolForTier(tier);
 
   /* C4: re-check VIP for deep tier server-side. */
   if (tier === "deep" && !profile.is_vip) {
     return { error: "Deep Dive is VIP only" };
+  }
+
+  /* Phase 8.7: free-tier daily match cap. Non-VIP users are limited to
+     FREE_TIER_DAILY_MATCH_CAP matches per day (UTC). */
+  if (!profile.is_vip) {
+    const todayCount = await countTodayMatches(supabase, user.id);
+    if (todayCount >= FREE_TIER_DAILY_MATCH_CAP) {
+      return { error: "Daily match limit reached. Upgrade to VIP for unlimited matches." };
+    }
   }
 
   if (profile.tokens_balance < sharedPool) {
@@ -173,6 +201,12 @@ export async function findMatch(
     .is("user_b", null)
     .eq("is_ai_match", false)
     .eq("tier", tier)
+    /* Only ever pair within an age cohort. This filter is the fast
+       path — it keeps the client from proposing a match it cannot
+       claim — but claim_match re-checks it against the caller's own
+       profile, because a client can call that RPC with any match id
+       it can name. */
+    .eq("cohort", cohortOf(profile))
     .filter("scenario_tags", "ov", tagLiteral)
     .neq("user_a", user.id)
     .limit(1)
@@ -202,6 +236,26 @@ export async function findMatch(
           p_caller_id: user.id,
         } as never);
         return { error: "Not enough tokens" };
+      }
+
+      /* Phase 11: notify the match creator (user_a) that their match
+         was found. Best-effort — don't fail if the notification errors. */
+      const { data: matchRow } = await supabase
+        .from("matches")
+        .select("user_a")
+        .eq("id", existingMatch.id)
+        .single();
+      if (matchRow) {
+        await notifyMatchFound(
+          matchRow.user_a as string,
+          existingMatch.id
+        ).catch((err) =>
+          logger.error("notify_failed", {
+            kind: "match_found",
+            matchId: existingMatch.id,
+            err,
+          })
+        );
       }
 
       return { matchId: existingMatch.id };
@@ -243,7 +297,27 @@ export async function findMatch(
     return { error: "Failed to create match" };
   }
 
+  await snapshotMatchCharacters(newMatch.id, characterIds);
+
   return { matchId: newMatch.id, waiting: true };
+}
+
+/**
+ * Snapshots character prompts into match_characters_snapshot at match
+ * creation (Phase 10.6). Best-effort — doesn't fail the match if the
+ * snapshot RPC errors.
+ */
+async function snapshotMatchCharacters(matchId: string, characterIds: string[]) {
+  try {
+    const admin = createAdminClient();
+    await admin.rpc("populate_match_snapshot", {
+      p_match_id: matchId,
+      p_character_ids: characterIds,
+    } as never);
+  } catch {
+    /* Best-effort: the match exists without a snapshot. The AI wrapper
+       falls back to reading the live character prompt. */
+  }
 }
 
 /**
@@ -265,6 +339,9 @@ export async function createAIMatch(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  const banCheck2 = await assertNotBanned(supabase);
+  if ("error" in banCheck2) return banCheck2;
+
   if (!(await rateLimit(user.id))) {
     return { error: "Too many requests. Slow down." };
   }
@@ -279,11 +356,19 @@ export async function createAIMatch(
   const profile = await readOwnProfile(supabase);
   if (!profile) return { error: "Profile not found" };
 
-  const sharedPool = tier === "quick" ? 2000 : 10000;
+  const sharedPool = poolForTier(tier);
 
   /* C4: re-check VIP for deep tier server-side. */
   if (tier === "deep" && !profile.is_vip) {
     return { error: "Deep Dive is VIP only" };
+  }
+
+  /* Phase 8.7: free-tier daily match cap. */
+  if (!profile.is_vip) {
+    const todayCount = await countTodayMatches(supabase, user.id);
+    if (todayCount >= FREE_TIER_DAILY_MATCH_CAP) {
+      return { error: "Daily match limit reached. Upgrade to VIP for unlimited matches." };
+    }
   }
 
   if (profile.tokens_balance < sharedPool) {
@@ -324,6 +409,8 @@ export async function createAIMatch(
     } as never);
     return { error: "Failed to create AI match" };
   }
+
+  await snapshotMatchCharacters(newMatch.id, characterIds);
 
   return { matchId: newMatch.id, isAiMatch: true };
 }

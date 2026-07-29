@@ -1,13 +1,98 @@
 @import "tailwindcss";
 
+/* ════════════════════════════════════════════════════════════════════
+ * Design tokens
+ *
+ * Retheming this app should be an edit to this block, not a sweep
+ * across every page. Raw values live on :root so they can be
+ * overridden at runtime, and @theme inline maps them to Tailwind
+ * utilities — `--color-surface` yields `bg-surface`, `text-surface`,
+ * `border-surface`, and so on.
+ *
+ * The values are the exact greys the app already used, so adopting a
+ * token is visually a no-op. See LOVABLE.md for the full handoff.
+ * ════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  /* ── Surfaces, darkest to lightest ── */
+  --background: #0a0a0a;      /* page background          (neutral-950) */
+  --surface-sunken: #0a0a0a;  /* inset fields, wells      (neutral-950) */
+  --surface: #171717;         /* cards, panels            (neutral-900) */
+  --surface-raised: #262626;  /* hover states, chips      (neutral-800) */
+
+  /* ── Lines (borders, dividers) ── */
+  --line: #262626;            /* default card border      (neutral-800) */
+  --line-strong: #404040;     /* hover border             (neutral-700) */
+  --line-focus: #525252;      /* focused input border     (neutral-600) */
+
+  /* ── Text, brightest to faintest ── */
+  --foreground: #ededed;      /* primary text                          */
+  --foreground-dim: #d4d4d4;  /* primary on hover         (neutral-300) */
+  --muted-strong: #a3a3a3;    /* secondary text           (neutral-400) */
+  --muted: #737373;           /* captions, placeholders   (neutral-500) */
+  --muted-faint: #525252;     /* disabled, watermarks     (neutral-600) */
+
+  /* ── Brand ──
+     The single most important block for a retheme. Every glow, ring,
+     gradient and active state in the user-facing app is built from
+     these five values. They accept Tailwind's alpha syntax, so
+     `bg-brand/10` and `border-brand/30` retint with the base hue. */
+  --brand: #a855f7;           /* primary brand             (purple-500) */
+  --brand-light: #c084fc;     /* brand text                (purple-400) */
+  --brand-lighter: #d8b4fe;   /* brand text, emphasis      (purple-300) */
+  --brand-dark: #9333ea;      /* gradient end              (purple-600) */
+  --brand-deep: #581c87;      /* deep background wash      (purple-900) */
+  --brand-deepest: #3b0764;   /* deepest background wash   (purple-950) */
+
+  /* ── Semantic accents ──
+     Each is the 400-weight used for text and icons. Surfaces derive
+     from the same hue at low alpha, so changing one value retints
+     both the text and its badge background. */
+  --accent: #ffffff;          /* primary action (white on black)        */
+  --accent-foreground: #0a0a0a;
+  --danger: #f87171;          /* bans, deletes, errors        (red-400) */
+  --warning: #fbbf24;         /* VIP, caution               (amber-400) */
+  --success: #4ade80;         /* confirmations              (green-400) */
+  --info: #60a5fa;            /* neutral highlights          (blue-400) */
+  --restricted: #fb923c;      /* temporary restriction     (orange-400) */
+
+  /* ── Shape ── */
+  --radius-card: 0.75rem;     /* rounded-xl — cards, modals             */
+  --radius-control: 0.5rem;   /* rounded-lg — buttons, inputs           */
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-line-focus: var(--line-focus);
+
+  --color-foreground-dim: var(--foreground-dim);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-muted-faint: var(--muted-faint);
+
+  --color-brand: var(--brand);
+  --color-brand-light: var(--brand-light);
+  --color-brand-lighter: var(--brand-lighter);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-deepest: var(--brand-deepest);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-info: var(--info);
+  --color-restricted: var(--restricted);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -18,6 +103,22 @@ body {
   color: var(--foreground);
 }
 
+/* Geist is loaded in app/layout.tsx and exposed as --font-geist-sans.
+   This rule previously hardcoded Arial, so the loaded font never
+   applied — the fallback chain remains for the pre-hydration paint. */
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* Honour a reduced-motion preference globally rather than per
+   component. Every animation in this app is decorative. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -30,6 +30,7 @@ const PROTECTED_PREFIXES = [
   "/characters",
   "/create-character",
   "/profile",
+  "/admin",
 ];
 
 function hasSessionCookie(req: NextRequest): boolean {
@@ -43,15 +44,36 @@ function hasSessionCookie(req: NextRequest): boolean {
  * Builds the security headers that every response should carry (S9).
  * Set on the response going downstream to the client.
  */
-function withSecurityHeaders(res: NextResponse): NextResponse {
-  /* Content-Security-Policy: restrict to self + known external services. */
+function withSecurityHeaders(res: NextResponse, req: NextRequest): NextResponse {
+  /* D1/D2: tightened CSP — specific Supabase project URL instead of
+     wildcard, removed unused provider endpoints, scoped img-src to
+     known image hosts instead of wildcard https:.
+
+     Phase 12 corrections:
+       - frame-src was missing entirely, so it inherited default-src
+         'self' and blocked the Cloudflare Turnstile iframe. The captcha
+         could never render and login was unreachable behind a CSP-
+         enforcing browser.
+       - img-src omitted Supabase storage (character avatars and profile
+         pictures live there) and the Unsplash fallback used by
+         generateImage(). Both rendered as broken images.
+       - object-src 'none' blocks <object>/<embed> plugin content, which
+         this app never uses and which bypasses several other directives.
+       - connect-src no longer lists the AI provider: generation happens
+         in server actions, so the browser never talks to it directly.
+         The endpoint is admin-configurable now, so an allowlist entry
+         here would be wrong the moment it is changed. */
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
-    "img-src 'self' data: https:",
-    "connect-src 'self' https://*.supabase.co https://api.deepseek.com https://generativelanguage.googleapis.com https://image.pollinations.ai",
+    `img-src 'self' data: blob: ${supabaseUrl} https://image.pollinations.ai https://images.unsplash.com`,
+    `connect-src 'self' ${supabaseUrl} https://challenges.cloudflare.com`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
+    "frame-src https://challenges.cloudflare.com",
+    "worker-src 'self' blob:",
+    "object-src 'none'",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -63,8 +85,10 @@ function withSecurityHeaders(res: NextResponse): NextResponse {
   res.headers.set("X-Frame-Options", "DENY");
   res.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
-  /* HSTS only over HTTPS (x-forwarded-proto check works behind CDNs). */
-  const proto = res.headers.get("x-forwarded-proto") ?? "";
+  /* D3: HSTS reads x-forwarded-proto from the *request*, not the
+     response. Reading from res (a fresh NextResponse) always yields
+     null, making the proto check dead code. */
+  const proto = req.headers.get("x-forwarded-proto") ?? "";
   if (proto === "https" || process.env.NODE_ENV === "production") {
     res.headers.set(
       "Strict-Transport-Security",
@@ -86,7 +110,7 @@ export function proxy(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
-    return withSecurityHeaders(NextResponse.redirect(url));
+    return withSecurityHeaders(NextResponse.redirect(url), req);
   }
 
   /* If already signed in and visiting /login, bounce to the lobby. */
@@ -94,10 +118,10 @@ export function proxy(req: NextRequest) {
     const url = req.nextUrl.clone();
     url.pathname = "/lobby";
     url.search = "";
-    return withSecurityHeaders(NextResponse.redirect(url));
+    return withSecurityHeaders(NextResponse.redirect(url), req);
   }
 
-  return withSecurityHeaders(NextResponse.next());
+  return withSecurityHeaders(NextResponse.next(), req);
 }
 
 export const config = {

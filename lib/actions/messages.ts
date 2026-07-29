@@ -4,8 +4,13 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { encryptMessage, decryptMessage } from "@/lib/utils/crypto";
-import { sanitizeAndScrub, containsBlockedTerm } from "@/lib/utils/safety";
+import { sanitizeAndScrub } from "@/lib/utils/safety";
+import { moderateText } from "@/lib/utils/moderation";
 import { rateLimit } from "@/lib/utils/ratelimit";
+import { assertNotBanned } from "@/lib/utils/ban";
+import { notifyNewDM } from "@/lib/notifications/dispatch";
+import { DEFAULT_PAGE_LIMIT, MAX_PAGE_LIMIT } from "@/lib/config/constants";
+import { logger } from "@/lib/utils/logger";
 
 /* ════════════════════════════════════════════════════════════════════
  * Phase 5a — Encrypted message actions with RPC-backed mutations.
@@ -51,8 +56,7 @@ type DecryptResult = { content: string } | { error: string };
 
 type ReportResult = { success: true } | { error: string };
 
-const DEFAULT_PAGE_LIMIT = 50;
-const MAX_PAGE_LIMIT = 200;
+const MAX_MESSAGE_LENGTH = 4000; /* reports can be longer than chat messages */
 
 /**
  * Encrypts and inserts a human message into the messages table via the
@@ -75,14 +79,37 @@ export async function sendMessage(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  const banCheck = await assertNotBanned(supabase);
+  if ("error" in banCheck) return banCheck;
+
   /* H8: rate-limit the most-called action. */
   if (!(await rateLimit(user.id))) {
     return { error: "Slow down" };
   }
 
-  if (containsBlockedTerm(content)) {
-    return { error: "Message blocked" };
+  /* E4: cap message length to prevent DoS/cost amplification. Checked
+     before moderation so an oversized payload is rejected without
+     being shipped to a classifier. */
+  if (content.length > MAX_MESSAGE_LENGTH) {
+    return { error: "Message too long" };
   }
+
+  /* Which content policy applies is a property of the pairing, not of
+     the sender's display preference. Phase 15 made matches
+     cohort-homogeneous, so the match's own cohort answers it for both
+     participants; an unreadable or missing row resolves to 'minor',
+     which is the stricter policy. */
+  const { data: matchRow } = await supabase
+    .from("matches")
+    .select("cohort")
+    .eq("id", matchId)
+    .maybeSingle();
+
+  const verdict = await moderateText(content, {
+    nsfwAllowed: (matchRow as { cohort?: string } | null)?.cohort === "adult",
+    surface: "match",
+  });
+  if (!verdict.allowed) return { error: verdict.reason };
 
   const scrubbed = sanitizeAndScrub(content);
   if (!scrubbed.trim()) {
@@ -177,8 +204,13 @@ export async function getMatchMessages(
     let content = "";
     try {
       content = decryptMessage(msg.content as string);
-    } catch {
+    } catch (err) {
       content = "[unreadable]";
+      logger.error("decrypt_failed", {
+        where: "get_messages",
+        messageId: msg.id,
+        err,
+      });
     }
 
     return {
@@ -347,8 +379,9 @@ export async function reportConversation(
    data URIs. The regexes are intentionally conservative to avoid
    blocking legitimate text that happens to contain "mp3" etc. */
 const MEDIA_PATTERNS: RegExp[] = [
-  /* image/video/audio file extensions in a URL-ish context. */
-  /\.(png|jpe?g|gif|webp|svg|bmp|mp4|webm|mov|avi|mp3|wav|ogg|m4a|opus)(\?[^\s]*)?$/i,
+  /* E5: image/video/audio file extensions in a URL — removed `$` anchor
+     so URLs with query strings or fragments after the extension are caught. */
+  /\.(png|jpe?g|gif|webp|svg|bmp|mp4|webm|mov|avi|mp3|wav|ogg|m4a|opus)(?:[?#]\S*)?/i,
   /* base64 data URIs (data:image/..., data:video/..., data:audio/...). */
   /^data:(?:image|video|audio)\/[^,]+,/i,
   /* common image-host root paths. */
@@ -383,6 +416,9 @@ export async function sendDMMessage(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  const banCheck = await assertNotBanned(supabase);
+  if ("error" in banCheck) return banCheck;
+
   /* H4: verify the match is revealed + the caller is a participant,
      server-side. The client check on /dm/[id] is bypassable. */
   const { data: match } = await supabase
@@ -404,6 +440,22 @@ export async function sendDMMessage(
   const result = await sendMessage(matchId, content);
 
   if ("error" in result) return { error: result.error };
+
+  /* Phase 11: notify the partner of the new DM. Best-effort. */
+  const { data: matchRow } = await supabase
+    .from("matches")
+    .select("user_a, user_b")
+    .eq("id", matchId)
+    .single();
+  if (matchRow) {
+    const { user_a, user_b } = matchRow as { user_a: string; user_b: string | null };
+    const partnerId = user_a === user.id ? user_b : user_a;
+    if (partnerId) {
+      await notifyNewDM(partnerId, matchId).catch((err) =>
+        logger.error("notify_failed", { kind: "new_dm", matchId, err })
+      );
+    }
+  }
 
   return {
     messageId: result.messageId,

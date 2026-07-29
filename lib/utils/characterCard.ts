@@ -1,13 +1,21 @@
 /**
  * Character card import/export in the Pillowcase / Chara v2 format
  * (the de-facto standard Janitor.ai and SpicyChat both speak). This
- * lets users bring their existing card library into chatty and export
- * chatty-built characters back out — no lock-in.
+ * lets users bring their existing card library into sweetscene and export
+ * sweetscene-built characters back out — no lock-in.
  *
  * Spec reference (informal): https://github.com/malfoyslastname/character-card-spec-v2
- * We support the fields chatty can actually persist; unknown fields
+ * We support the fields sweetscene can actually persist; unknown fields
  * are preserved on import so a round-trip doesn't lose data.
+ *
+ * B6: All imported text fields are scrubbed (scrubInjection) and
+ * checked against blocked terms (containsBlockedTerm) before being
+ * returned — imported cards cannot inject prompt instructions or
+ * bypass the CSAM/violence floor.
  */
+
+import { scrubInjection, containsBlockedTerm } from "@/lib/utils/safety";
+import { KNOWN_SCENARIO_TAG_SET } from "@/lib/config/constants";
 
 export type CharaCardV2 = {
   spec: "chara_card_v2";
@@ -47,7 +55,7 @@ const MAX_ALT = 3;
 const MAX_ALT_LEN = 500;
 
 /**
- * Validates and normalises an untrusted JSON object into the chatty
+ * Validates and normalises an untrusted JSON object into the sweetscene
  * internal shape. Refuses oversized fields; trims whitespace; derives
  * SFW/NSFW from `tags` containing "nsfw".
  */
@@ -72,6 +80,13 @@ export function importCharacterCard(raw: unknown): ParsedCharacter | { error: st
     return { error: `Card description required (1-${MAX_PROMPT} chars)` };
   }
 
+  /* B6: scrub injection patterns and block CSAM/violence terms in
+     all imported text fields. */
+  if (containsBlockedTerm(description)) {
+    return { error: "Card description contains blocked content" };
+  }
+  const cleanDescription = scrubInjection(description);
+
   /* Personality sometimes arrives as a single string ("shy, witty, dominant"),
      sometimes as a comma list, sometimes absent. Normalise to an array. */
   const personalityRaw = data.personality
@@ -83,9 +98,13 @@ export function importCharacterCard(raw: unknown): ParsedCharacter | { error: st
     .filter((t) => t.length > 0 && t.length <= 30)
     .slice(0, 8);
 
-  const firstMessage = data.first_mes
+  const firstMessageRaw = data.first_mes
     ? String(data.first_mes).slice(0, 500)
     : null;
+  if (firstMessageRaw && containsBlockedTerm(firstMessageRaw)) {
+    return { error: "Card first message contains blocked content" };
+  }
+  const firstMessage = firstMessageRaw ? scrubInjection(firstMessageRaw) : null;
 
   /* `alternate_greetings` may be missing or a non-array. */
   const rawAlts = Array.isArray(data.alternate_greetings)
@@ -95,17 +114,16 @@ export function importCharacterCard(raw: unknown): ParsedCharacter | { error: st
   for (const g of rawAlts) {
     if (typeof g !== "string") continue;
     if (alternate_greetings.length >= MAX_ALT) break;
-    alternate_greetings.push(g.slice(0, MAX_ALT_LEN));
+    const cleanG = g.slice(0, MAX_ALT_LEN);
+    if (containsBlockedTerm(cleanG)) {
+      return { error: "Alternate greeting contains blocked content" };
+    }
+    alternate_greetings.push(scrubInjection(cleanG));
   }
 
-  /* `tags` carry scenario + rating. chatty stores scenario_tags
+  /* `tags` carry scenario + rating. sweetscene stores scenario_tags
      separately from personality, so lift tags that look like scenarios. */
   const rawTags = Array.isArray(data.tags) ? (data.tags as unknown[]) : [];
-  const knownScenarios = new Set([
-    "hospital", "coffee_shop", "mansion", "library", "gym",
-    "noir_office", "restaurant", "fitness", "clinic", "home",
-    "service", "mystery", "noir", "school", "cafe", "kitchen", "office",
-  ]);
   const scenario_tags: string[] = [];
   let is_nsfw = false;
   for (const t of rawTags) {
@@ -115,7 +133,7 @@ export function importCharacterCard(raw: unknown): ParsedCharacter | { error: st
       is_nsfw = true;
       continue;
     }
-    if (knownScenarios.has(lower) && scenario_tags.length < 5) {
+    if (KNOWN_SCENARIO_TAG_SET.has(lower) && scenario_tags.length < 5) {
       scenario_tags.push(lower);
     }
   }
@@ -124,7 +142,7 @@ export function importCharacterCard(raw: unknown): ParsedCharacter | { error: st
      wrapped system prompt has something substantive to chew on, even
      when the card's `description` field alone is sparse. */
   const user_prompt =
-    [description, personalityRaw ? `Personality: ${personalityRaw}` : ""]
+    [cleanDescription, personalityRaw ? `Personality: ${scrubInjection(personalityRaw)}` : ""]
       .filter(Boolean)
       .join("\n\n")
       .slice(0, MAX_PROMPT);
@@ -142,7 +160,7 @@ export function importCharacterCard(raw: unknown): ParsedCharacter | { error: st
 }
 
 /**
- * Wraps a chatty character into the Chara v2 format for export.
+ * Wraps a sweetscene character into the Chara v2 format for export.
  * Unknown extras aren't added (we don't store them), but the spec's
  * core fields are populated so Janitor/SpicyChat can import the card.
  */
@@ -169,8 +187,8 @@ export function exportCharacterCard(char: {
       first_mes: char.first_message ?? "",
       alternate_greetings: char.alternate_greetings,
       tags,
-      creator: "chatty",
-      // chatty's system_prompt is the wrapped secret; we DO NOT export it.
+      creator: "sweetscene",
+      // sweetscene's system_prompt is the wrapped secret; we DO NOT export it.
       system_prompt: "",
       post_history_instructions: "",
     },

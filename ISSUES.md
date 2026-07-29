@@ -1,4 +1,4 @@
-# chatty — Security Issue Inventory
+# sweetscene — Security Issue Inventory
 
 > Complete audit findings from the deep code review conducted before
 > Phase 5. **Read this before editing any security-sensitive code.**

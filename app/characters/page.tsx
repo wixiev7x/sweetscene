@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { SiteNav, Spinner } from "@/components/ui";
 import { getPublicCharacters } from "@/lib/actions/characters";
 import { getRecentSessions } from "@/lib/actions/solo";
 
@@ -14,6 +15,11 @@ type Character = {
   personality?: string[];
   avatar_url?: string | null;
   connection_score?: number;
+  /* Phase 8A — new fields. */
+  short_description?: string | null;
+  tags?: string[];
+  category?: string;
+  chat_count?: number;
 };
 
 type RecentSession = {
@@ -42,7 +48,7 @@ const ALL_TAGS = [
 ];
 
 const GRADIENTS = [
-  ["from-purple-500", "to-pink-500"],
+  ["from-brand", "to-pink-500"],
   ["from-blue-500", "to-cyan-500"],
   ["from-amber-500", "to-red-500"],
   ["from-green-500", "to-teal-500"],
@@ -72,6 +78,8 @@ export default function CharactersPage() {
   const [nsfwFilter, setNsfwFilter] = useState<"all" | "sfw" | "nsfw">("all");
   const [personalityQuery, setPersonalityQuery] = useState("");
   const [sortBy, setSortBy] = useState<"recent" | "popular">("recent");
+  /* Phase 8A — new filter dimensions. */
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
     null
   );
@@ -90,7 +98,9 @@ export default function CharactersPage() {
         (c) =>
           c.name.toLowerCase().includes(q) ||
           c.user_prompt.toLowerCase().includes(q) ||
-          (c.personality ?? []).some((p) => p.toLowerCase().includes(q))
+          (c.short_description ?? "").toLowerCase().includes(q) ||
+          (c.personality ?? []).some((p) => p.toLowerCase().includes(q)) ||
+          (c.tags ?? []).some((t) => t.toLowerCase().includes(q))
       );
     }
 
@@ -107,6 +117,11 @@ export default function CharactersPage() {
       result = result.filter((c) => c.scenario_tags.includes(selectedTag));
     }
 
+    /* Phase 8A — category filter. */
+    if (selectedCategory) {
+      result = result.filter((c) => c.category === selectedCategory);
+    }
+
     if (nsfwFilter === "sfw") {
       result = result.filter((c) => !c.is_nsfw);
     } else if (nsfwFilter === "nsfw") {
@@ -114,13 +129,17 @@ export default function CharactersPage() {
     }
 
     if (sortBy === "popular") {
+      /* Phase 8A — popular sorts by chat_count (new metric) first,
+         falling back to connection_score for back-compat. */
       result = [...result].sort(
-        (a, b) => (b.connection_score ?? 0) - (a.connection_score ?? 0)
+        (a, b) =>
+          (b.chat_count ?? 0) - (a.chat_count ?? 0) ||
+          (b.connection_score ?? 0) - (a.connection_score ?? 0)
       );
     }
 
     return result;
-  }, [characters, searchQuery, personalityQuery, selectedTag, nsfwFilter, sortBy]);
+  }, [characters, searchQuery, personalityQuery, selectedTag, selectedCategory, nsfwFilter, sortBy]);
 
   /* ── fetch on mount ── */
   useEffect(() => {
@@ -143,6 +162,11 @@ export default function CharactersPage() {
             personality: c.personality ?? [],
             avatar_url: c.avatar_url ?? null,
             connection_score: c.connection_score ?? 0,
+            /* Phase 8A — new fields. */
+            short_description: c.short_description ?? null,
+            tags: c.tags ?? [],
+            category: c.category ?? "other",
+            chat_count: c.chat_count ?? 0,
           }));
 
           setCharacters(dbChars);
@@ -174,48 +198,14 @@ export default function CharactersPage() {
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(88,28,135,0.08)_0%,transparent_50%)]" />
 
       {/* ── NAV BAR ── */}
-      <nav className="sticky top-0 z-10 border-b border-white/5 backdrop-blur-md bg-black/40 px-6 py-4 flex items-center justify-between">
-        <Link
-          href="/"
-          className="text-xl font-bold text-purple-400 hover:text-purple-300 transition-colors"
-        >
-          chatty
-        </Link>
-
-        <div className="flex items-center gap-6">
-          <Link
-            href="/lobby"
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            Lobby
-          </Link>
-          <Link
-            href="/create-character"
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            Create
-          </Link>
-          <Link
-            href="/characters/my"
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            Mine
-          </Link>
-          <Link
-            href="/profile"
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            Profile
-          </Link>
-        </div>
-      </nav>
+      <SiteNav />
 
       {/* ── PAGE HEADER ── */}
       <div className="max-w-6xl mx-auto px-6 pt-12 pb-8">
-        <h1 className="text-3xl font-light text-gray-200 tracking-wide">
+        <h1 className="text-3xl font-light text-foreground tracking-wide">
           Character Showcase
         </h1>
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-sm text-muted mt-2">
           Browse characters. Play solo. Or bring them into your next
           match.
         </p>
@@ -229,7 +219,7 @@ export default function CharactersPage() {
       {/* ── CONTINUE CHATTING CAROUSEL ── */}
       {recentSessions.length > 0 && (
         <div className="max-w-6xl mx-auto px-6 pb-8">
-          <h2 className="text-sm font-medium text-gray-400 mb-4">
+          <h2 className="text-sm font-medium text-muted-strong mb-4">
             Continue chatting
           </h2>
           <div className="flex gap-4 overflow-x-auto pb-2">
@@ -240,7 +230,7 @@ export default function CharactersPage() {
                 <Link
                   key={s.id}
                   href={`/play/${s.character_id}?session=${s.id}`}
-                  className="shrink-0 w-56 bg-white/5 border border-white/10 rounded-2xl p-4 hover:border-purple-500/30 transition-all duration-300 group"
+                  className="shrink-0 w-56 bg-white/5 border border-white/10 rounded-2xl p-4 hover:border-brand/30 transition-all duration-300 group"
                 >
                   <div className="flex items-center gap-3">
                     {s.character_avatar_url ? (
@@ -263,17 +253,17 @@ export default function CharactersPage() {
                       <p className="text-sm font-medium text-white truncate">
                         {s.character_name}
                       </p>
-                      <p className="text-[10px] text-gray-600">
+                      <p className="text-[10px] text-muted-faint">
                         {s.message_count} messages
                       </p>
                     </div>
                   </div>
                   {s.last_message_preview && (
-                    <p className="text-xs text-gray-500 mt-2 truncate">
+                    <p className="text-xs text-muted mt-2 truncate">
                       {s.last_message_preview}
                     </p>
                   )}
-                  <p className="text-xs text-purple-400 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-xs text-brand-light mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     Continue &rarr;
                   </p>
                 </Link>
@@ -292,7 +282,7 @@ export default function CharactersPage() {
             placeholder="Search name or description..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-56"
+            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 w-56"
           />
 
           {/* personality search (Phase 2) */}
@@ -301,7 +291,7 @@ export default function CharactersPage() {
             placeholder="Personality (witty, shy…)"
             value={personalityQuery}
             onChange={(e) => setPersonalityQuery(e.target.value)}
-            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 w-48"
+            className="bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 w-48"
           />
 
           {/* sort (Phase 2) */}
@@ -314,8 +304,8 @@ export default function CharactersPage() {
                 className={[
                   "px-3 py-1.5 text-xs uppercase font-medium transition-all capitalize",
                   sortBy === s
-                    ? "bg-purple-500/20 text-purple-300"
-                    : "text-gray-500 hover:text-gray-300",
+                    ? "bg-brand/20 text-brand-lighter"
+                    : "text-muted hover:text-foreground-dim",
                 ].join(" ")}
               >
                 {s}
@@ -331,8 +321,8 @@ export default function CharactersPage() {
               className={[
                 "px-3 py-1.5 rounded-full text-xs border transition-all",
                 selectedTag === null
-                  ? "border-purple-500/50 bg-purple-500/10 text-purple-300"
-                  : "border-white/10 bg-transparent text-gray-400 hover:text-gray-300",
+                  ? "border-brand/50 bg-brand/10 text-brand-lighter"
+                  : "border-white/10 bg-transparent text-muted-strong hover:text-foreground-dim",
               ].join(" ")}
             >
               All
@@ -349,8 +339,8 @@ export default function CharactersPage() {
                 className={[
                   "px-3 py-1.5 rounded-full text-xs border transition-all capitalize",
                   selectedTag === tag
-                    ? "border-purple-500/50 bg-purple-500/10 text-purple-300"
-                    : "border-white/10 bg-transparent text-gray-400 hover:text-gray-300",
+                    ? "border-brand/50 bg-brand/10 text-brand-lighter"
+                    : "border-white/10 bg-transparent text-muted-strong hover:text-foreground-dim",
                 ].join(" ")}
               >
                 {tag.replace(/_/g, " ")}
@@ -368,11 +358,46 @@ export default function CharactersPage() {
                 className={[
                   "px-3 py-1.5 text-xs uppercase font-medium transition-all",
                   nsfwFilter === opt
-                    ? "bg-purple-500/20 text-purple-300"
-                    : "text-gray-500 hover:text-gray-300",
+                    ? "bg-brand/20 text-brand-lighter"
+                    : "text-muted hover:text-foreground-dim",
                 ].join(" ")}
               >
                 {opt === "all" ? "All" : opt.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Phase 8A: category filter chips */}
+        <div className="max-w-6xl mx-auto px-6 pb-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(null)}
+              className={[
+                "px-3 py-1.5 rounded-full text-xs border transition-all capitalize",
+                !selectedCategory
+                  ? "border-brand/50 bg-brand/10 text-brand-lighter"
+                  : "border-white/10 bg-transparent text-muted hover:text-foreground-dim",
+              ].join(" ")}
+            >
+              All Categories
+            </button>
+            {["companion", "roleplay", "adventure", "romance", "assistant", "other"].map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() =>
+                  setSelectedCategory((prev) => (prev === cat ? null : cat))
+                }
+                className={[
+                  "px-3 py-1.5 rounded-full text-xs border transition-all capitalize",
+                  selectedCategory === cat
+                    ? "border-brand/50 bg-brand/10 text-brand-lighter"
+                    : "border-white/10 bg-transparent text-muted hover:text-foreground-dim",
+                ].join(" ")}
+              >
+                {cat}
               </button>
             ))}
           </div>
@@ -383,13 +408,13 @@ export default function CharactersPage() {
       <div className="max-w-6xl mx-auto px-6 pb-24">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <div className="w-8 h-8 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
-            <p className="text-gray-500 text-sm">
+            <Spinner />
+            <p className="text-muted text-sm">
               Loading characters...
             </p>
           </div>
         ) : filtered.length === 0 ? (
-          <p className="text-center py-20 text-gray-600 text-sm italic">
+          <p className="text-center py-20 text-muted-faint text-sm italic">
             No characters match your filters.
           </p>
         ) : (
@@ -402,7 +427,7 @@ export default function CharactersPage() {
                 <Link
                   key={char.id}
                   href={`/characters/${char.id}`}
-                  className="relative bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-purple-500/30 hover:bg-white/[0.07] transition-all duration-300 group text-left w-full block"
+                  className="relative bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-brand/30 hover:bg-white/[0.07] transition-all duration-300 group text-left w-full block"
                 >
                   {/* NSFW badge */}
                   {char.is_nsfw ? (
@@ -440,7 +465,7 @@ export default function CharactersPage() {
 
                   {/* connection score */}
                   {(char.connection_score ?? 0) > 0 && (
-                    <p className="text-[10px] text-purple-400/70 mt-0.5">
+                    <p className="text-[10px] text-brand-light/70 mt-0.5">
                       ◆ {char.connection_score} connections
                     </p>
                   )}
@@ -451,7 +476,7 @@ export default function CharactersPage() {
                       {(char.personality ?? []).slice(0, 3).map((p) => (
                         <span
                           key={p}
-                          className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-300/80"
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-brand/10 text-brand-lighter/80"
                         >
                           {p}
                         </span>
@@ -464,25 +489,51 @@ export default function CharactersPage() {
                     {char.scenario_tags.slice(0, 3).map((tag) => (
                       <span
                         key={tag}
-                        className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-500 capitalize"
+                        className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-muted capitalize"
                       >
                         {tag.replace(/_/g, " ")}
                       </span>
                     ))}
                     {char.scenario_tags.length > 3 && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-600">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-muted-faint">
                         +{char.scenario_tags.length - 3}
                       </span>
                     )}
                   </div>
 
-                  {/* preview */}
-                  <p className="text-sm text-gray-400 mt-3 leading-snug line-clamp-2">
-                    {char.user_prompt}
+                  {/* Phase 8A: show short_description (new) or fall back to user_prompt. */}
+                  <p className="text-sm text-muted-strong mt-3 leading-snug line-clamp-2">
+                    {char.short_description ?? char.user_prompt}
                   </p>
 
+                  {/* Phase 8A: new tags + chat count + category */}
+                  {(char.tags ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {(char.tags ?? []).slice(0, 3).map((tag) => (
+                        <span
+                          key={tag}
+                          className="text-[10px] px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300/80 capitalize"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                      {(char.tags ?? []).length > 3 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-muted-faint">
+                          +{(char.tags ?? []).length - 3}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Phase 8A: chat count (replaces connection_score on the card face) */}
+                  {(char.chat_count ?? 0) > 0 && (
+                    <p className="text-[10px] text-brand-light/70 mt-1">
+                      &#128172; {char.chat_count} chats
+                    </p>
+                  )}
+
                   {/* play hint */}
-                  <span className="block text-xs text-purple-400 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="block text-xs text-brand-light mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
                     &#9654; View
                   </span>
                 </Link>
@@ -512,7 +563,7 @@ export default function CharactersPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedCharacter(null)}
-                  className="absolute top-4 right-4 text-gray-500 hover:text-gray-300 text-sm transition-colors"
+                  className="absolute top-4 right-4 text-muted hover:text-foreground-dim text-sm transition-colors"
                 >
                   &#10005;
                 </button>
@@ -552,7 +603,7 @@ export default function CharactersPage() {
                   {char.scenario_tags.map((tag) => (
                     <span
                       key={tag}
-                      className="text-xs px-2 py-1 rounded-full bg-white/5 text-gray-400 capitalize"
+                      className="text-xs px-2 py-1 rounded-full bg-white/5 text-muted-strong capitalize"
                     >
                       {tag.replace(/_/g, " ")}
                     </span>
@@ -560,10 +611,10 @@ export default function CharactersPage() {
                 </div>
 
                 {/* prompt */}
-                <p className="text-xs text-gray-500 uppercase tracking-wider mt-6">
+                <p className="text-xs text-muted uppercase tracking-wider mt-6">
                   Character Prompt
                 </p>
-                <div className="text-sm text-gray-300 leading-relaxed mt-2 bg-white/5 rounded-xl p-4">
+                <div className="text-sm text-foreground-dim leading-relaxed mt-2 bg-white/5 rounded-xl p-4">
                   {char.user_prompt}
                 </div>
 
@@ -573,7 +624,7 @@ export default function CharactersPage() {
                 {/* play button */}
                 <Link
                   href={`/play/${char.id}`}
-                  className="block text-center w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium py-3 rounded-xl hover:from-purple-500 hover:to-pink-500 active:scale-95 transform transition-all"
+                  className="block text-center w-full bg-gradient-to-r from-brand-dark to-pink-600 text-white font-medium py-3 rounded-xl hover:from-brand hover:to-pink-500 active:scale-95 transform transition-all"
                 >
                   &#9654; Play Solo
                 </Link>
@@ -582,7 +633,7 @@ export default function CharactersPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedCharacter(null)}
-                  className="block w-full text-sm text-gray-500 hover:text-gray-300 transition-colors text-center mt-3"
+                  className="block w-full text-sm text-muted hover:text-foreground-dim transition-colors text-center mt-3"
                 >
                   Close
                 </button>

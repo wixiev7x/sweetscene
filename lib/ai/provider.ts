@@ -45,8 +45,13 @@ export type AIProvider = {
    * it needs to actually generate. When `false`, the dispatcher in
    * `lib/ai/index.ts` falls back to the mock provider so dev never
    * crashes and every flow stays demoable.
+   *
+   * Async because credentials may live in `platform_settings` (set from
+   * the admin dashboard) rather than the environment. Answering this
+   * from `process.env` alone would report "not configured" for a
+   * dashboard-set key and silently strand the platform on mock replies.
    */
-  isConfigured(): boolean;
+  isConfigured(): Promise<boolean>;
 
   /**
    * Generate a completion. Returns either the text content or an

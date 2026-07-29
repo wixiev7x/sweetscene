@@ -1,4 +1,4 @@
-# chatty — Master To-Do
+# sweetscene — Master To-Do
 
 > Anonymous AI roleplay dating platform. Two humans match anonymously,
 > enter a shared scene with 1–3 AI characters (the "third wheel /
@@ -11,13 +11,13 @@ React 19, Tailwind v4, Supabase (Postgres + Realtime + RLS + OAuth),
 DeepSeek API (pluggable, mock fallback), Pollinations/Gemini images,
 Upstash Redis (optional, in-memory fallback), Cloudflare Turnstile.
 
-**Root:** `/home/void/chatty`
+**Root:** `/home/void/sweetscene`
 
 ---
 
 ## Global rules (every AI session must follow)
 
-1. Read `/home/void/chatty/AGENTS.md` first — this is NOT the Next.js
+1. Read `/home/void/sweetscene/AGENTS.md` first — this is NOT the Next.js
    you know. `proxy.ts` exports `proxy()`, not `middleware()`. Read
    `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`
    before writing proxy code.
@@ -36,7 +36,7 @@ Upstash Redis (optional, in-memory fallback), Cloudflare Turnstile.
    `containsBlockedTerm` hard-refuses CSAM/violence/doxxing.
 7. One file per change. Match existing code style (doc comments on
    every function — preserve that style).
-8. Verify after every phase: `cd /home/void/chatty && npx tsc --noEmit
+8. Verify after every phase: `cd /home/void/sweetscene && npx tsc --noEmit
    && npx eslint && rm -rf .next && npx next build`. All three must
    exit 0.
 9. All chats cloud-based via Supabase, login-gated, encrypted at rest
@@ -96,7 +96,7 @@ owner's full row; migrate all reads to a `getMyProfile()` action.
 ### 5a — App/RPC reconciliation (close C1–C6, H1, H2, H5–H7, M1–M9, S17, M3, A1–A5)
 
 #### Item 1 — git init + baseline commit ✅
-- [x] `git init` in `/home/void/chatty`, `.gitignore`, commit baseline.
+- [x] `git init` in `/home/void/sweetscene`, `.gitignore`, commit baseline.
 
 #### Item 2 — `lib/supabase/schema.sql` — add missing RPCs
 - [ ] `get_own_profile()` → returns caller's full profiles row.

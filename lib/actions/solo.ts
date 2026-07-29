@@ -4,9 +4,12 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { rateLimit } from "@/lib/utils/ratelimit";
-import { scrubInjection, sanitizeMessage } from "@/lib/utils/safety";
-import { buildSystemPrompt, parseExampleDialog } from "@/lib/ai/prompts";
+import { scrubInjection, sanitizeMessage, sanitizeAndScrub } from "@/lib/utils/safety";
+import { moderateText, screenOutput } from "@/lib/utils/moderation";
+import { buildCharacterChatPrompt, parseExampleDialog } from "@/lib/ai/prompts";
 import { getProvider } from "@/lib/ai";
+import { assertNotBanned } from "@/lib/utils/ban";
+import { MESSAGE_TOKEN_COST, WAITING_ROOM_MESSAGE_CAP } from "@/lib/config/constants";
 import type { AIMessage } from "@/lib/ai/provider";
 
 /* ════════════════════════════════════════════════════════════════════
@@ -47,6 +50,10 @@ type ResolvedCharacter = {
   example_dialog: string | null;
   alternate_greetings: string[];
   avatar_url: string | null;
+  /* Phase 8A — new Character.AI-style fields. */
+  short_description: string | null;
+  full_personality: string | null;
+  backstory: string | null;
 };
 
 type SessionResult = {
@@ -77,8 +84,6 @@ type RecentSession = {
 
 type RecentSessionsResult = { sessions: RecentSession[] } | { error: string };
 
-const MAX_MESSAGES = 50;
-
 /**
  * Resolves a character by ID from the characters table. The
  * system_prompt column is REVOKED from authenticated users, so it's
@@ -94,7 +99,7 @@ async function resolveCharacter(
   const { data } = await supabase
     .from("characters")
     .select(
-      "id, name, user_prompt, scenario_tags, is_nsfw, first_message, example_dialog, alternate_greetings, avatar_url"
+      "id, name, user_prompt, scenario_tags, is_nsfw, first_message, example_dialog, alternate_greetings, avatar_url, short_description, full_personality, backstory"
     )
     .eq("id", characterId)
     .single();
@@ -124,6 +129,10 @@ async function resolveCharacter(
     example_dialog: (data.example_dialog as string) ?? null,
     alternate_greetings: (data.alternate_greetings as string[]) ?? [],
     avatar_url: (data.avatar_url as string) ?? null,
+    /* Phase 8A — new fields. */
+    short_description: (data.short_description as string) ?? null,
+    full_personality: (data.full_personality as string) ?? null,
+    backstory: (data.backstory as string) ?? null,
   };
 }
 
@@ -184,6 +193,18 @@ export async function startSoloSession(
     .single();
 
   if (error || !session) return { error: "Failed to create session" };
+
+  /* Phase 8A: increment the character's chat_count on every new
+     conversation. The RPC is service_role-only — called via the admin
+     client. Best-effort: don't fail if the increment fails. */
+  try {
+    const admin = createAdminClient();
+    await admin.rpc("increment_chat_count", {
+      p_character_id: characterId,
+    } as never);
+  } catch {
+    /* Non-fatal — chat_count is cosmetic. */
+  }
 
   return {
     sessionId: session.id as string,
@@ -348,6 +369,9 @@ export async function appendSoloMessage(
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
+  const banCheck = await assertNotBanned(supabase);
+  if ("error" in banCheck) return banCheck;
+
   if (!(await rateLimit(user.id))) {
     return { error: "Slow down. The director is thinking." };
   }
@@ -369,21 +393,67 @@ export async function appendSoloMessage(
      substitute. Regular solo sessions keep the 50-entry cap. */
   const currentMsgs = (session.messages as SoloMessage[]) ?? [];
   const userMsgCount = currentMsgs.filter((m) => m.role === "user").length;
-  if (session.is_waiting === true && userMsgCount >= 30) {
+  if (session.is_waiting === true && userMsgCount >= WAITING_ROOM_MESSAGE_CAP) {
     return { error: "Waiting room limit reached — enter your match or start an AI scene" };
   }
 
-  const scrubbed = scrubInjection(content);
+  /* B5: apply the moderation gate + full PII redaction + injection
+     scrub on solo input, matching the matched-chat pipeline in
+     messages.ts. The character's own rating decides which policy
+     applies: an NSFW character is one the viewer already passed the
+     age_cohort='adult' gate to open, so adult content in that scene is
+     the product working. The categories that are refused regardless —
+     sexual/minors first among them — do not consult this flag. */
+  const verdict = await moderateText(content, {
+    nsfwAllowed: char.is_nsfw,
+    surface: "solo",
+  });
+  if (!verdict.allowed) return { error: verdict.reason };
+
+  const scrubbed = sanitizeAndScrub(content);
+  if (!scrubbed.trim()) {
+    return { error: "Message empty after sanitization" };
+  }
   const now = new Date().toISOString();
 
   const currentMessages = (session.messages as SoloMessage[]) ?? [];
   const userMessage: SoloMessage = { role: "user", content: scrubbed, created_at: now };
   const allMessages = [...currentMessages, userMessage];
 
-  const fullSystemPrompt = buildSystemPrompt(
-    { system_prompt: char.system_prompt, user_prompt: char.user_prompt },
-    char.is_nsfw
-  );
+/* Phase 8A: per-message token deduction from the caller's main
+      wallet. The deduct_message_tokens RPC is service_role-only —
+      called via the admin client. If the deduction returns NULL, the
+      user is out of tokens and we return a paywall-triggering error.
+      Waiting-room sessions (is_waiting=true) are free — skip the
+      deduction so "free waiting-room chat" doesn't cost real tokens. */
+  const admin = createAdminClient();
+
+  if (session.is_waiting !== true) {
+    const { data: deductData } = await admin.rpc("deduct_message_tokens", {
+      p_user_id: user.id,
+      p_amount: MESSAGE_TOKEN_COST,
+    } as never);
+
+    if (
+      !deductData ||
+      !Array.isArray(deductData) ||
+      (deductData as unknown[]).length === 0
+    ) {
+      return { error: "Not enough tokens" };
+    }
+  }
+
+  /* Phase 8A: use buildCharacterChatPrompt for solo character play
+     instead of the matched-scene buildSystemPrompt. The new prompt
+     builder uses the character's full_personality + backstory field
+     instead of the "uncensored novel" wrapper. */
+  const fullSystemPrompt = buildCharacterChatPrompt({
+    name: char.name,
+    short_description: char.short_description,
+    full_personality: char.full_personality,
+    backstory: char.backstory,
+    is_nsfw: char.is_nsfw,
+  });
 
   const aiMessages: AIMessage[] = [{ role: "system", content: fullSystemPrompt }];
 
@@ -394,46 +464,70 @@ export async function appendSoloMessage(
 
   for (const m of allMessages) {
     if (m.role === "user") {
-      aiMessages.push({ role: "user", content: scrubInjection(m.content) });
+      aiMessages.push({ role: "user", content: sanitizeAndScrub(m.content) });
     } else {
       aiMessages.push({ role: "assistant", content: m.content });
     }
   }
 
-  const provider = getProvider();
+  const provider = await getProvider();
   const aiResult = await provider.generate(aiMessages, {
     maxTokens: 200,
     temperature: 0.9,
   });
 
-  if ("error" in aiResult) return { error: aiResult.error };
+  if ("error" in aiResult) {
+    /* Refund the deducted tokens if AI generation failed. */
+    if (session.is_waiting !== true) {
+      await admin.rpc("add_tokens", {
+        p_user_id: user.id,
+        p_amount: MESSAGE_TOKEN_COST,
+      } as never);
+    }
+    return { error: aiResult.error };
+  }
 
   /* S11: sanitize AI output before storing — same as getSoloPlayResponse.
-     Scrub injection patterns + redact PII so the AI can't reflect them. */
-  const aiText = scrubInjection(sanitizeMessage(aiResult.content));
+     Scrub injection patterns + redact PII so the AI can't reflect them,
+     then screen the result so a successful jailbreak still produces
+     nothing publishable. */
+  const aiText = await screenOutput(
+    scrubInjection(sanitizeMessage(aiResult.content)),
+    { nsfwAllowed: char.is_nsfw, surface: "solo_ai" }
+  );
   const aiMessage: SoloMessage = {
     role: "assistant",
     content: aiText,
     created_at: new Date().toISOString(),
   };
 
-  let newMessages = [...allMessages, aiMessage];
-  if (newMessages.length > MAX_MESSAGES) {
-    newMessages = newMessages.slice(newMessages.length - MAX_MESSAGES);
+const estimatedTokens = provider.estimateTokens(aiText);
+
+  /* M7 fix: atomically append the new messages (user + AI) to the
+      JSONB array instead of replacing the entire column. The
+      append_solo_messages SECURITY DEFINER RPC uses `messages ||
+      p_new_messages` so concurrent calls can't lose messages. The
+      tokens_used column is incremented by p_token_delta (not set
+      absolutely) to avoid concurrent overwrites losing the count. */
+  const { data: appendData, error: updateError } = await supabase.rpc(
+    "append_solo_messages",
+    {
+      p_session_id: sessionId,
+      p_new_messages: [userMessage, aiMessage],
+      p_token_delta: estimatedTokens,
+    }
+  );
+
+  if (updateError || !appendData || !Array.isArray(appendData) || !appendData[0]?.success) {
+    /* Refund the deducted tokens if persistence failed. */
+    if (session.is_waiting !== true) {
+      await admin.rpc("add_tokens", {
+        p_user_id: user.id,
+        p_amount: MESSAGE_TOKEN_COST,
+      } as never);
+    }
+    return { error: "Failed to save message" };
   }
-
-  const estimatedTokens = provider.estimateTokens(aiText);
-  const newTokensUsed = (session.tokens_used as number) + estimatedTokens;
-
-  /* Column REVOKE on (tokens_used, messages) means we must use the
-     update_solo_session SECURITY DEFINER RPC to write both columns. */
-  const { error: updateError } = await supabase.rpc("update_solo_session", {
-    p_session_id: sessionId,
-    p_messages: newMessages,
-    p_tokens_used: newTokensUsed,
-  });
-
-  if (updateError) return { error: "Failed to save message" };
 
   return { content: aiText, tokensUsed: estimatedTokens };
 }

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { SiteNav, Spinner } from "@/components/ui";
 import { getUserCharacters, deleteCharacter, type CharacterOwned } from "@/lib/actions/characters";
 
 const GRADIENTS = [
-  ["from-purple-500", "to-pink-500"],
+  ["from-brand", "to-pink-500"],
   ["from-blue-500", "to-cyan-500"],
   ["from-amber-500", "to-red-500"],
   ["from-green-500", "to-teal-500"],
@@ -59,29 +60,19 @@ export default function MyCharactersPage() {
     <div className="min-h-screen bg-black text-white">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(88,28,135,0.08)_0%,transparent_50%)]" />
 
-      <nav className="sticky top-0 z-10 border-b border-white/5 backdrop-blur-md bg-black/40 px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold text-purple-400 hover:text-purple-300 transition-colors">
-          chatty
-        </Link>
-        <div className="flex items-center gap-6">
-          <Link href="/lobby" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">Lobby</Link>
-          <Link href="/characters" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">Browse</Link>
-          <Link href="/create-character" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">Create</Link>
-          <Link href="/profile" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">Profile</Link>
-        </div>
-      </nav>
+      <SiteNav />
 
       <main className="relative z-0 max-w-6xl mx-auto px-6 pt-12">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-light text-gray-200 tracking-wide">My Characters</h1>
-            <p className="text-sm text-gray-500 mt-2">
+            <h1 className="text-3xl font-light text-foreground tracking-wide">My Characters</h1>
+            <p className="text-sm text-muted mt-2">
               Every character you&apos;ve created. Edit, export, or delete at will.
             </p>
           </div>
           <Link
             href="/create-character"
-            className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:from-purple-500 hover:to-pink-500 active:scale-95 transform transition-all"
+            className="bg-gradient-to-r from-brand-dark to-pink-600 text-white text-sm font-medium px-5 py-2.5 rounded-xl hover:from-brand hover:to-pink-500 active:scale-95 transform transition-all"
           >
             + New Character
           </Link>
@@ -95,15 +86,15 @@ export default function MyCharactersPage() {
 
         {loading ? (
           <div className="flex flex-col items-center py-20 gap-4">
-            <div className="w-8 h-8 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
-            <p className="text-gray-500 text-sm">Loading your characters…</p>
+            <Spinner />
+            <p className="text-muted text-sm">Loading your characters…</p>
           </div>
         ) : characters.length === 0 ? (
           <div className="flex flex-col items-center py-20 text-center">
-            <p className="text-gray-400 text-sm">You haven&apos;t created any characters yet.</p>
+            <p className="text-muted-strong text-sm">You haven&apos;t created any characters yet.</p>
             <Link
               href="/create-character"
-              className="mt-3 text-sm text-purple-400 hover:text-purple-300 transition-colors"
+              className="mt-3 text-sm text-brand-light hover:text-brand-lighter transition-colors"
             >
               Create your first character →
             </Link>
@@ -114,9 +105,9 @@ export default function MyCharactersPage() {
               const gIdx = hashGradient(c.name);
               const [from, to] = GRADIENTS[gIdx];
               return (
-                <div key={c.id} className="relative bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-purple-500/30 transition-all duration-300 group">
+                <div key={c.id} className="relative bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-brand/30 transition-all duration-300 group">
                   {/* visibility badge */}
-                  <span className={`absolute top-3 right-3 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${c.visibility === "public" ? "bg-purple-500/10 text-purple-400 border-purple-500/20" : c.visibility === "unlisted" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-gray-500/10 text-gray-400 border-gray-500/20"}`}>
+                  <span className={`absolute top-3 right-3 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${c.visibility === "public" ? "bg-brand/10 text-brand-light border-brand/20" : c.visibility === "unlisted" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-muted/10 text-muted-strong border-line-focus/20"}`}>
                     {c.visibility}
                   </span>
 
@@ -131,16 +122,16 @@ export default function MyCharactersPage() {
                       </div>
                     )}
                     <h3 className="text-lg font-medium text-white mt-3 truncate">{c.name}</h3>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted mt-1">
                       {c.is_nsfw ? "NSFW" : "SFW"} · ◆ {c.connection_score} · v{c.version}
                     </p>
-                    <p className="text-xs text-gray-400 mt-3 line-clamp-2">{c.user_prompt}</p>
+                    <p className="text-xs text-muted-strong mt-3 line-clamp-2">{c.user_prompt}</p>
                   </Link>
 
                   <div className="flex gap-2 mt-4">
                     <Link
                       href={`/characters/${c.id}/edit`}
-                      className="flex-1 text-center text-xs text-gray-300 bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-all"
+                      className="flex-1 text-center text-xs text-foreground-dim bg-white/5 border border-white/10 px-3 py-1.5 rounded-lg hover:bg-white/10 transition-all"
                     >
                       Edit
                     </Link>

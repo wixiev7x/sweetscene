@@ -5,6 +5,13 @@ import type {
   AIConfig,
   AIGenerateResult,
 } from "@/lib/ai/provider";
+import { AI_FETCH_TIMEOUT_MS } from "@/lib/config/constants";
+import {
+  DEEPSEEK_MODEL,
+  DEEPSEEK_GENERATION,
+  DEEPSEEK_STOP_SEQUENCES,
+} from "@/lib/ai/policy";
+import { getSetting, SETTING_KEYS } from "@/lib/config/settings";
 
 /**
  * DeepSeek V3 implementation of the `AIProvider` interface. Uses the
@@ -17,24 +24,33 @@ import type {
  *   - S13: legacy DEEPSEEK_API_KEY fallback removed — only AI_API_KEY.
  */
 
-function getEndpoint(): string {
+/* Settings resolve from the admin dashboard first, then the
+   environment — so the operator can rotate the provider key without a
+   redeploy. See lib/config/settings.ts. */
+async function getEndpoint(): Promise<string> {
   return (
-    process.env.DEEPSEEK_ENDPOINT ||
-    "https://api.deepseek.com/v1/chat/completions"
+    (await getSetting(
+      SETTING_KEYS.aiEndpoint,
+      process.env.DEEPSEEK_ENDPOINT || undefined
+    )) || "https://api.deepseek.com/v1/chat/completions"
   );
 }
 
-function getKey(): string | undefined {
-  return process.env.AI_API_KEY;
+async function getKey(): Promise<string | undefined> {
+  return getSetting(SETTING_KEYS.aiApiKey, process.env.AI_API_KEY);
 }
 
-const FETCH_TIMEOUT_MS = 30_000;
+async function getModel(): Promise<string> {
+  return (await getSetting(SETTING_KEYS.aiModel, undefined)) || DEEPSEEK_MODEL;
+}
+
+const FETCH_TIMEOUT_MS = AI_FETCH_TIMEOUT_MS;
 
 export const deepseekProvider: AIProvider = {
   name: "deepseek",
 
-  isConfigured(): boolean {
-    const key = getKey();
+  async isConfigured(): Promise<boolean> {
+    const key = await getKey();
     return typeof key === "string" && key.length > 0;
   },
 
@@ -46,7 +62,11 @@ export const deepseekProvider: AIProvider = {
     messages: AIMessage[],
     config: AIConfig
   ): Promise<AIGenerateResult> {
-    const key = getKey();
+    const [key, endpoint, model] = await Promise.all([
+      getKey(),
+      getEndpoint(),
+      getModel(),
+    ]);
     if (!key) {
       return { error: "AI_API_KEY not configured" };
     }
@@ -56,17 +76,26 @@ export const deepseekProvider: AIProvider = {
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
     try {
-      const response = await fetch(getEndpoint(), {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${key}`,
           "Content-Type": "application/json",
         },
+        /* Generation defaults live in lib/ai/policy.ts so provider
+           tuning is one edit. Per-call config still wins where set.
+           frequency/presence penalties counter DeepSeek looping a
+           catchphrase across long roleplay; stop sequences keep the
+           model from writing the human's next turn. */
         body: JSON.stringify({
-          model: config.model ?? "deepseek-chat",
+          model: config.model ?? model,
           messages,
-          max_tokens: config.maxTokens,
-          temperature: config.temperature,
+          max_tokens: config.maxTokens ?? DEEPSEEK_GENERATION.max_tokens,
+          temperature: config.temperature ?? DEEPSEEK_GENERATION.temperature,
+          top_p: DEEPSEEK_GENERATION.top_p,
+          frequency_penalty: DEEPSEEK_GENERATION.frequency_penalty,
+          presence_penalty: DEEPSEEK_GENERATION.presence_penalty,
+          stop: [...DEEPSEEK_STOP_SEQUENCES],
         }),
         signal: controller.signal,
       });

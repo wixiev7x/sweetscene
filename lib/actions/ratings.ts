@@ -3,6 +3,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/ratelimit";
+import { notifyRatingReceived } from "@/lib/notifications/dispatch";
+import { logger } from "@/lib/utils/logger";
 
 /* ════════════════════════════════════════════════════════════════════
  * Phase 6 — Vibe Check + reputation actions.
@@ -97,42 +99,33 @@ export async function submitMatchRating(
     return { error: "Failed to submit rating" };
   }
 
+  /* Phase 11: notify the other participant of the rating. Best-effort. */
+  const { data: matchRow } = await supabase
+    .from("matches")
+    .select("user_a, user_b")
+    .eq("id", matchId)
+    .single();
+  if (matchRow) {
+    const { user_a, user_b } = matchRow as { user_a: string; user_b: string | null };
+    const partnerId = user_a === user.id ? user_b : user_a;
+    if (partnerId) {
+      await notifyRatingReceived(partnerId, matchId, params.vibe).catch(
+        (err) =>
+          logger.error("notify_failed", {
+            kind: "rating_received",
+            matchId,
+            err,
+          })
+      );
+    }
+  }
+
   return { success: true };
 }
 
-type ReputationResult =
-  | {
-      tier: string;
-      earnedTags: string[];
-    }
-  | { error: string };
-
-/**
- * Returns the caller's current reputation tier and earned tags.
- * Reads via get_own_profile (the columns are REVOKED from authenticated
- * direct SELECT).
- */
-export async function getMyReputation(): Promise<ReputationResult> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  const { data, error } = await supabase.rpc("get_own_profile");
-
-  if (error || !data || !Array.isArray(data) || data.length === 0) {
-    return { error: "Profile not found" };
-  }
-
-  const row = data[0] as {
-    reputation_tier: string;
-    earned_tags: string[];
-  };
-
-  return {
-    tier: row.reputation_tier,
-    earnedTags: row.earned_tags ?? [],
-  };
-}
+/* getMyReputation was removed here. It returned reputation_tier and
+   earned_tags via get_own_profile — exactly the subset getMyProfile
+   already returns — and had zero callers. Every export in a
+   "use server" file is a public HTTP endpoint, so a duplicate with no
+   consumer is attack surface bought for nothing. The profile page reads
+   these fields off getMyProfile. */

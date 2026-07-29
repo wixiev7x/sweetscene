@@ -3,8 +3,11 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/ratelimit";
-import { scrubInjection } from "@/lib/utils/safety";
+import { sanitizeAndScrub } from "@/lib/utils/safety";
+import { decryptMessage } from "@/lib/utils/crypto";
 import { getProvider } from "@/lib/ai";
+import { getSetting, SETTING_KEYS } from "@/lib/config/settings";
+import { logger } from "@/lib/utils/logger";
 
 type GenerateImageResult = { imageUrl: string } | { error: string };
 
@@ -61,14 +64,24 @@ export async function generateImage(
     .order("created_at", { ascending: false })
     .limit(5);
 
+  /* E3: decrypt messages before building the image prompt. Messages
+      are AES-256-GCM encrypted at rest — without decryption, the prompt
+      generator receives base64 ciphertext gibberish, not the scene text. */
   const concatenatedMessages = (messages ?? [])
-    .map((m) => scrubInjection(m.content))
+    .map((m) => {
+      try {
+        return decryptMessage(m.content as string);
+      } catch {
+        return "";
+      }
+    })
+    .map((text) => sanitizeAndScrub(text))
     .reverse()
     .join("\n");
 
   let imagePrompt: string;
   try {
-    const provider = getProvider();
+    const provider = await getProvider();
     const dsResult = await provider.generate(
       [
         {
@@ -86,7 +99,8 @@ export async function generateImage(
     } else {
       throw new Error("Image prompt generation failed");
     }
-  } catch {
+  } catch (err) {
+    logger.warn("image_prompt_failed", { matchId, err });
     imagePrompt =
       "a dimly lit romantic scene, soft focus, cinematic lighting, foggy atmosphere";
   }
@@ -107,11 +121,26 @@ export async function generateImage(
   try {
     /* S2b: Gemini endpoint from env (with a default for backward compat). */
     const geminiEndpoint = process.env.GEMINI_ENDPOINT || "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+
+    /* Key resolves from the admin dashboard first, then env. */
+    const geminiKey = await getSetting(
+      SETTING_KEYS.geminiApiKey,
+      process.env.GEMINI_API_KEY
+    );
+
+    /* Bail rather than sending "?key=undefined" at Google. */
+    if (!geminiKey) return { error: "Image generation is not configured" };
+
     const geminiResponse = await fetch(
-      `${geminiEndpoint}?key=${process.env.GEMINI_API_KEY}`,
+      geminiEndpoint,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        /* Key travels in a header, not the query string — URLs end up
+           in proxy, CDN and access logs; headers generally do not. */
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": geminiKey,
+        },
         body: JSON.stringify({
           contents: [
             {
@@ -140,8 +169,10 @@ export async function generateImage(
         }
       }
     }
-  } catch {
-    // Fall through to foggy fallback
+  } catch (err) {
+    /* Every VIP image silently degrading to the stock fallback looks
+       identical to the feature working, from the outside. */
+    logger.warn("image_generation_failed", { err });
   }
 
   /* S2b: Unsplash fallback from env. */

@@ -18,10 +18,21 @@ import { mockProvider } from "@/lib/ai/mock";
  * `AI_API_KEY=…` in `.env.local`. Nothing else in the codebase changes.
  */
 
-let cached: AIProvider | null = null;
+/**
+ * The resolved choice is cached with a TTL rather than for the process
+ * lifetime. Credentials can now be set from the admin dashboard at
+ * runtime, and an unbounded cache meant an instance that started with
+ * no key stayed pinned to the mock provider forever — the operator
+ * would paste a valid key and watch the platform keep emitting canned
+ * mock replies until the next deploy.
+ */
+const CACHE_TTL_MS = 30_000;
 
-export function getProvider(): AIProvider {
-  if (cached) return cached;
+let cached: AIProvider | null = null;
+let cachedAt = 0;
+
+export async function getProvider(): Promise<AIProvider> {
+  if (cached && Date.now() - cachedAt < CACHE_TTL_MS) return cached;
 
   const requested = process.env.AI_PROVIDER ?? "deepseek";
 
@@ -34,6 +45,7 @@ export function getProvider(): AIProvider {
   }
 
   /* Mock provider is always available as the safety net. */
-  cached = primary.isConfigured() ? primary : mockProvider;
+  cached = (await primary.isConfigured()) ? primary : mockProvider;
+  cachedAt = Date.now();
   return cached;
 }

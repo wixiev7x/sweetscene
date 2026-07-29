@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { motion, AnimatePresence } from "framer-motion";
+import { SiteNav, Spinner } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { getMyProfile } from "@/lib/actions/profile";
 import { findMatch, createAIMatch } from "@/lib/actions/matchmaking";
@@ -79,7 +81,7 @@ const TIERS = [
 ];
 
 const GRADIENTS = [
-  ["from-purple-500", "to-pink-500"],
+  ["from-brand", "to-pink-500"],
   ["from-blue-500", "to-cyan-500"],
   ["from-amber-500", "to-red-500"],
   ["from-green-500", "to-teal-500"],
@@ -114,7 +116,7 @@ function soloToChatMessages(
 }
 
 /**
- * Lobby / matchmaking page for the chatty platform. Displays the user's
+ * Lobby / matchmaking page for the sweetscene platform. Displays the user's
  * anonymous profile, tier selection, scenario tag picker, and a "Find
  * Match" button. While waiting for a human partner, an embedded
  * waiting-room AI chat panel keeps the user entertained — zero dead
@@ -149,6 +151,17 @@ export default function LobbyPage() {
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null
   );
+
+  /* F10: clear the polling interval on unmount so it doesn't leak
+     and call setState after the component is gone. */
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   /* ── create AI match (declared before the countdown effect that
          calls it, so it is never accessed before declaration). ── */
@@ -427,8 +440,8 @@ export default function LobbyPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <div className="w-8 h-8 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
-        <p className="text-gray-500 text-sm">Loading...</p>
+        <Spinner />
+        <p className="text-muted text-sm">Loading...</p>
       </div>
     );
   }
@@ -438,35 +451,7 @@ export default function LobbyPage() {
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_20%,rgba(88,28,135,0.15)_0%,transparent_60%)]" />
 
       {/* ── NAV BAR ── */}
-      <nav className="sticky top-0 z-10 border-b border-white/5 backdrop-blur-md bg-black/40 px-6 py-4 flex items-center justify-between">
-        <Link
-          href="/"
-          className="text-xl font-bold text-purple-400 hover:text-purple-300 transition-colors"
-        >
-          chatty
-        </Link>
-
-        <div className="flex items-center gap-6">
-          <Link
-            href="/characters"
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            Characters
-          </Link>
-          <Link
-            href="/create-character"
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            Create
-          </Link>
-          <Link
-            href="/profile"
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            Profile
-          </Link>
-        </div>
-      </nav>
+      <SiteNav />
 
       {/* ── MAIN CONTENT ── */}
       <main className="relative z-0 max-w-4xl mx-auto px-6 py-12">
@@ -478,7 +463,7 @@ export default function LobbyPage() {
               style={{ backgroundImage: `url(${profile.anonymous_pfp_url})` }}
             />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand to-pink-500 flex items-center justify-center shrink-0">
               <span className="text-2xl text-white font-bold">
                 {getAvatarInitial()}
               </span>
@@ -489,10 +474,10 @@ export default function LobbyPage() {
             <h2 className="text-xl font-medium text-white truncate">
               {profile?.anonymous_username ?? "Anon"}
             </h2>
-            <p className="text-sm text-gray-400 mt-1">
+            <p className="text-sm text-muted-strong mt-1">
               &#9733; Reputation: {profile?.reputation_score ?? 0}
             </p>
-            <p className="text-sm text-purple-400 font-medium mt-0.5">
+            <p className="text-sm text-brand-light font-medium mt-0.5">
               &#9670; Tokens:{" "}
               {(profile?.tokens_balance ?? 0).toLocaleString()}
             </p>
@@ -506,14 +491,14 @@ export default function LobbyPage() {
           <button
             type="button"
             onClick={handleRefreshProfile}
-            className="text-xs text-gray-500 hover:text-gray-300 transition-colors shrink-0"
+            className="text-xs text-muted hover:text-foreground-dim transition-colors shrink-0"
           >
             Refresh
           </button>
         </div>
 
         {/* ── TIER SELECTION ── */}
-        <h2 className="text-2xl font-light text-gray-300 mb-6 mt-12">
+        <h2 className="text-2xl font-light text-foreground-dim mb-6 mt-12">
           Choose Your Time
         </h2>
 
@@ -532,7 +517,7 @@ export default function LobbyPage() {
                   "border rounded-2xl p-6 text-left transition-all duration-300",
                   matchmaking ? "cursor-not-allowed" : "cursor-pointer",
                   isSelected
-                    ? "border-purple-500/50 bg-purple-500/10 shadow-[0_0_20px_rgba(168,85,247,0.15)]"
+                    ? "border-brand/50 bg-brand/10 shadow-[0_0_20px_rgba(168,85,247,0.15)]"
                     : "border-white/10 bg-white/5 hover:border-white/20",
                   isDeepLocked ? "opacity-60" : "",
                 ].join(" ")}
@@ -547,20 +532,20 @@ export default function LobbyPage() {
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-purple-400 mt-1">
+                <p className="text-sm text-brand-light mt-1">
                   {t.tokens.toLocaleString()} tokens
                 </p>
-                <p className="text-sm text-gray-500 mt-2">{t.description}</p>
+                <p className="text-sm text-muted mt-2">{t.description}</p>
               </button>
             );
           })}
         </div>
 
         {/* ── SCENARIO TAGS ── */}
-        <h2 className="text-2xl font-light text-gray-300 mb-2 mt-12">
+        <h2 className="text-2xl font-light text-foreground-dim mb-2 mt-12">
           Pick 2 Scenarios
         </h2>
-        <p className="text-sm text-gray-500 mb-6">
+        <p className="text-sm text-muted mb-6">
           Select exactly 2 tags to match with someone in the same scene.
         </p>
 
@@ -580,8 +565,8 @@ export default function LobbyPage() {
                     ? "cursor-not-allowed opacity-50"
                     : "cursor-pointer",
                   isSelected
-                    ? "border-purple-500/50 bg-purple-500/10 text-purple-300 shadow-[0_0_10px_rgba(168,85,247,0.1)]"
-                    : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20 hover:text-gray-300",
+                    ? "border-brand/50 bg-brand/10 text-brand-lighter shadow-[0_0_10px_rgba(168,85,247,0.1)]"
+                    : "border-white/10 bg-white/5 text-muted-strong hover:border-white/20 hover:text-foreground-dim",
                 ].join(" ")}
               >
                 {tag.replace(/_/g, " ")}
@@ -590,7 +575,7 @@ export default function LobbyPage() {
           })}
         </div>
 
-        <p className="text-xs text-gray-600 mt-3">
+        <p className="text-xs text-muted-faint mt-3">
           ({selectedTags.length}/2 selected)
         </p>
 
@@ -601,7 +586,7 @@ export default function LobbyPage() {
               <button
                 type="button"
                 disabled
-                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium text-lg py-4 rounded-xl opacity-80"
+                className="w-full bg-gradient-to-r from-brand-dark to-pink-600 text-white font-medium text-lg py-4 rounded-xl opacity-80"
                 style={{
                   animation: "searchPulse 1s infinite alternate ease-in-out",
                 }}
@@ -609,24 +594,24 @@ export default function LobbyPage() {
                 Searching... {countdown}s
               </button>
 
-              <div className="flex items-center gap-1.5 text-gray-500 text-sm">
+              <div className="flex items-center gap-1.5 text-muted text-sm">
                 <span>Scanning the fog</span>
                 <span
-                  className="block w-1.5 h-1.5 rounded-full bg-purple-400"
+                  className="block w-1.5 h-1.5 rounded-full bg-brand-light"
                   style={{
                     animation: "typingBounce 1.4s infinite ease-in-out",
                     animationDelay: "0s",
                   }}
                 />
                 <span
-                  className="block w-1.5 h-1.5 rounded-full bg-purple-400"
+                  className="block w-1.5 h-1.5 rounded-full bg-brand-light"
                   style={{
                     animation: "typingBounce 1.4s infinite ease-in-out",
                     animationDelay: "0.2s",
                   }}
                 />
                 <span
-                  className="block w-1.5 h-1.5 rounded-full bg-purple-400"
+                  className="block w-1.5 h-1.5 rounded-full bg-brand-light"
                   style={{
                     animation: "typingBounce 1.4s infinite ease-in-out",
                     animationDelay: "0.4s",
@@ -638,7 +623,7 @@ export default function LobbyPage() {
             <button
               type="button"
               onClick={handleFindMatch}
-              className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-medium text-lg py-4 rounded-xl hover:from-purple-500 hover:to-pink-500 active:scale-95 transform transition-all duration-300"
+              className="w-full bg-gradient-to-r from-brand-dark to-pink-600 text-white font-medium text-lg py-4 rounded-xl hover:from-brand hover:to-pink-500 active:scale-95 transform transition-all duration-300"
             >
               Find Match &rarr;
             </button>
@@ -656,37 +641,45 @@ export default function LobbyPage() {
         {matchmaking && waitingSessionId && waitingCharacter && (
           <div className="max-w-2xl mx-auto mt-8">
             {/* match-ready toast */}
-            {matchReady && (
-              <div className="mb-4 bg-gradient-to-r from-purple-600/20 to-pink-600/20 border border-purple-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">&#x1F3AD;</span>
-                  <div>
-                    <p className="text-sm text-white font-medium">
-                      A match is ready.
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      Your scene awaits.
-                    </p>
+            <AnimatePresence>
+              {matchReady && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="mb-4 bg-gradient-to-r from-brand-dark/20 to-pink-600/20 border border-brand/40 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">&#x1F3AD;</span>
+                    <div>
+                      <p className="text-sm text-white font-medium">
+                        A match is ready.
+                      </p>
+                      <p className="text-xs text-muted-strong">
+                        Your scene awaits.
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleEnterScene}
-                    className="bg-gradient-to-r from-purple-600 to-pink-600 text-white text-sm font-medium px-5 py-2 rounded-xl hover:from-purple-500 hover:to-pink-500 active:scale-95 transition-all"
-                  >
-                    Enter scene
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleKeepChatting}
-                    className="bg-white/5 border border-white/10 text-gray-400 text-sm px-5 py-2 rounded-xl hover:bg-white/10 transition-all"
-                  >
-                    Keep chatting
-                  </button>
-                </div>
-              </div>
-            )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleEnterScene}
+                      className="bg-gradient-to-r from-brand-dark to-pink-600 text-white text-sm font-medium px-5 py-2 rounded-xl hover:from-brand hover:to-pink-500 active:scale-95 transition-all"
+                    >
+                      Enter scene
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleKeepChatting}
+                      className="bg-white/5 border border-white/10 text-muted-strong text-sm px-5 py-2 rounded-xl hover:bg-white/10 transition-all"
+                    >
+                      Keep chatting
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* waiting room chat card */}
             <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
@@ -716,7 +709,7 @@ export default function LobbyPage() {
                   <p className="text-sm font-medium text-white truncate">
                     {waitingCharacter.name}
                   </p>
-                  <p className="text-[10px] text-gray-500">
+                  <p className="text-[10px] text-muted">
                     Waiting room &bull; free chat
                   </p>
                 </div>
@@ -740,7 +733,7 @@ export default function LobbyPage() {
               />
             </div>
 
-            <p className="text-center text-xs text-gray-600 mt-3">
+            <p className="text-center text-xs text-muted-faint mt-3">
               Chatting while you wait. Your scene starts when you enter.
             </p>
           </div>
@@ -749,7 +742,7 @@ export default function LobbyPage() {
         {/* ── VIP UPSELL ── */}
         {profile && !profile.is_vip && !matchmaking && (
           <div className="max-w-md mx-auto mt-8 bg-gradient-to-br from-yellow-900/10 to-amber-900/10 border border-yellow-500/20 rounded-xl p-4 text-center">
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-muted-strong">
               Want Deep Dive and unlimited matches?
             </p>
             <Link

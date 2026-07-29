@@ -1,6 +1,8 @@
 import "server-only";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
+import { isIP } from "node:net";
+import { getSetting, SETTING_KEYS } from "@/lib/config/settings";
 
 /**
  * Sliding-window rate limiter backed by Upstash Redis when configured.
@@ -13,27 +15,73 @@ import { Redis } from "@upstash/redis";
  *     X-Forwarded-For headers for IP-based rate limiting.
  *   - S10: the in-memory fallback map is bounded (evicts oldest 50%
  *     when it exceeds 100k entries) to prevent unbounded memory growth.
+ *
+ * Full-project fix (B3): The old code created a single Upstash
+ * Ratelimit with a hardcoded slidingWindow(1, "3 s") and ignored
+ * the max/window parameters passed to rateLimitByIp. This meant
+ * production (Upstash) was 20× more permissive than dev. Now we
+ * create separate Ratelimit instances per (max, window) policy,
+ * cached in a Map so identical policies reuse the same instance.
  */
 
-let limiter: Ratelimit | null = null;
+/** Redis client singleton (created once when Upstash is configured). */
+let redis: Redis | null = null;
 
-function getLimiter(): Ratelimit | null {
-  if (limiter) return limiter;
+/** Cache of Ratelimit instances keyed by `${max}:${window}` policy. */
+const upstashLimiters = new Map<string, Ratelimit>();
 
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+/** Default rate-limit policy: 1 action per 3 seconds. */
+const DEFAULT_MAX = 1;
+const DEFAULT_WINDOW = "3 s";
+
+/**
+ * Upstash credentials resolve through the admin dashboard first, then
+ * the environment. Async so a dashboard-set value works without a
+ * redeploy — see lib/config/settings.ts.
+ */
+async function getRedis(): Promise<Redis | null> {
+  if (redis) return redis;
+
+  const [url, token] = await Promise.all([
+    getSetting(SETTING_KEYS.upstashRedisUrl, process.env.UPSTASH_REDIS_REST_URL),
+    getSetting(
+      SETTING_KEYS.upstashRedisToken,
+      process.env.UPSTASH_REDIS_REST_TOKEN
+    ),
+  ]);
 
   if (url && token) {
-    limiter = new Ratelimit({
-      redis: new Redis({ url, token }),
-      limiter: Ratelimit.slidingWindow(1, "3 s"),
-      analytics: false,
-      prefix: "chatty",
-    });
-    return limiter;
+    redis = new Redis({ url, token });
+    return redis;
   }
-
   return null;
+}
+
+/**
+ * Returns (or creates) a Ratelimit instance for the given policy.
+ * Each unique (max, window) pair gets its own Ratelimit so that
+ * different rate-limit needs (e.g. 1/3s for actions, 5/5m for auth)
+ * are enforced correctly in production with Upstash.
+ */
+async function getUpstashLimiter(
+  max: number,
+  window: string
+): Promise<Ratelimit | null> {
+  const r = await getRedis();
+  if (!r) return null;
+
+  const key = `${max}:${window}`;
+  let limiter = upstashLimiters.get(key);
+  if (limiter) return limiter;
+
+  limiter = new Ratelimit({
+    redis: r,
+    limiter: Ratelimit.slidingWindow(max, window as never),
+    analytics: false,
+    prefix: `sweetscene:${key}`,
+  });
+  upstashLimiters.set(key, limiter);
+  return limiter;
 }
 
 /* ── in-memory fallback (per server process) ── */
@@ -80,7 +128,7 @@ function inMemoryLimit(
 export async function rateLimit(
   identifier: string
 ): Promise<boolean> {
-  const l = getLimiter();
+  const l = await getUpstashLimiter(DEFAULT_MAX, DEFAULT_WINDOW);
   if (l) {
     const { success } = await l.limit(identifier);
     return success;
@@ -95,13 +143,18 @@ export async function rateLimit(
  */
 export function getClientIp(req: Request): string {
   const headers = req.headers;
-  const cfIp = headers.get("CF-Connecting-IP");
-  if (cfIp) return cfIp.trim();
 
+  /* Cloudflare's CF-Connecting-IP is set by the edge and is not
+     client-controllable when Cloudflare is in front. */
+  const cfIp = headers.get("CF-Connecting-IP");
+  if (cfIp && isIP(cfIp.trim())) return cfIp.trim();
+
+  /* X-Forwarded-For: only trust the first (leftmost) entry — that's
+     the client. Validate it's a real IP; reject malformed values. */
   const xff = headers.get("X-Forwarded-For");
   if (xff) {
-    const firstIp = xff.split(",")[0];
-    if (firstIp) return firstIp.trim();
+    const firstIp = xff.split(",")[0]?.trim();
+    if (firstIp && isIP(firstIp)) return firstIp;
   }
 
   return "unknown";
@@ -110,14 +163,14 @@ export function getClientIp(req: Request): string {
 /**
  * IP-based rate limiter for brute-force protection (S4). Uses a
  * configurable window and max. Falls back to in-memory when Upstash
- * is not configured.
+ * is not configured. (B3 fix: now honors max/window in Upstash path.)
  */
 export async function rateLimitByIp(
   ip: string,
   max: number,
   window: string
 ): Promise<boolean> {
-  const l = getLimiter();
+  const l = await getUpstashLimiter(max, window);
   if (l) {
     const { success } = await l.limit(`ip:${ip}`);
     return success;

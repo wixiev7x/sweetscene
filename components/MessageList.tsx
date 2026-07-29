@@ -66,7 +66,7 @@ export default function MessageList({
             >
               &#x1F52E;
             </span>
-            <p className="text-gray-500 text-sm italic">
+            <p className="text-muted text-sm italic">
               The scene is about to begin...
             </p>
           </div>
@@ -84,20 +84,20 @@ export default function MessageList({
               <div key={msg.id} className="flex flex-col items-center w-full my-3">
                 {/* character label */}
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-purple-500/30 text-[10px]">&#9670;</span>
-                  <span className="text-xs text-purple-300/80 uppercase tracking-wider font-semibold">
+                  <span className="text-brand/30 text-[10px]">&#9670;</span>
+                  <span className="text-xs text-brand-lighter/80 uppercase tracking-wider font-semibold">
                     &#x1F3AD; {charName}
                   </span>
-                  <span className="text-purple-500/30 text-[10px]">&#9670;</span>
+                  <span className="text-brand/30 text-[10px]">&#9670;</span>
                 </div>
 
                 {/* bubble */}
-                <div className="max-w-[80%] px-4 py-3 bg-gradient-to-b from-purple-900/30 to-black/20 border border-purple-500/20 rounded-xl italic font-light text-gray-200 text-sm leading-relaxed transition-all duration-300">
+                <div className="max-w-[80%] px-4 py-3 bg-gradient-to-b from-brand-deep/30 to-black/20 border border-brand/20 rounded-xl italic font-light text-foreground text-sm leading-relaxed transition-all duration-300">
                   {msg.content}
                 </div>
 
                 {/* timestamp */}
-                <span className="mt-1 text-[10px] text-gray-600">
+                <span className="mt-1 text-[10px] text-muted-faint">
                   {formatTime(msg.created_at)}
                 </span>
               </div>
@@ -124,15 +124,15 @@ export default function MessageList({
               >
                 {mine ? (
                   <>
-                    <span className="text-xs text-purple-300/70 font-medium">
+                    <span className="text-xs text-brand-lighter/70 font-medium">
                       You
                     </span>
-                    <span className="block w-6 h-6 rounded-full bg-purple-500/40 border border-purple-400/30" />
+                    <span className="block w-6 h-6 rounded-full bg-brand/40 border border-brand-light/30" />
                   </>
                 ) : (
                   <>
                     <span className="block w-6 h-6 rounded-full bg-pink-500/40 border border-pink-400/30" />
-                    <span className="text-xs text-gray-400 font-medium">
+                    <span className="text-xs text-muted-strong font-medium">
                       {otherName}
                     </span>
                   </>
@@ -144,8 +144,8 @@ export default function MessageList({
                 className={[
                   "max-w-[75%] px-4 py-3 text-sm leading-relaxed transition-all duration-300",
                   mine
-                    ? "bg-gradient-to-br from-purple-600/80 to-pink-600/80 text-white rounded-2xl rounded-br-sm"
-                    : "bg-white/10 text-gray-100 rounded-2xl rounded-bl-sm",
+                    ? "bg-gradient-to-br from-brand-dark/80 to-pink-600/80 text-white rounded-2xl rounded-br-sm"
+                    : "bg-white/10 text-foreground rounded-2xl rounded-bl-sm",
                 ].join(" ")}
               >
                 {msg.content}
@@ -154,7 +154,7 @@ export default function MessageList({
               {/* timestamp */}
               <span
                 className={[
-                  "mt-1 text-[10px] text-gray-500",
+                  "mt-1 text-[10px] text-muted",
                   mine ? "text-right" : "text-left",
                 ].join(" ")}
               >

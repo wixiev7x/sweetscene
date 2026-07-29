@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { SiteNav } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import {
   createCharacter,
@@ -27,7 +28,7 @@ const SCENARIO_TAGS = [
 ];
 
 const GRADIENTS = [
-  ["from-purple-500", "to-pink-500"],
+  ["from-brand", "to-pink-500"],
   ["from-blue-500", "to-cyan-500"],
   ["from-amber-500", "to-red-500"],
   ["from-green-500", "to-teal-500"],
@@ -43,7 +44,7 @@ function hashGradient(name: string): number {
 function getCharCountClass(len: number, max: number): string {
   if (len >= max) return "text-red-400";
   if (len >= max * 0.9) return "text-amber-400";
-  return "text-gray-600";
+  return "text-muted-faint";
 }
 
 type Visibility = "private" | "unlisted" | "public";
@@ -68,6 +69,16 @@ export default function CreateCharacterPage() {
   const [isNsfw, setIsNsfw] = useState(false);
   const [visibility, setVisibility] = useState<Visibility>("private");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  /* Phase 8A — new character fields. */
+  const [shortDescription, setShortDescription] = useState("");
+  const [fullPersonality, setFullPersonality] = useState("");
+  const [backstory, setBackstory] = useState("");
+  const [customTags, setCustomTags] = useState<string[]>([]);
+  const [customTagInput, setCustomTagInput] = useState("");
+  const [category, setCategory] = useState<
+    "companion" | "roleplay" | "adventure" | "romance" | "assistant" | "other"
+  >("other");
+  const [avatarPrompt, setAvatarPrompt] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
@@ -137,15 +148,18 @@ export default function CreateCharacterPage() {
   }
 
   async function handleGenerateAvatar() {
-    if (!name.trim() || !userPrompt.trim()) {
-      setError("Fill in name and description first to generate an avatar.");
+    /* Phase 8A: use the free-form avatar prompt field if the user
+       filled it in; otherwise fall back to the character prompt. */
+    const promptSource = avatarPrompt.trim() || fullPersonality.trim() || userPrompt.trim();
+    if (!name.trim() || !promptSource) {
+      setError("Fill in name and a description or avatar prompt first.");
       return;
     }
     setGeneratingAvatar(true);
     setError("");
     const result = await generateCharacterAvatar(
       name.trim(),
-      userPrompt.trim(),
+      promptSource,
       isNsfw
     );
     if ("error" in result) {
@@ -239,6 +253,12 @@ export default function CreateCharacterPage() {
       alternate_greetings: alternateGreetings.map((g) => g.trim()).filter(Boolean),
       visibility,
       avatar_url: avatarUrl,
+      /* Phase 8A — new fields. */
+      short_description: shortDescription.trim() || undefined,
+      full_personality: fullPersonality.trim() || undefined,
+      backstory: backstory.trim() || undefined,
+      tags: customTags,
+      category,
     });
 
     if ("error" in result) {
@@ -263,6 +283,14 @@ export default function CreateCharacterPage() {
     setIsNsfw(false);
     setVisibility("private");
     setAvatarUrl(null);
+    /* Phase 8A — reset new fields. */
+    setShortDescription("");
+    setFullPersonality("");
+    setBackstory("");
+    setCustomTags([]);
+    setCustomTagInput("");
+    setCategory("other");
+    setAvatarPrompt("");
     setSuccess(false);
     setCreatedId(null);
     setError("");
@@ -275,28 +303,18 @@ export default function CreateCharacterPage() {
     <div className="min-h-screen bg-black text-white">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(88,28,135,0.08)_0%,transparent_50%)]" />
 
-      <nav className="sticky top-0 z-10 border-b border-white/5 backdrop-blur-md bg-black/40 px-6 py-4 flex items-center justify-between">
-        <Link href="/" className="text-xl font-bold text-purple-400 hover:text-purple-300 transition-colors">
-          chatty
-        </Link>
-        <div className="flex items-center gap-6">
-          <Link href="/lobby" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">Lobby</Link>
-          <Link href="/characters" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">Characters</Link>
-          <Link href="/characters/my" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">Mine</Link>
-          <Link href="/profile" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">Profile</Link>
-        </div>
-      </nav>
+      <SiteNav />
 
       <div className="max-w-2xl mx-auto px-6 pt-12 pb-8">
-        <h1 className="text-3xl font-light text-gray-200 tracking-wide">
+        <h1 className="text-3xl font-light text-foreground tracking-wide">
           Create a Character
         </h1>
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-sm text-muted mt-2">
           Design an AI personality. The backend wraps your prompt with
           platform instructions — you control the character; we handle
           the behavior.
         </p>
-        <p className="text-xs text-gray-600 mt-2 italic max-w-md">
+        <p className="text-xs text-muted-faint mt-2 italic max-w-md">
           Compatible with the Chara v2 card format. Import a card from
           Janitor/SpicyChat, or export yours to take elsewhere.
         </p>
@@ -308,27 +326,27 @@ export default function CreateCharacterPage() {
           <div className="flex flex-col items-center text-center bg-white/5 border border-white/10 rounded-3xl p-10">
             <span className="block text-5xl mb-4">🎉</span>
             <h2 className="text-2xl font-light text-white">Character Saved!</h2>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-muted mt-2">
               Your character is now stored. Play it solo or list it for the
               community.
             </p>
             <div className="flex flex-col items-center gap-3 mt-8 w-full">
               <Link
                 href={`/play/${createdId}`}
-                className="block w-full text-center px-8 py-3 rounded-xl font-medium text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 active:scale-95 transform transition-all"
+                className="block w-full text-center px-8 py-3 rounded-xl font-medium text-white bg-gradient-to-r from-brand-dark to-pink-600 hover:from-brand hover:to-pink-500 active:scale-95 transform transition-all"
               >
                 Play Solo →
               </Link>
               <Link
                 href={`/characters/${createdId}`}
-                className="block w-full text-center px-8 py-3 rounded-xl font-medium text-gray-300 bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+                className="block w-full text-center px-8 py-3 rounded-xl font-medium text-foreground-dim bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
               >
                 View Character
               </Link>
               <button
                 type="button"
                 onClick={handleReset}
-                className="w-full px-8 py-3 rounded-xl font-medium text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 hover:text-gray-300 active:scale-95 transform transition-all"
+                className="w-full px-8 py-3 rounded-xl font-medium text-muted-strong bg-white/5 border border-white/10 hover:bg-white/10 hover:text-foreground-dim active:scale-95 transform transition-all"
               >
                 Create Another
               </button>
@@ -345,11 +363,11 @@ export default function CreateCharacterPage() {
 
           {/* ── IMPORT CARD ── */}
           <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">
+            <p className="text-xs text-muted uppercase tracking-wider mb-2">
               Import Existing Card
             </p>
             <div className="flex items-center gap-3">
-              <label className="flex-1 cursor-pointer bg-white/5 border border-white/10 text-gray-300 text-sm px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all text-center">
+              <label className="flex-1 cursor-pointer bg-white/5 border border-white/10 text-foreground-dim text-sm px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all text-center">
                 {importing ? "Importing…" : "↑ Upload .json card"}
                 <input
                   type="file"
@@ -359,7 +377,7 @@ export default function CreateCharacterPage() {
                   disabled={importing}
                 />
               </label>
-              <span className="text-xs text-gray-600">Chara v2 / Pillowcase</span>
+              <span className="text-xs text-muted-faint">Chara v2 / Pillowcase</span>
             </div>
           </div>
 
@@ -371,7 +389,7 @@ export default function CreateCharacterPage() {
               onChange={(e) => setName(e.target.value)}
               maxLength={50}
               placeholder="e.g. Shy Librarian"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
             />
             <CharCounter len={name.length} max={50} />
           </Field>
@@ -387,7 +405,7 @@ export default function CreateCharacterPage() {
               maxLength={2000}
               rows={5}
               placeholder="Describe your character's personality…"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all resize-none min-h-[120px] max-h-[300px]"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none min-h-[120px] max-h-[300px]"
             />
             <CharCounter len={userPrompt.length} max={2000} />
           </Field>
@@ -402,9 +420,9 @@ export default function CreateCharacterPage() {
               value={personalityText}
               onChange={(e) => setPersonalityText(e.target.value)}
               placeholder="shy, witty, dominant"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
             />
-            <p className="text-xs text-gray-600 mt-1">
+            <p className="text-xs text-muted-faint mt-1">
               {personalityText.split(/[,;\n]/).filter((t) => t.trim().length > 0).length}/8 traits
             </p>
           </Field>
@@ -417,7 +435,7 @@ export default function CreateCharacterPage() {
               maxLength={500}
               rows={3}
               placeholder="Oh… I didn't expect anyone in this aisle. Can I help you find something?"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all resize-none"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none"
             />
             <CharCounter len={firstMessage.length} max={500} />
           </Field>
@@ -430,7 +448,7 @@ export default function CreateCharacterPage() {
               maxLength={2000}
               rows={5}
               placeholder={`{{user}}: Hi.\n{{char}}: *looks up, blushing* O-oh. Hello. Did you need… a book?`}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all resize-none min-h-[120px] max-h-[300px]"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none min-h-[120px] max-h-[300px]"
             />
             <CharCounter len={exampleDialog.length} max={2000} />
           </Field>
@@ -449,7 +467,7 @@ export default function CreateCharacterPage() {
                     onChange={(e) => updateAlternateGreeting(i, e.target.value)}
                     maxLength={500}
                     placeholder={`Greeting ${i + 1}`}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 transition-all text-sm"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 transition-all text-sm"
                   />
                   <button
                     type="button"
@@ -464,11 +482,156 @@ export default function CreateCharacterPage() {
                 <button
                   type="button"
                   onClick={addAlternateGreeting}
-                  className="self-start text-sm text-purple-400 hover:text-purple-300 transition-colors mt-1"
+                  className="self-start text-sm text-brand-light hover:text-brand-lighter transition-colors mt-1"
                 >
                   + Add greeting
                 </button>
               )}
+            </div>
+          </Field>
+
+          {/* ── PHASE 8A: SHORT DESCRIPTION ── */}
+          <Field label="Short Description" hint="One line shown on cards. Max 200 chars. e.g. 'A shy librarian who writes romance novels.'">
+            <input
+              type="text"
+              value={shortDescription}
+              onChange={(e) => setShortDescription(e.target.value)}
+              maxLength={200}
+              placeholder="A shy librarian who secretly writes romance novels…"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
+            />
+            <CharCounter len={shortDescription.length} max={200} />
+          </Field>
+
+          {/* ── PHASE 8A: FULL PERSONALITY ── */}
+          <Field label="Full Personality" hint="How the character talks, behaves, tone, quirks, speech patterns. Max 3000 chars.">
+            <textarea
+              value={fullPersonality}
+              onChange={(e) => setFullPersonality(e.target.value)}
+              maxLength={3000}
+              rows={5}
+              placeholder="Speaks softly, often trailing off mid-sentence. Stammers when nervous. Observant — notices small details about people. Uses literary references. Warm but guarded…"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none min-h-[120px] max-h-[300px]"
+            />
+            <CharCounter len={fullPersonality.length} max={3000} />
+          </Field>
+
+          {/* ── PHASE 8A: BACKSTORY ── */}
+          <Field label="Backstory" hint="Who the character is, their background and lore. Max 3000 chars.">
+            <textarea
+              value={backstory}
+              onChange={(e) => setBackstory(e.target.value)}
+              maxLength={3000}
+              rows={5}
+              placeholder="Grew up in a coastal town. Moved to the city for university. Works at the public library. Lost a sibling young — never talks about it…"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none min-h-[120px] max-h-[300px]"
+            />
+            <CharCounter len={backstory.length} max={3000} />
+          </Field>
+
+          {/* ── PHASE 8A: CHAR TAGS (new system) ── */}
+          <Field label="Tags" hint="Help users discover your character. Pick from suggestions or type custom. Up to 10.">
+            <div className="flex flex-wrap gap-2">
+              {["flirty", "funny", "serious", "shy", "dominant", "caring", "mysterious", "anime", "fantasy", "realistic"].map((t) => {
+                const sel = customTags.includes(t);
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => {
+                      if (sel) {
+                        setCustomTags(customTags.filter((x) => x !== t));
+                      } else if (customTags.length < 10) {
+                        setCustomTags([...customTags, t]);
+                      }
+                    }}
+                    className={[
+                      "px-3 py-1.5 rounded-full text-sm border transition-all capitalize",
+                      sel
+                        ? "border-brand/50 bg-brand/10 text-brand-lighter"
+                        : "border-white/10 bg-white/5 text-muted-strong hover:border-white/20",
+                    ].join(" ")}
+                  >
+                    {t}
+                  </button>
+                );
+              })}
+              {/* custom tags already added */}
+              {customTags
+                .filter((t) => !["flirty","funny","serious","shy","dominant","caring","mysterious","anime","fantasy","realistic"].includes(t))
+                .map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm border border-pink-500/30 bg-pink-500/10 text-pink-300"
+                  >
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => setCustomTags(customTags.filter((x) => x !== t))}
+                      className="text-xs hover:text-red-400"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))}
+            </div>
+            {/* add custom tag */}
+            {customTags.length < 10 && (
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="text"
+                  value={customTagInput}
+                  onChange={(e) => setCustomTagInput(e.target.value)}
+                  maxLength={20}
+                  placeholder="add custom tag…"
+                  className="w-40 bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white placeholder-muted focus:outline-none focus:ring-1 focus:ring-brand/50"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && customTagInput.trim()) {
+                      e.preventDefault();
+                      const v = customTagInput.trim().toLowerCase();
+                      if (!customTags.includes(v)) {
+                        setCustomTags([...customTags, v]);
+                      }
+                      setCustomTagInput("");
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const v = customTagInput.trim().toLowerCase();
+                    if (v && !customTags.includes(v)) {
+                      setCustomTags([...customTags, v]);
+                    }
+                    setCustomTagInput("");
+                  }}
+                  className="text-xs text-brand-light hover:text-brand-lighter transition-colors"
+                >
+                  + add
+                </button>
+              </div>
+            )}
+            <p className="text-xs text-muted-faint mt-1">({customTags.length}/10 tags)</p>
+          </Field>
+
+          {/* ── PHASE 8A: CATEGORY ── */}
+          <Field label="Category" hint="What kind of character is this?">
+            <div className="flex flex-wrap gap-2">
+              {(["companion","roleplay","adventure","romance","assistant","other"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategory(c)}
+                  className={[
+                    "flex-1 min-w-[100px] px-4 py-2.5 rounded-xl text-sm capitalize border transition-all",
+                    category === c
+                      ? "border-brand/50 bg-brand/10 text-brand-lighter"
+                      : "border-white/10 bg-white/5 text-muted-strong hover:border-white/20",
+                  ].join(" ")}
+                >
+                  {c}
+                </button>
+              ))}
             </div>
           </Field>
 
@@ -485,8 +648,8 @@ export default function CreateCharacterPage() {
                     className={[
                       "px-3 py-1.5 rounded-full text-sm border transition-all duration-200 capitalize",
                       sel
-                        ? "border-purple-500/50 bg-purple-500/10 text-purple-300"
-                        : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20",
+                        ? "border-brand/50 bg-brand/10 text-brand-lighter"
+                        : "border-white/10 bg-white/5 text-muted-strong hover:border-white/20",
                     ].join(" ")}
                   >
                     {tag.replace(/_/g, " ")}
@@ -494,7 +657,7 @@ export default function CreateCharacterPage() {
                 );
               })}
             </div>
-            <p className="text-xs text-gray-600 mt-2">({selectedTags.length}/5 selected)</p>
+            <p className="text-xs text-muted-faint mt-2">({selectedTags.length}/5 selected)</p>
           </Field>
 
           {/* ── NSFW ── */}
@@ -506,7 +669,7 @@ export default function CreateCharacterPage() {
               className={[
                 "relative w-12 h-6 rounded-full transition-all duration-300",
                 !profile?.is_vip ? "opacity-50 cursor-not-allowed" : "",
-                isNsfw ? "bg-gradient-to-r from-purple-600 to-pink-600" : "bg-gray-700",
+                isNsfw ? "bg-gradient-to-r from-brand-dark to-pink-600" : "bg-surface-raised",
               ].join(" ")}
             >
               <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-300 ${isNsfw ? "left-7" : "left-0.5"}`} />
@@ -524,8 +687,8 @@ export default function CreateCharacterPage() {
                   className={[
                     "flex-1 px-4 py-2.5 rounded-xl text-sm capitalize border transition-all",
                     visibility === v
-                      ? "border-purple-500/50 bg-purple-500/10 text-purple-300"
-                      : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20",
+                      ? "border-brand/50 bg-brand/10 text-brand-lighter"
+                      : "border-white/10 bg-white/5 text-muted-strong hover:border-white/20",
                   ].join(" ")}
                 >
                   {v}
@@ -535,7 +698,7 @@ export default function CreateCharacterPage() {
           </Field>
 
           {/* ── AVATAR ── */}
-          <Field label="Avatar" hint="Generate a tasteful SFW portrait. Pollinations, free, no key needed.">
+          <Field label="Avatar" hint="Type a description to AI-generate a tasteful SFW portrait, or upload your own later. Pollinations, free.">
             <div className="flex items-center gap-4">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -550,8 +713,8 @@ export default function CreateCharacterPage() {
               <button
                 type="button"
                 onClick={handleGenerateAvatar}
-                disabled={generatingAvatar || !name.trim() || !userPrompt.trim()}
-                className="px-5 py-2.5 rounded-xl text-sm bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={generatingAvatar || !name.trim()}
+                className="px-5 py-2.5 rounded-xl text-sm bg-white/5 border border-white/10 text-foreground-dim hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {generatingAvatar ? "Painting…" : "🎨 Generate Avatar"}
               </button>
@@ -559,12 +722,21 @@ export default function CreateCharacterPage() {
                 <button
                   type="button"
                   onClick={() => setAvatarUrl(null)}
-                  className="text-xs text-gray-500 hover:text-red-400 transition-colors"
+                  className="text-xs text-muted hover:text-red-400 transition-colors"
                 >
                   remove
                 </button>
               )}
             </div>
+            {/* Phase 8A: free-form avatar prompt. */}
+            <input
+              type="text"
+              value={avatarPrompt}
+              onChange={(e) => setAvatarPrompt(e.target.value)}
+              maxLength={300}
+              placeholder="Avatar prompt: e.g. 'red haired anime girl, green eyes, shy smile'"
+              className="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-muted focus:outline-none focus:ring-1 focus:ring-brand/50"
+            />
           </Field>
 
           {/* ── SUBMIT ── */}
@@ -576,8 +748,8 @@ export default function CreateCharacterPage() {
               className={[
                 "w-full py-4 rounded-xl font-medium text-lg transition-all duration-300",
                 submitting
-                  ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-500 hover:to-pink-500 active:scale-95",
+                  ? "bg-line-strong text-muted-strong cursor-not-allowed"
+                  : "bg-gradient-to-r from-brand-dark to-pink-600 text-white hover:from-brand hover:to-pink-500 active:scale-95",
               ].join(" ")}
             >
               {submitting ? "Creating…" : "Create Character →"}
@@ -600,8 +772,8 @@ function Field({
 }) {
   return (
     <div>
-      <label className="text-sm font-medium text-gray-300">{label}</label>
-      {hint && <p className="text-xs text-gray-600 mb-2">{hint}</p>}
+      <label className="text-sm font-medium text-foreground-dim">{label}</label>
+      {hint && <p className="text-xs text-muted-faint mb-2">{hint}</p>}
       {children}
     </div>
   );

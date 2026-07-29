@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useMounted } from "@/lib/utils/useMounted";
+import { Spinner } from "@/components/ui";
 import ChatBox from "@/components/ChatBox";
 import MessageList from "@/components/MessageList";
 import {
@@ -15,6 +16,9 @@ import {
   submitCharacterRating,
   regenerateGreeting,
 } from "@/lib/actions/solo";
+import { createTokenOrder } from "@/lib/actions/billing";
+import { TOKEN_PACKAGES } from "@/lib/billing/constants";
+import { SOLO_TOKEN_BUDGET as TOKEN_BUDGET } from "@/lib/config/constants";
 
 /* ── local types (MessageList does not export ChatMessage) ── */
 type ChatMessage = {
@@ -45,7 +49,7 @@ type SoloMessage = {
 };
 
 const GRADIENTS = [
-  ["from-purple-500", "to-pink-500"],
+  ["from-brand", "to-pink-500"],
   ["from-blue-500", "to-cyan-500"],
   ["from-amber-500", "to-red-500"],
   ["from-green-500", "to-teal-500"],
@@ -58,7 +62,6 @@ function hashGradient(name: string): number {
   return sum % GRADIENTS.length;
 }
 
-const TOKEN_BUDGET = 5000;
 const RATING_THRESHOLD = 20;
 
 /**
@@ -105,6 +108,10 @@ export default function PlayPage() {
   const [showRating, setShowRating] = useState(false);
   const [greetingIndex, setGreetingIndex] = useState(0);
   const [hasRated, setHasRated] = useState(false);
+  /* Phase 8A: paywall when out of tokens. */
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [topUpQty, setTopUpQty] = useState(10000);
+  const [topUpLoading, setTopUpLoading] = useState(false);
   const mounted = useMounted();
 
   /* ── load or resume session on mount ── */
@@ -148,7 +155,7 @@ export default function PlayPage() {
     if (!character || !sessionId) return;
 
     if (tokensUsed >= TOKEN_BUDGET) {
-      setError("Token budget exhausted for this session");
+      setShowPaywall(true);
       return;
     }
 
@@ -172,7 +179,13 @@ export default function PlayPage() {
 
       if ("error" in result) {
         setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
-        setError(result.error);
+        /* Server-side token deduction may fail even when the client
+           thinks there's budget left (race or concurrent tab). */
+        if (result.error.toLowerCase().includes("token")) {
+          setShowPaywall(true);
+        } else {
+          setError(result.error);
+        }
         return;
       }
 
@@ -283,6 +296,18 @@ export default function PlayPage() {
     setShowRating(true);
   }
 
+  /* ── top up tokens: redirect to NOWPayments checkout ── */
+  async function handleTopUp() {
+    setTopUpLoading(true);
+    const result = await createTokenOrder(topUpQty);
+    setTopUpLoading(false);
+    if ("error" in result) {
+      setError(result.error);
+    } else {
+      window.location.assign(result.invoiceUrl);
+    }
+  }
+
   /* ── progress bar ── */
   function budgetPercent(): number {
     const pct = (tokensUsed / TOKEN_BUDGET) * 100;
@@ -295,8 +320,8 @@ export default function PlayPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <div className="w-8 h-8 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
-        <p className="text-gray-500 text-sm">Loading character...</p>
+        <Spinner />
+        <p className="text-muted text-sm">Loading character...</p>
       </div>
     );
   }
@@ -305,12 +330,12 @@ export default function PlayPage() {
   if (!character) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <p className="text-gray-500 text-sm">
+        <p className="text-muted text-sm">
           {error || "Character not found"}
         </p>
         <Link
           href="/characters"
-          className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
+          className="text-sm text-brand-light hover:text-brand-lighter transition-colors"
         >
           &larr; Back to Characters
         </Link>
@@ -339,7 +364,7 @@ export default function PlayPage() {
           <div className="flex items-center gap-3 min-w-0">
             <Link
               href="/characters"
-              className="text-sm text-gray-500 hover:text-gray-300 transition-colors shrink-0"
+              className="text-sm text-muted hover:text-foreground-dim transition-colors shrink-0"
             >
               &larr; Characters
             </Link>
@@ -367,7 +392,7 @@ export default function PlayPage() {
                 {character.scenario_tags.slice(0, 3).map((tag) => (
                   <span
                     key={tag}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-gray-500 capitalize"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-muted capitalize"
                   >
                     {tag.replace(/_/g, " ")}
                   </span>
@@ -384,13 +409,13 @@ export default function PlayPage() {
           {/* right */}
           <div className="flex items-center gap-4 shrink-0">
             <div className="hidden sm:flex flex-col items-end">
-              <span className="text-sm text-purple-400 font-medium">
+              <span className="text-sm text-brand-light font-medium">
                 &#9670; {tokensUsed.toLocaleString()} /{" "}
                 {TOKEN_BUDGET.toLocaleString()}
               </span>
               <div className="w-24 h-1 rounded-full bg-white/10 mt-1">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-brand to-pink-500 transition-all duration-500"
                   style={{ width: `${budgetPercent()}%` }}
                 />
               </div>
@@ -401,14 +426,14 @@ export default function PlayPage() {
                 type="button"
                 onClick={handleEndSession}
                 disabled={hasRated || messages.length === 0}
-                className="text-xs text-gray-500 hover:text-gray-300 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="text-xs text-muted hover:text-foreground-dim px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 End Session
               </button>
               <button
                 type="button"
                 onClick={handleClear}
-                className="text-xs text-gray-500 hover:text-gray-300 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
+                className="text-xs text-muted hover:text-foreground-dim px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
               >
                 Clear Chat
               </button>
@@ -440,14 +465,14 @@ export default function PlayPage() {
               <h2 className="text-2xl font-light text-white mt-4">
                 {character.name}
               </h2>
-              <p className="text-sm text-gray-500 mt-2 max-w-sm mx-auto leading-relaxed">
+              <p className="text-sm text-muted mt-2 max-w-sm mx-auto leading-relaxed">
                 {character.user_prompt}
               </p>
-              <p className="text-xs text-gray-600 mt-6 italic">
+              <p className="text-xs text-muted-faint mt-6 italic">
                 Start chatting with {character.name}. This is a private
                 practice session — your history is saved.
               </p>
-              <span className="block text-2xl text-purple-500/30 mt-4">
+              <span className="block text-2xl text-brand/30 mt-4">
                 &darr;
               </span>
             </div>
@@ -463,7 +488,7 @@ export default function PlayPage() {
           <button
             type="button"
             onClick={handleRegenerateGreeting}
-            className="text-xs text-purple-400 hover:text-purple-300 px-3 py-1.5 rounded-lg border border-purple-500/20 bg-purple-500/5 hover:bg-purple-500/10 transition-all"
+            className="text-xs text-brand-light hover:text-brand-lighter px-3 py-1.5 rounded-lg border border-brand/20 bg-brand/5 hover:bg-brand/10 transition-all"
           >
             &#x1F504; Regenerate greeting
           </button>
@@ -474,7 +499,7 @@ export default function PlayPage() {
       {showRating && (
         <div className="relative z-10 py-3 px-6 bg-gradient-to-t from-black/90 to-transparent">
           <div className="max-w-md mx-auto bg-white/5 border border-white/10 rounded-2xl p-4 text-center">
-            <p className="text-sm text-gray-300 mb-3">
+            <p className="text-sm text-foreground-dim mb-3">
               Did this character feel alive?
             </p>
             <div className="flex items-center justify-center gap-6">
@@ -498,10 +523,67 @@ export default function PlayPage() {
             <button
               type="button"
               onClick={() => setShowRating(false)}
-              className="text-xs text-gray-600 hover:text-gray-400 mt-2 transition-colors"
+              className="text-xs text-muted-faint hover:text-muted-strong mt-2 transition-colors"
             >
               Not now
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── PAYWALL MODAL ── */}
+      {showPaywall && (
+        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
+            <span className="block text-4xl mb-4">&#x1F4B0;</span>
+            <h2 className="text-xl font-light text-white">
+              You&apos;re out of tokens
+            </h2>
+            <p className="text-sm text-muted mt-2">
+              Top up to keep chatting with {character.name}.
+            </p>
+
+            {/* Top Up controls */}
+            <div className="mt-6 space-y-3">
+              <div className="flex items-center justify-center gap-3">
+                <label className="text-sm text-muted-strong">Tokens:</label>
+                <select
+                  value={topUpQty}
+                  onChange={(e) => setTopUpQty(Number(e.target.value))}
+                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+                >
+                  {TOKEN_PACKAGES.map((pkg) => (
+                    <option key={pkg.id} value={pkg.tokens}>
+                      {pkg.tokens.toLocaleString()} — ${pkg.priceUsd}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                type="button"
+                onClick={handleTopUp}
+                disabled={topUpLoading}
+                className="w-full bg-gradient-to-r from-brand-dark to-pink-600 text-white font-medium py-3 rounded-xl hover:from-brand hover:to-pink-500 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {topUpLoading ? "Loading..." : "Top Up \u2192"}
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center gap-3 mt-6">
+              <Link
+                href="/characters"
+                className="text-sm text-muted hover:text-foreground-dim transition-colors"
+              >
+                Back to Characters
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowPaywall(false)}
+                className="text-sm text-muted hover:text-foreground-dim transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useMounted } from "@/lib/utils/useMounted";
 import { containsBlockedTerm, sanitizeAndScrub } from "@/lib/utils/safety";
 import { sendDMMessage, getMatchMessages, decryptMessageContent, reportConversation } from "@/lib/actions/messages";
+import { blockUser } from "@/lib/actions/blocks";
+import { Spinner } from "@/components/ui";
 import ChatBox from "@/components/ChatBox";
 import MessageList from "@/components/MessageList";
 
@@ -57,6 +59,12 @@ export default function DMPage() {
   const [error, setError] = useState("");
   const [reporting, setReporting] = useState(false);
   const [showReportBox, setShowReportBox] = useState(false);
+
+  /* Blocking, post-reveal. Same silent semantics as in a scene: the
+     blocked user is never told, and claim_match will not pair you again. */
+  const [blockTargetId, setBlockTargetId] = useState<string | null>(null);
+  const [blocking, setBlocking] = useState(false);
+  const [blocked, setBlocked] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportMsg, setReportMsg] = useState("");
   const mounted = useMounted();
@@ -111,6 +119,7 @@ export default function DMPage() {
       const partnerId =
         m.user_a === user.id ? m.user_b : m.user_a;
       if (partnerId) {
+        setBlockTargetId(partnerId);
         const { data: pp } = await supabase
           .from("profiles")
           .select("anonymous_username, anonymous_pfp_url")
@@ -245,7 +254,14 @@ export default function DMPage() {
 
     /* Phase 7: send via sendDMMessage (verifies revealed + refuses media).
        DMs cost 0 tokens. */
-    const result = await sendDMMessage(matchId, scrubbed);
+    let result;
+    try {
+      result = await sendDMMessage(matchId, scrubbed);
+    } catch {
+      setError("Network error. Try again.");
+      setSending(false);
+      return;
+    }
 
     if ("error" in result) {
       setError(result.error);
@@ -268,6 +284,19 @@ export default function DMPage() {
     }
 
     setSending(false);
+  }
+
+  async function handleBlock() {
+    if (!blockTargetId || blocking || blocked) return;
+    setBlocking(true);
+    const result = await blockUser(blockTargetId);
+    setBlocking(false);
+    if ("error" in result) {
+      setReportMsg(result.error);
+      return;
+    }
+    setBlocked(true);
+    setReportMsg("Blocked. You won't be matched again.");
   }
 
   /* ── Phase 7: report conversation ── */
@@ -295,8 +324,8 @@ export default function DMPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <div className="w-8 h-8 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
-        <p className="text-gray-500 text-sm">
+        <Spinner />
+        <p className="text-muted text-sm">
           Loading conversation...
         </p>
       </div>
@@ -310,16 +339,16 @@ export default function DMPage() {
         <span className="text-4xl text-yellow-500/50 mb-4">
           &#9888;
         </span>
-        <p className="text-gray-400 text-center">
+        <p className="text-muted-strong text-center">
           This conversation hasn&apos;t been revealed yet.
         </p>
-        <p className="text-gray-600 text-sm text-center mt-2 max-w-sm">
+        <p className="text-muted-faint text-sm text-center mt-2 max-w-sm">
           Both users must agree to reveal before accessing the DM
           room.
         </p>
         <Link
           href="/lobby"
-          className="text-purple-400 text-sm hover:text-purple-300 transition-colors mt-4"
+          className="text-brand-light text-sm hover:text-brand-lighter transition-colors mt-4"
         >
           &larr; Back to Lobby
         </Link>
@@ -331,18 +360,18 @@ export default function DMPage() {
   if (match && match.is_ai_match) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6">
-        <span className="text-4xl text-gray-500/50 mb-4">
+        <span className="text-4xl text-muted/50 mb-4">
           &#x1F916;
         </span>
-        <p className="text-gray-400 text-center">
+        <p className="text-muted-strong text-center">
           AI matches don&apos;t have DM rooms.
         </p>
-        <p className="text-gray-600 text-sm text-center mt-2 max-w-sm">
+        <p className="text-muted-faint text-sm text-center mt-2 max-w-sm">
           The AI was your partner. There&apos;s no one to DM.
         </p>
         <Link
           href="/lobby"
-          className="text-purple-400 text-sm hover:text-purple-300 transition-colors mt-4"
+          className="text-brand-light text-sm hover:text-brand-lighter transition-colors mt-4"
         >
           &larr; Find a Human Match
         </Link>
@@ -353,7 +382,7 @@ export default function DMPage() {
   if (!match || !partnerProfile) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-gray-500 text-sm">
+        <p className="text-muted text-sm">
           {error || "Match not found."}
         </p>
       </div>
@@ -372,7 +401,7 @@ export default function DMPage() {
           <div className="flex items-center gap-3 min-w-0">
             <Link
               href="/lobby"
-              className="text-sm text-gray-500 hover:text-gray-300 transition-colors shrink-0"
+              className="text-sm text-muted hover:text-foreground-dim transition-colors shrink-0"
             >
               &larr; Lobby
             </Link>
@@ -400,11 +429,11 @@ export default function DMPage() {
                 <p className="text-sm font-medium text-white truncate">
                   {partnerProfile.anonymous_username}
                 </p>
-                <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                <span className="shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-brand/10 text-brand-light border border-brand/20">
                   &#9670; Revealed
                 </span>
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted">
                 You both chose to reveal
               </p>
             </div>
@@ -412,14 +441,14 @@ export default function DMPage() {
 
           {/* right */}
           <div className="flex items-center gap-3 shrink-0">
-            <p className="hidden sm:block text-xs text-gray-600 italic">
+            <p className="hidden sm:block text-xs text-muted-faint italic">
               No AI &bull; No Token Limit
             </p>
             {/* Phase 7: report conversation button */}
             <button
               type="button"
               onClick={() => setShowReportBox((v) => !v)}
-              className="text-xs text-gray-500 hover:text-red-400 transition-colors px-2 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-red-500/5"
+              className="text-xs text-muted hover:text-red-400 transition-colors px-2 py-1 rounded-lg border border-white/10 bg-white/5 hover:bg-red-500/5"
             >
               &#9873; Report
             </button>
@@ -430,7 +459,7 @@ export default function DMPage() {
       {/* ── Phase 7: Report panel ── */}
       {showReportBox && (
         <div className="relative z-10 px-6 py-3 border-b border-white/5 bg-red-500/5">
-          <p className="text-xs text-gray-400 mb-2">
+          <p className="text-xs text-muted-strong mb-2">
             Report this conversation for moderation. The last 100 messages will be
             decrypted and sent to our team.
           </p>
@@ -440,7 +469,7 @@ export default function DMPage() {
             rows={2}
             maxLength={500}
             placeholder="Why are you reporting? (e.g. harassment, doxxing, illegal content)"
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:ring-1 focus:ring-red-500/40 resize-none"
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-foreground-dim placeholder-muted-faint focus:outline-none focus:ring-1 focus:ring-red-500/40 resize-none"
           />
           <div className="flex items-center gap-3 mt-2">
             <button
@@ -451,23 +480,33 @@ export default function DMPage() {
             >
               {reporting ? "Submitting..." : "Submit Report"}
             </button>
+            {blockTargetId && (
+              <button
+                type="button"
+                onClick={handleBlock}
+                disabled={blocking || blocked}
+                className="text-xs bg-white/5 border border-white/10 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-foreground-dim transition-all disabled:opacity-50"
+              >
+                {blocked ? "Blocked" : blocking ? "Blocking..." : "Block user"}
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setShowReportBox(false)}
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+              className="text-xs text-muted-faint hover:text-muted-strong transition-colors"
             >
               Cancel
             </button>
             {reportMsg && (
-              <span className="text-xs text-gray-500 italic">{reportMsg}</span>
+              <span className="text-xs text-muted italic">{reportMsg}</span>
             )}
           </div>
         </div>
       )}
 
       {/* ── DECORATIVE BANNER ── */}
-      <div className="relative z-0 py-2 px-6 bg-gradient-to-r from-transparent via-purple-500/5 to-transparent border-b border-white/5">
-        <p className="text-xs text-gray-500 italic tracking-wide text-center">
+      <div className="relative z-0 py-2 px-6 bg-gradient-to-r from-transparent via-brand/5 to-transparent border-b border-white/5">
+        <p className="text-xs text-muted italic tracking-wide text-center">
           The fog has lifted. You&apos;re now chatting freely.
         </p>
       </div>

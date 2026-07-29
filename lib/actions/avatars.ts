@@ -4,6 +4,29 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/ratelimit";
 
+/* ════════════════════════════════════════════════════════════════════
+ * Phase 8A — Character avatar generation.
+ *
+ * Two paths to an avatar URL:
+ *   1. AI-generated: the user writes a free-form prompt (e.g.
+ *      "red haired anime girl, green eyes, shy smile"). Pollinations
+ *      renders it. A SFW guard clause is prepended so the avatar stays
+ *      clothed even for NSFW characters (locked decision #6 — the
+ *      explicit content lives in chat, not the pic).
+ *   2. User upload: the user uploads to the Supabase Storage `avatars`
+ *      bucket from the client and supplies the resulting URL. Phase 12
+ *      removed the unused `uploadToStorage` stub — it was a no-op that,
+ *      by living in a "use server" file, was published as a public
+ *      endpoint for no benefit.
+ *
+ * Supplied URLs are allowlisted by validateAvatarUrl (lib/utils/url.ts)
+ * and by a CHECK constraint on the column: an avatar on an arbitrary
+ * host reports every viewer's IP back to whoever set it.
+ *
+ * No avatar URL is hardcoded. Every value comes from env (Pollinations
+ * base URL) or the user's input.
+ * ════════════════════════════════════════════════════════════════════ */
+
 type AvatarResult = { url: string } | { error: string };
 
 /**
@@ -13,12 +36,14 @@ type AvatarResult = { url: string } | { error: string };
  * keeps us off image-host content-policy gray areas (locked decision #6)
  * and matches Janitor/SpicyChat's own practice.
  *
- * Returns a Pollinations URL that resolves to the rendered image. The
- * caller stores the URL on `characters.avatar_url`.
+ * Phase 8A: `avatarPrompt` is now a free-form user-written description
+ * (e.g. "red haired anime girl, green eyes, shy smile"). The SFW guard
+ * clause is prepended so the user can't trick the generator into
+ * explicit avatars.
  */
 export async function generateCharacterAvatar(
   name: string,
-  description: string,
+  avatarPrompt: string,
   isNsfw: boolean
 ): Promise<AvatarResult> {
   const supabase = await createClient();
@@ -33,13 +58,13 @@ export async function generateCharacterAvatar(
   }
 
   const trimmedName = (name ?? "").trim();
-  const trimmedDesc = (description ?? "").trim();
+  const trimmedPrompt = (avatarPrompt ?? "").trim();
   if (!trimmedName) return { error: "Name required" };
-  if (!trimmedDesc) return { error: "Description required" };
+  if (!trimmedPrompt) return { error: "Avatar prompt required" };
 
   /* Force SFW framing regardless of the character's chat rating. */
-  void isNsfw; // accepted for interface parity; intentionally unused
-  const promptText = `tasteful portrait illustration of ${trimmedName}, ${trimmedDesc}, clothed, artistic style, soft cinematic lighting, head-and-shoulders, safe for work, no nudity, no explicit content`;
+  void isNsfw; // accepted for interface parity; intentionally unused for avatar
+  const promptText = `tasteful portrait illustration of ${trimmedName}, ${trimmedPrompt}, clothed, artistic style, soft cinematic lighting, head-and-shoulders, safe for work, no nudity, no explicit content`;
 
   const base = process.env.POLLINATIONS_API_URL;
   if (!base) {

@@ -5,6 +5,8 @@ import {
   sanitizeAndScrub,
   containsBlockedTerm,
 } from "@/lib/utils/safety";
+import { MESSAGE_MAX_LENGTH } from "@/lib/config/constants";
+import { TypingDots } from "@/components/ui";
 
 type ChatBoxProps = {
   isLocked: boolean;
@@ -15,7 +17,7 @@ type ChatBoxProps = {
 };
 
 /**
- * Chat input box for the chatty platform. Renders in one of four visual
+ * Chat input box for the sweetscene platform. Renders in one of four visual
  * states — unlocked (normal), locked (AI typing), ended/revealed, or
  * transient error — each with distinct styling and interactions.
  */
@@ -57,9 +59,9 @@ export default function ChatBox({
    */
   function getCharCountClass(): string {
     const len = input.length;
-    if (len >= 500) return "text-red-400";
+    if (len >= MESSAGE_MAX_LENGTH) return "text-red-400";
     if (len > 450) return "text-amber-400";
-    return "text-gray-500";
+    return "text-muted";
   }
 
   /**
@@ -67,7 +69,7 @@ export default function ChatBox({
    * input is empty or exceeds the character limit.
    */
   function isSendDisabled(): boolean {
-    return input.trim().length === 0 || input.length > 500;
+    return input.trim().length === 0 || input.length > MESSAGE_MAX_LENGTH;
   }
 
   const showError = errorMessage.length > 0 || localError.length > 0;
@@ -95,8 +97,8 @@ export default function ChatBox({
         {/* ── ENDED / REVEALED STATE ── */}
         {showEnded ? (
           <div className="flex flex-col items-center gap-3 py-8 border-t border-white/10">
-            <div className="w-full h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
-            <p className="text-gray-400 font-light italic tracking-wide text-sm">
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-brand/50 to-transparent" />
+            <p className="text-muted-strong font-light italic tracking-wide text-sm">
               {isRevealed
                 ? "You have revealed your identities."
                 : "This scene has faded to black."}
@@ -111,44 +113,26 @@ export default function ChatBox({
                   <textarea
                     disabled
                     rows={1}
-                    maxLength={500}
+                    maxLength={MESSAGE_MAX_LENGTH}
                     placeholder="AI is typing..."
                     value=""
                     readOnly
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 transition-all duration-200 resize-none min-h-[48px] max-h-[160px] overflow-y-auto opacity-60 cursor-not-allowed"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted transition-all duration-200 resize-none min-h-[48px] max-h-[160px] overflow-y-auto opacity-60 cursor-not-allowed"
                   />
                   <button
                     disabled
-                    className="px-5 py-3 rounded-xl font-medium text-sm text-white transition-all duration-200 select-none opacity-30 cursor-not-allowed bg-gray-700"
+                    className="px-5 py-3 rounded-xl font-medium text-sm text-white transition-all duration-200 select-none opacity-30 cursor-not-allowed bg-surface-raised"
                   >
                     Send
                   </button>
                 </div>
 
-                {/* ── TYPING INDICATOR ── */}
+                {/* ── TYPING INDICATOR ──
+                    Was three hand-rolled spans identical to TypingDots,
+                    minus its aria-label/role="status". */}
                 <div className="mt-3 flex items-center justify-center">
-                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-                    <span
-                      className="block w-2 h-2 rounded-full bg-purple-400"
-                      style={{
-                        animation: "typingBounce 1.4s infinite ease-in-out",
-                        animationDelay: "0s",
-                      }}
-                    />
-                    <span
-                      className="block w-2 h-2 rounded-full bg-purple-400"
-                      style={{
-                        animation: "typingBounce 1.4s infinite ease-in-out",
-                        animationDelay: "0.2s",
-                      }}
-                    />
-                    <span
-                      className="block w-2 h-2 rounded-full bg-purple-400"
-                      style={{
-                        animation: "typingBounce 1.4s infinite ease-in-out",
-                        animationDelay: "0.4s",
-                      }}
-                    />
+                  <div className="px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                    <TypingDots />
                   </div>
                 </div>
               </>
@@ -171,16 +155,15 @@ export default function ChatBox({
                       // Shift+Enter → default behaviour (newline)
                     }}
                     rows={1}
-                    maxLength={500}
+                    maxLength={MESSAGE_MAX_LENGTH}
                     placeholder="Type your message..."
-                    disabled={false}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 resize-none min-h-[48px] max-h-[160px] overflow-y-auto"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 resize-none min-h-[48px] max-h-[160px] overflow-y-auto"
                   />
                   <button
                     type="button"
                     onClick={handleSend}
                     disabled={isSendDisabled()}
-                    className="px-5 py-3 rounded-xl font-medium text-sm text-white bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 active:scale-95 transform transition-all duration-200 select-none disabled:opacity-30 disabled:cursor-not-allowed disabled:from-gray-600 disabled:to-gray-700"
+                    className="px-5 py-3 rounded-xl font-medium text-sm text-white bg-gradient-to-r from-brand-dark to-pink-600 hover:from-brand hover:to-pink-500 active:scale-95 transform transition-all duration-200 select-none disabled:opacity-30 disabled:cursor-not-allowed disabled:from-line-strong disabled:to-surface-raised"
                   >
                     Send
                   </button>
@@ -188,13 +171,13 @@ export default function ChatBox({
 
                 {/* ── HELPER TEXT + CHARACTER COUNTER ── */}
                 <div className="mt-2 flex items-center justify-between">
-                  <p className="text-gray-500 text-xs">
+                  <p className="text-muted text-xs">
                     Press Enter to send &bull; Shift+Enter for new line
                   </p>
                   <span
                     className={["text-xs", getCharCountClass()].join(" ")}
                   >
-                    {input.length}/500
+                    {input.length}/{MESSAGE_MAX_LENGTH}
                   </span>
                 </div>
               </>

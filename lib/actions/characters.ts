@@ -4,6 +4,9 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/ratelimit";
 import { wrapSystemPrompt } from "@/lib/ai/prompts";
+import { scrubInjection } from "@/lib/utils/safety";
+import { moderateFields } from "@/lib/utils/moderation";
+import { validateAvatarUrl } from "@/lib/utils/url";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import {
   importCharacterCard,
@@ -33,6 +36,12 @@ type CreateCharacterParams = {
   alternate_greetings?: string[];
   visibility?: Visibility;
   avatar_url?: string | null;
+  /* Phase 8A — new Character.AI-style fields. */
+  short_description?: string;
+  full_personality?: string;
+  backstory?: string;
+  tags?: string[];
+  category?: "companion" | "roleplay" | "adventure" | "romance" | "assistant" | "other";
 };
 
 type CreateCharacterResult = { characterId: string } | { error: string };
@@ -45,6 +54,19 @@ const MAX_FIRST_MSG = 500;
 const MAX_EXAMPLE = 2000;
 const MAX_ALT_GREETINGS = 3;
 const MAX_ALT_GREETING_LEN = 500;
+/* Phase 8A — new field limits. */
+const MAX_SHORT_DESC = 200;
+const MAX_FULL_PERSONALITY = 3000;
+const MAX_BACKSTORY = 3000;
+const MAX_NEW_TAGS = 10;
+const VALID_CATEGORIES = [
+  "companion",
+  "roleplay",
+  "adventure",
+  "romance",
+  "assistant",
+  "other",
+] as const;
 
 function validateFields(p: CreateCharacterParams): string | null {
   const name = (p.name ?? "").trim();
@@ -84,7 +106,81 @@ function validateFields(p: CreateCharacterParams): string | null {
   ) {
     return "Invalid visibility";
   }
+  /* Phase 8A — validate new fields. */
+  if (p.short_description && p.short_description.length > MAX_SHORT_DESC) {
+    return `Short description max ${MAX_SHORT_DESC} chars`;
+  }
+  if (p.full_personality && p.full_personality.length > MAX_FULL_PERSONALITY) {
+    return `Full personality max ${MAX_FULL_PERSONALITY} chars`;
+  }
+  if (p.backstory && p.backstory.length > MAX_BACKSTORY) {
+    return `Backstory max ${MAX_BACKSTORY} chars`;
+  }
+  if (p.tags && p.tags.length > MAX_NEW_TAGS) {
+    return `Max ${MAX_NEW_TAGS} tags`;
+  }
+  if (p.category && !VALID_CATEGORIES.includes(p.category)) {
+    return "Invalid category";
+  }
   return null;
+}
+
+/**
+ * Every author-supplied free-text field that ends up in the model's
+ * context. The character body lands in the SYSTEM role, so this is the
+ * highest-trust position in the prompt and must be screened at least as
+ * hard as a chat message.
+ */
+function authoredTextFields(p: {
+  name?: string;
+  user_prompt?: string;
+  first_message?: string | null;
+  example_dialog?: string | null;
+  short_description?: string | null;
+  full_personality?: string | null;
+  backstory?: string | null;
+  alternate_greetings?: string[] | null;
+}): string[] {
+  return [
+    p.name,
+    p.user_prompt,
+    p.first_message,
+    p.example_dialog,
+    p.short_description,
+    p.full_personality,
+    p.backstory,
+    ...(p.alternate_greetings ?? []),
+  ].filter((v): v is string => typeof v === "string" && v.length > 0);
+}
+
+/**
+ * Hard-refuses a character whose authored text trips moderation. The
+ * character-card IMPORT path (`lib/utils/characterCard.ts`) already
+ * scrubbed and blocked; the manual create/update path did not, so
+ * identical text was rejected on import but accepted when typed into
+ * the form. Same destination (the system prompt) — same screening.
+ *
+ * A character prompt is worth screening harder than a chat message. A
+ * message is one turn; a prompt is baked into the system prompt of
+ * every future scene, and on a public character it is baked into
+ * everyone else's too.
+ *
+ * @param p - The authored fields, merged if this is an edit.
+ * @param nsfwAllowed - The character's own NSFW rating. It widens what
+ *   counts as acceptable adult content and nothing else: the always
+ *   refused categories, sexual/minors among them, ignore it.
+ */
+async function validateCharacterSafety(
+  p: Parameters<typeof authoredTextFields>[0],
+  nsfwAllowed: boolean
+): Promise<string | null> {
+  const verdict = await moderateFields(authoredTextFields(p), {
+    nsfwAllowed,
+    surface: "character",
+  });
+  return verdict.allowed
+    ? null
+    : "This character contains prohibited content and cannot be saved.";
 }
 
 /**
@@ -124,12 +220,24 @@ export async function createCharacter(
   const validationError = validateFields(params);
   if (validationError) return { error: validationError };
 
+  const safetyError = await validateCharacterSafety(params, params.is_nsfw);
+  if (safetyError) return { error: safetyError };
+
+  /* Avatars are rendered in every viewer's browser — an arbitrary host
+     would harvest their IP and defeat the platform's anonymity. */
+  const avatar = validateAvatarUrl(params.avatar_url);
+  if ("error" in avatar) return { error: avatar.error };
+
   /* `visibility` is the Phase 2 canonical field; `is_public` is kept as
      a legacy bridge for any code path that still reads it. The DB
      trigger `sync_character_visibility` keeps the column in sync. */
   const visibility: Visibility = params.visibility ?? (params.is_public ? "public" : "private");
 
-  const systemPrompt = wrapSystemPrompt(params.user_prompt, params.is_nsfw);
+  /* The body lands in the SYSTEM role, so scrub role-reassignment and
+     prompt-extraction patterns out of it before it is ever stored. The
+     import path already did this; the manual path did not. */
+  const safePrompt = scrubInjection(params.user_prompt.trim());
+  const systemPrompt = wrapSystemPrompt(safePrompt, params.is_nsfw);
 
   try {
     const { data: inserted, error: insertError } = await supabase
@@ -137,7 +245,7 @@ export async function createCharacter(
       .insert({
         creator_id: user.id,
         name: params.name.trim(),
-        user_prompt: params.user_prompt.trim(),
+        user_prompt: safePrompt,
         system_prompt: systemPrompt,
         is_public: visibility === "public",
         scenario_tags: params.scenario_tags,
@@ -147,7 +255,13 @@ export async function createCharacter(
         example_dialog: params.example_dialog ?? null,
         alternate_greetings: params.alternate_greetings ?? [],
         visibility,
-        avatar_url: params.avatar_url ?? null,
+        avatar_url: avatar.url,
+        /* Phase 8A — new character fields. */
+        short_description: params.short_description?.trim() ?? null,
+        full_personality: params.full_personality?.trim() ?? null,
+        backstory: params.backstory?.trim() ?? null,
+        tags: params.tags ?? [],
+        category: params.category ?? "other",
       })
       .select("id")
       .single();
@@ -190,17 +304,40 @@ export async function updateCharacter(
   /* Verify ownership before mutating. */
   const { data: existing } = await supabase
     .from("characters")
-    .select("id, system_prompt, user_prompt, is_nsfw, version")
+    /* name and scenario_tags are read below to backfill an omitted
+       patch field. They were missing from this select, so a partial
+       update (name unchanged) merged `undefined` into a required field
+       and failed validateFields. */
+    .select("id, name, system_prompt, user_prompt, is_nsfw, version, scenario_tags")
     .eq("id", characterId)
     .eq("creator_id", user.id)
     .maybeSingle();
 
   if (!existing) return { error: "Character not found" };
 
+  /* E6: VIP check for NSFW toggle on update. If the patch flips
+     is_nsfw to true and the character wasn't already NSFW, the
+     caller must be VIP — same gate as createCharacter. */
+  if (patch.is_nsfw === true && !(existing.is_nsfw as boolean)) {
+    const admin = createAdminClient();
+    const { data: profileRow } = (await admin
+      .from("profiles")
+      .select("is_vip")
+      .eq("id", user.id)
+      .single()) as { data: { is_vip: boolean } | null };
+
+    if (!profileRow || !profileRow.is_vip) {
+      return { error: "NSFW characters require VIP" };
+    }
+  }
+
+  /* E7: fall back to existing scenario_tags when the patch omits them,
+     so partial updates (e.g. name change only) don't fail validation. */
+  const existingTags = (existing as Record<string, unknown>).scenario_tags as string[] ?? [];
   const merged: CreateCharacterParams = {
     name: patch.name ?? (existing as Record<string, unknown>).name as string,
     user_prompt: patch.user_prompt ?? (existing as Record<string, unknown>).user_prompt as string,
-    scenario_tags: patch.scenario_tags ?? [],
+    scenario_tags: patch.scenario_tags ?? existingTags,
     is_nsfw: patch.is_nsfw ?? (existing.is_nsfw as boolean),
     is_public: patch.is_public ?? false,
     personality: patch.personality,
@@ -210,30 +347,47 @@ export async function updateCharacter(
     visibility: patch.visibility,
     avatar_url: patch.avatar_url,
   };
-  const validationError = validateFields({
-    ...merged,
-    scenario_tags: patch.scenario_tags ?? [],
-  });
+  const validationError = validateFields(merged);
   if (validationError) return { error: validationError };
+
+  /* Screen the merged result, not just the patch: a two-step edit could
+     otherwise assemble prohibited text one field at a time. */
+  const safetyError = await validateCharacterSafety(
+    { ...merged, ...patch },
+    patch.is_nsfw ?? (existing.is_nsfw as boolean)
+  );
+  if (safetyError) return { error: safetyError };
+
+  /* Same allowlist as the create path — otherwise a character is made
+     clean and then edited to point at a tracking host. */
+  const avatar =
+    patch.avatar_url !== undefined
+      ? validateAvatarUrl(patch.avatar_url)
+      : null;
+  if (avatar && "error" in avatar) return { error: avatar.error };
 
   /* If the user_prompt or nsfw rating changed, re-wrap the system prompt. */
   const promptChanged =
     patch.user_prompt !== undefined || patch.is_nsfw !== undefined;
+  const scrubbedPatchPrompt =
+    patch.user_prompt !== undefined
+      ? scrubInjection(patch.user_prompt.trim())
+      : undefined;
   const newSystemPrompt = promptChanged
     ? wrapSystemPrompt(
-        patch.user_prompt ?? ((existing as Record<string, unknown>).user_prompt as string),
+        scrubbedPatchPrompt ?? ((existing as Record<string, unknown>).user_prompt as string),
         patch.is_nsfw ?? (existing.is_nsfw as boolean)
       )
     : (existing.system_prompt as string);
 
-  /* Only write fields that were supplied in the patch. Avoids clobbering
-     arrays with `null` when the client only meant to update the name. */
+/* Only write fields that were supplied in the patch. Avoids clobbering
+      arrays with `null` when the client only meant to update the name. */
   const update: Record<string, unknown> = {
     system_prompt: newSystemPrompt,
     version: ((existing.version as number) ?? 1) + (promptChanged ? 1 : 0),
   };
   if (patch.name !== undefined) update.name = patch.name.trim();
-  if (patch.user_prompt !== undefined) update.user_prompt = patch.user_prompt.trim();
+  if (patch.user_prompt !== undefined) update.user_prompt = scrubbedPatchPrompt;
   if (patch.scenario_tags !== undefined) update.scenario_tags = patch.scenario_tags;
   if (patch.is_nsfw !== undefined) update.is_nsfw = patch.is_nsfw;
   if (patch.personality !== undefined) update.personality = patch.personality;
@@ -241,7 +395,13 @@ export async function updateCharacter(
   if (patch.example_dialog !== undefined) update.example_dialog = patch.example_dialog ?? null;
   if (patch.alternate_greetings !== undefined) update.alternate_greetings = patch.alternate_greetings;
   if (patch.visibility !== undefined) update.visibility = patch.visibility;
-  if (patch.avatar_url !== undefined) update.avatar_url = patch.avatar_url ?? null;
+  if (avatar && !("error" in avatar)) update.avatar_url = avatar.url;
+  /* Phase 8A — new fields. */
+  if (patch.short_description !== undefined) update.short_description = patch.short_description?.trim() ?? null;
+  if (patch.full_personality !== undefined) update.full_personality = patch.full_personality?.trim() ?? null;
+  if (patch.backstory !== undefined) update.backstory = patch.backstory?.trim() ?? null;
+  if (patch.tags !== undefined) update.tags = patch.tags;
+  if (patch.category !== undefined) update.category = patch.category;
 
   const { error: updateError } = await supabase
     .from("characters")
@@ -309,6 +469,13 @@ export type CharacterPublic = {
   connection_score: number;
   creator_id: string | null;
   is_public: boolean;
+  /* Phase 8A — new fields. */
+  short_description: string | null;
+  full_personality: string | null;
+  backstory: string | null;
+  tags: string[];
+  category: string;
+  chat_count: number;
 };
 
 export type CharacterOwned = CharacterPublic & {
@@ -317,7 +484,7 @@ export type CharacterOwned = CharacterPublic & {
 };
 
 const PUBLIC_COLUMNS =
-  "id, name, user_prompt, scenario_tags, is_nsfw, personality, first_message, example_dialog, alternate_greetings, visibility, avatar_url, connection_score, creator_id, is_public";
+  "id, name, user_prompt, scenario_tags, is_nsfw, personality, first_message, example_dialog, alternate_greetings, visibility, avatar_url, connection_score, creator_id, is_public, short_description, full_personality, backstory, tags, category, chat_count";
 
 const OWNED_COLUMNS = `${PUBLIC_COLUMNS}, version, updated_at`;
 
@@ -377,7 +544,14 @@ type GetPublicCharactersResult =
  * tag and sorts by popularity (connection_score DESC) or recency.
  */
 export async function getPublicCharacters(
-  options?: { personality?: string; sort?: "recent" | "popular"; nsfw?: "all" | "sfw" | "nsfw" }
+  options?: {
+    personality?: string;
+    sort?: "recent" | "popular";
+    nsfw?: "all" | "sfw" | "nsfw";
+    /* Phase 8A — new filter dimensions. */
+    tag?: string;
+    category?: string;
+  }
 ): Promise<GetPublicCharactersResult> {
   const supabase = await createClient();
 
@@ -395,6 +569,13 @@ export async function getPublicCharacters(
 
     if (options?.personality) {
       query = query.contains("personality", [options.personality]);
+    }
+    /* Phase 8A — new filters. */
+    if (options?.tag) {
+      query = query.contains("tags", [options.tag]);
+    }
+    if (options?.category) {
+      query = query.eq("category", options.category);
     }
     if (options?.nsfw === "sfw") query = query.eq("is_nsfw", false);
     if (options?.nsfw === "nsfw") query = query.eq("is_nsfw", true);
@@ -447,7 +628,7 @@ export async function getUserCharacters(): Promise<GetUserCharactersResult> {
 
 /* ── Card import / export (Phase 2.6) ──────────────────────────────
  * Exports the OwnedCharacter rows into the Chara v2 JSON; imports
- * untrusted JSON into a chatty character. Round-trips with Janitor /
+ * untrusted JSON into a sweetscene character. Round-trips with Janitor /
  * SpicyChat without losing personality or first_message.
  * ────────────────────────────────────────────────────────────────── */
 
@@ -499,7 +680,7 @@ export async function exportCharacterCardAction(
 type ImportCardResult = { characterId: string } | { error: string };
 
 /**
- * Imports an untrusted JSON card into a new chatty character owned by
+ * Imports an untrusted JSON card into a new sweetscene character owned by
  * the caller. Visibility defaults to `private` so imported cards aren't
  * accidentally published.
  */

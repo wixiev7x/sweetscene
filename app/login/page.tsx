@@ -14,9 +14,14 @@ export default function LoginPage() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
+  const [tosAccepted, setTosAccepted] = useState(false);
 
   function handleSignIn(provider: "google" | "discord") {
     setError("");
+    if (!tosAccepted) {
+      setError("Please accept the Terms of Service to continue.");
+      return;
+    }
     if (SITE_KEY && !turnstileToken) {
       setError("Please complete the captcha first.");
       return;
@@ -36,17 +41,43 @@ export default function LoginPage() {
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_30%,rgba(88,28,135,0.15)_0%,transparent_60%)]" />
 
       <div className="relative z-10 w-full max-w-sm bg-white/5 border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center">
-        <span className="text-xs tracking-[0.4em] text-purple-500/60 uppercase">
-          chatty
+        <span className="text-xs tracking-[0.4em] text-brand/60 uppercase">
+          sweetscene
         </span>
-        <h1 className="text-2xl font-light text-gray-200 mt-4">
+        <h1 className="text-2xl font-light text-foreground mt-4">
           Enter the fog
         </h1>
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-sm text-muted mt-2">
           Sign in anonymously to match, roleplay, and reveal.
         </p>
 
-        <div className="flex flex-col gap-3 w-full mt-8">
+        <label className="flex items-start gap-2 w-full mt-6 text-left cursor-pointer">
+          <input
+            type="checkbox"
+            checked={tosAccepted}
+            onChange={(e) => setTosAccepted(e.target.checked)}
+            className="mt-0.5 accent-brand"
+          />
+          <span className="text-xs text-muted leading-relaxed">
+            I agree to the{" "}
+            <a
+              href="/legal/terms"
+              className="text-brand-light hover:text-brand-lighter underline"
+            >
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a
+              href="/legal/privacy"
+              className="text-brand-light hover:text-brand-lighter underline"
+            >
+              Privacy Policy
+            </a>
+            . I confirm I am 16 or older.
+          </span>
+        </label>
+
+        <div className="flex flex-col gap-3 w-full mt-6">
           <button
             type="button"
             disabled={pending}
@@ -79,7 +110,7 @@ export default function LoginPage() {
         )}
 
         {pending && (
-          <p className="text-xs text-gray-500 mt-4">Redirecting…</p>
+          <p className="text-xs text-muted mt-4">Redirecting…</p>
         )}
       </div>
     </div>

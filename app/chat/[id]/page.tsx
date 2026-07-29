@@ -8,9 +8,17 @@ import { generateAIResponse } from "@/lib/actions/ai_wrapper";
 import { generateImage } from "@/lib/actions/images";
 import { requestReveal, moveOn as moveOnServer } from "@/lib/actions/reveal";
 import { heartbeat } from "@/lib/actions/presence";
-import { sendMessage, getMatchMessages, decryptMessageContent } from "@/lib/actions/messages";
+import {
+  sendMessage,
+  getMatchMessages,
+  decryptMessageContent,
+  reportConversation,
+} from "@/lib/actions/messages";
 import { getMyProfile } from "@/lib/actions/profile";
+import { unmatch } from "@/lib/actions/match";
+import { blockUser } from "@/lib/actions/blocks";
 import { useMounted } from "@/lib/utils/useMounted";
+import { Spinner } from "@/components/ui";
 import ChatBox from "@/components/ChatBox";
 import MessageList from "@/components/MessageList";
 import FadeToBlack from "@/components/FadeToBlack";
@@ -70,7 +78,7 @@ const INITIAL_POOL: Record<"quick" | "deep", number> = {
 };
 
 /**
- * Chat room page for the chatty platform. Subscribes to real-time
+ * Chat room page for the sweetscene platform. Subscribes to real-time
  * message and match updates, triggers AI turns when the message
  * threshold is met, and shows the FadeToBlack overlay when the
  * match ends.
@@ -97,6 +105,30 @@ export default function ChatPage() {
     null
   );
   const [imageLoading, setImageLoading] = useState(false);
+
+  /* Phase 9.6: leave scene confirmation */
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [leaveLoading, setLeaveLoading] = useState(false);
+
+  /* Reporting from inside the live scene. Previously the only report
+     button was in /dm/[id], which requires status === "revealed" — so a
+     user being harassed had to reveal their identity to their harasser
+     before they could report them. This is the surface where two
+     strangers actually talk, so it is the one that needs the control. */
+  const [showReport, setShowReport] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportCategory, setReportCategory] = useState("");
+  const [reporting, setReporting] = useState(false);
+  const [reportMsg, setReportMsg] = useState("");
+  const [reportDone, setReportDone] = useState(false);
+
+  /* Blocking. blockUser/unblockUser/listMyBlocks and the claim_match
+     pairing gate all existed with no UI anywhere, so the block feature
+     was fully built and completely unreachable. The partner's id is
+     already on the match row the client reads, so surfacing it here
+     leaks nothing new. */
+  const [blocking, setBlocking] = useState(false);
+  const [blocked, setBlocked] = useState(false);
 
   /* reveal flow */
   const [revealState, setRevealState] = useState<RevealState>({
@@ -278,7 +310,7 @@ export default function ChatPage() {
 
   /* ── real-time subscription ── */
   useEffect(() => {
-    if (!matchId || !mounted) return;
+    if (!matchId || !mounted || !currentUserId) return;
 
     const supabase = createClient();
 
@@ -469,9 +501,16 @@ export default function ChatPage() {
     /* Send via the encrypted message action — content is encrypted
        server-side before INSERT. Returns the plaintext for optimistic
        display. */
-    const sendResult = await sendMessage(matchId, text);
+    let sendResult;
+    try {
+      sendResult = await sendMessage(matchId, text);
+    } catch {
+      setError("Network error. Try again.");
+      setSending(false);
+      return;
+    }
 
-if ("error" in sendResult) {
+    if ("error" in sendResult) {
       setError(sendResult.error);
       setSending(false);
       return;
@@ -543,7 +582,7 @@ if ("error" in sendResult) {
     nudgeFiredRef.current = false;
 
     setSending(false);
-  }
+  } /* end handleSend */
 
   /* ── VIP image generation ── */
   async function handleGenerateImage() {
@@ -561,6 +600,77 @@ if ("error" in sendResult) {
       setGeneratedImageUrl(result.imageUrl);
     }
     setImageLoading(false);
+  }
+
+  /* ── Phase 9.6: leave scene (instant disconnect) ── */
+  async function handleLeaveScene() {
+    setLeaveLoading(true);
+    setError("");
+    const result = await unmatch(matchId, "instant_disconnect");
+    setLeaveLoading(false);
+    setShowLeaveConfirm(false);
+    if ("error" in result) {
+      setError(result.error);
+    } else {
+      router.push("/lobby");
+    }
+  }
+
+  /* ── report the scene ──
+     reportConversation snapshots the last 100 messages server-side as
+     evidence, so the report survives the user leaving the scene right
+     after filing it. The category is prefixed onto the reason rather
+     than sent as a separate field — the server takes one free-text
+     reason and the admin queue renders it verbatim. */
+  async function handleReport() {
+    if (reporting) return;
+
+    const detail = reportReason.trim();
+    if (!reportCategory && !detail) {
+      setReportMsg("Pick a reason or describe what happened.");
+      return;
+    }
+
+    setReporting(true);
+    setReportMsg("");
+
+    const reason = [reportCategory, detail].filter(Boolean).join(" — ");
+    const result = await reportConversation(matchId, reason);
+
+    setReporting(false);
+
+    if ("error" in result) {
+      setReportMsg(result.error);
+      return;
+    }
+
+    setReportDone(true);
+    setReportReason("");
+    setReportCategory("");
+  }
+
+  /* Partner's profile id, or null for an AI match / not yet loaded. */
+  function partnerId(): string | null {
+    if (!match || match.is_ai_match || !currentUserId) return null;
+    return match.user_a === currentUserId ? match.user_b : match.user_a;
+  }
+
+  /* ── block the partner ──
+     Silent: the blocked user is never told. claim_match refuses to pair
+     a blocked couple, so this is permanent unless undone from /profile. */
+  async function handleBlock() {
+    const target = partnerId();
+    if (!target || blocking || blocked) return;
+
+    setBlocking(true);
+    const result = await blockUser(target);
+    setBlocking(false);
+
+    if ("error" in result) {
+      setReportMsg(result.error);
+      return;
+    }
+    setBlocked(true);
   }
 
   /* ── reveal handlers ── */
@@ -617,8 +727,8 @@ if ("error" in sendResult) {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-4">
-        <div className="w-8 h-8 rounded-full border-2 border-purple-500/30 border-t-purple-500 animate-spin" />
-        <p className="text-gray-500 text-sm">Loading scene...</p>
+        <Spinner />
+        <p className="text-muted text-sm">Loading scene...</p>
       </div>
     );
   }
@@ -626,7 +736,7 @@ if ("error" in sendResult) {
   if (!match) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Match not found.</p>
+        <p className="text-muted text-sm">Match not found.</p>
       </div>
     );
   }
@@ -647,7 +757,7 @@ if ("error" in sendResult) {
           <div className="flex items-center gap-3 min-w-0">
             <Link
               href="/lobby"
-              className="text-sm text-gray-500 hover:text-gray-300 transition-colors shrink-0"
+              className="text-sm text-muted hover:text-foreground-dim transition-colors shrink-0"
             >
               &larr;
             </Link>
@@ -655,19 +765,21 @@ if ("error" in sendResult) {
             <div className="min-w-0">
               {match.is_ai_match ? (
                 <>
-                  <p className="text-sm text-purple-400 font-medium">
+                  <p className="text-sm text-brand-light font-medium">
                     AI Match
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-muted truncate">
                     {characterList()}
                   </p>
                 </>
               ) : (
                 <>
                   <p className="text-sm text-white font-medium truncate">
-                    {partnerUsername ?? "Stranger"}
+                    {partnerUsername ?? "Anonymous Stranger"}
                   </p>
-                  <p className="text-xs text-gray-500">Stranger</p>
+                  <p className="text-xs text-muted">
+                    {match?.tier === "deep" ? "Deep Dive" : "Quick Match"}
+                  </p>
                 </>
               )}
             </div>
@@ -680,12 +792,12 @@ if ("error" in sendResult) {
                 "text-xs px-2 py-1 rounded-full border",
                 match.tier === "deep"
                   ? "border-pink-500/30 text-pink-400"
-                  : "border-purple-500/30 text-purple-400",
+                  : "border-brand/30 text-brand-light",
               ].join(" ")}
             >
               {match.tier === "deep" ? "Deep Dive" : "Quick Chat"}
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-muted">
               {(match.scenario_tags ?? [])
                 .map((t: string) => t.replace(/_/g, " "))
                 .join(" \u2022 ")}
@@ -696,12 +808,12 @@ if ("error" in sendResult) {
           <div className="flex items-center gap-4 shrink-0">
             {/* pool */}
             <div className="hidden sm:flex flex-col items-end">
-              <span className="text-sm text-purple-400 font-medium">
+              <span className="text-sm text-brand-light font-medium">
                 &#9670; {match.shared_pool.toLocaleString()} tokens
               </span>
               <div className="w-24 h-1 rounded-full bg-white/10 mt-1">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-brand to-pink-500 transition-all duration-500"
                   style={{ width: `${poolPercent()}%` }}
                 />
               </div>
@@ -713,9 +825,37 @@ if ("error" in sendResult) {
                 type="button"
                 onClick={handleGenerateImage}
                 disabled={imageLoading}
-                className="text-xs bg-white/5 border border-white/10 text-gray-400 px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-gray-300 transition-all"
+                className="text-xs bg-white/5 border border-white/10 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-foreground-dim transition-all"
               >
                 &#x1F5BC;&#xFE0F; Generate
+              </button>
+            )}
+
+            {/* Report — deliberately NOT gated on match.status. A scene
+                that just ended is exactly when someone reaches for this,
+                and gating it on "active" would mean the abuse that ended
+                the scene is the abuse you cannot report. */}
+            <button
+              type="button"
+              onClick={() => {
+                setReportDone(false);
+                setReportMsg("");
+                setShowReport(true);
+              }}
+              className="text-xs bg-white/5 border border-white/10 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-foreground-dim transition-all"
+              title="Report this conversation"
+            >
+              Report
+            </button>
+
+            {/* Phase 9.6: leave scene — only when match is active */}
+            {match.status === "active" && (
+              <button
+                type="button"
+                onClick={() => setShowLeaveConfirm(true)}
+                className="text-xs bg-white/5 border border-red-500/20 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-all"
+              >
+                Leave
               </button>
             )}
           </div>
@@ -765,10 +905,10 @@ if ("error" in sendResult) {
           >
             {imageLoading ? (
               <div className="flex flex-col items-center gap-3 py-12">
-                <p className="text-gray-400 text-sm">Generating scene...</p>
+                <p className="text-muted-strong text-sm">Generating scene...</p>
                 <div className="flex items-center gap-1.5">
                   <span
-                    className="block w-2 h-2 rounded-full bg-purple-400"
+                    className="block w-2 h-2 rounded-full bg-brand-light"
                     style={{
                       animation:
                         "typingBounce 1.4s infinite ease-in-out",
@@ -776,7 +916,7 @@ if ("error" in sendResult) {
                     }}
                   />
                   <span
-                    className="block w-2 h-2 rounded-full bg-purple-400"
+                    className="block w-2 h-2 rounded-full bg-brand-light"
                     style={{
                       animation:
                         "typingBounce 1.4s infinite ease-in-out",
@@ -784,7 +924,7 @@ if ("error" in sendResult) {
                     }}
                   />
                   <span
-                    className="block w-2 h-2 rounded-full bg-purple-400"
+                    className="block w-2 h-2 rounded-full bg-brand-light"
                     style={{
                       animation:
                         "typingBounce 1.4s infinite ease-in-out",
@@ -807,15 +947,200 @@ if ("error" in sendResult) {
                     setShowImageModal(false);
                     setGeneratedImageUrl(null);
                   }}
-                  className="px-4 py-2 rounded-lg bg-white/10 text-gray-400 text-sm hover:bg-white/20 transition-all"
+                  className="px-4 py-2 rounded-lg bg-white/10 text-muted-strong text-sm hover:bg-white/20 transition-all"
                 >
                   Close
                 </button>
               </div>
             ) : (
-              <p className="text-gray-500 text-sm py-8">
+              <p className="text-muted text-sm py-8">
                 Could not generate image.
               </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── LEAVE SCENE CONFIRMATION ── */}
+      {showLeaveConfirm && (
+        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
+            <h2 className="text-xl font-light text-white mb-2">
+              Leave this scene?
+            </h2>
+            <p className="text-sm text-muted mt-2 mb-6">
+              Your shared token pool will be consumed and this match will
+              end. Your partner will be notified.
+            </p>
+
+            {/* Blocking on the way out, without having to file a report
+                first. Not everyone who wants never to see someone again
+                wants to write a moderator a paragraph about it. */}
+            {partnerId() && (
+              <label className="flex items-start gap-3 text-left mb-5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={blocked}
+                  disabled={blocking || blocked}
+                  onChange={handleBlock}
+                  className="mt-0.5 accent-red-500"
+                />
+                <span className="text-sm text-muted-strong">
+                  {blocked
+                    ? "Blocked. You won't be matched with them again."
+                    : "Also block this user — you'll never be matched again. They aren't told."}
+                </span>
+              </label>
+            )}
+
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={handleLeaveScene}
+                disabled={leaveLoading}
+                className="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white font-medium py-3 rounded-xl hover:from-red-500 hover:to-pink-500 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {leaveLoading ? "Leaving..." : "Yes, leave scene"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLeaveConfirm(false)}
+                className="text-sm text-muted hover:text-foreground-dim transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── REPORT THIS SCENE ── */}
+      {showReport && (
+        <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8">
+            {reportDone ? (
+              <div className="text-center">
+                <h2 className="text-xl font-light text-white mb-2">
+                  Report submitted
+                </h2>
+                <p className="text-sm text-muted mb-6">
+                  A moderator will review the conversation. You can keep
+                  chatting, or leave the scene now — the report stands
+                  either way.
+                </p>
+                <div className="flex flex-col gap-3">
+                  {partnerId() && (
+                    <button
+                      type="button"
+                      onClick={handleBlock}
+                      disabled={blocking || blocked}
+                      className="w-full bg-red-500/10 border border-red-500/20 text-danger font-medium py-3 rounded-xl hover:bg-red-500/15 disabled:opacity-60 disabled:hover:bg-red-500/10 transition-all"
+                    >
+                      {blocked
+                        ? "Blocked — you won't be matched again"
+                        : blocking
+                          ? "Blocking..."
+                          : "Also block this user"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReport(false);
+                      setShowLeaveConfirm(true);
+                    }}
+                    className="w-full bg-white/10 border border-white/10 text-white font-medium py-3 rounded-xl hover:bg-white/15 transition-all"
+                  >
+                    Leave this scene
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReport(false);
+                      setReportDone(false);
+                      setReportMsg("");
+                    }}
+                    className="text-sm text-muted hover:text-foreground-dim transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h2 className="text-xl font-light text-white mb-2">
+                  Report this scene
+                </h2>
+                <p className="text-sm text-muted mb-5">
+                  The last 100 messages are attached automatically as
+                  evidence. Your partner is not told you reported.
+                </p>
+
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {[
+                    "Harassment",
+                    "Sexual content involving a minor",
+                    "Threats or violence",
+                    "Asking for personal info",
+                    "Spam or scam",
+                    "Other",
+                  ].map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() =>
+                        setReportCategory((prev) => (prev === cat ? "" : cat))
+                      }
+                      className={[
+                        "px-3 py-1.5 rounded-full text-xs border transition-all",
+                        reportCategory === cat
+                          ? "bg-red-500/20 border-red-500/40 text-danger"
+                          : "bg-white/5 border-white/10 text-muted-strong hover:border-white/20",
+                      ].join(" ")}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+
+                <label htmlFor="report-detail" className="sr-only">
+                  What happened
+                </label>
+                <textarea
+                  id="report-detail"
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  maxLength={1000}
+                  rows={4}
+                  placeholder="What happened? (optional if you picked a reason above)"
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500/40 transition-all resize-none"
+                />
+
+                {reportMsg && (
+                  <p className="mt-3 text-sm text-danger">{reportMsg}</p>
+                )}
+
+                <div className="flex flex-col gap-3 mt-5">
+                  <button
+                    type="button"
+                    onClick={handleReport}
+                    disabled={reporting}
+                    className="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white font-medium py-3 rounded-xl hover:from-red-500 hover:to-pink-500 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {reporting ? "Submitting..." : "Submit report"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReport(false);
+                      setReportMsg("");
+                    }}
+                    className="text-sm text-muted hover:text-foreground-dim transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>
