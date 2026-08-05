@@ -122,3 +122,24 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Landing page marquee keyframes ──
+   CSS-driven so they run off the main thread when possible.
+   The Marquee component references these by name via inline style. */
+@keyframes marquee-forward {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-33.333%); }
+}
+
+@keyframes marquee-reverse {
+  0% { transform: translateX(-33.333%); }
+  100% { transform: translateX(0); }
+}
+
+/* ── Age-gate float particle ── */
+@keyframes floatUp {
+  0%   { transform: translateY(100vh); opacity: 0; }
+  10%  { opacity: 0.8; }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(-10vh); opacity: 0; }
+}

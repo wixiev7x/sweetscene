@@ -1,20 +1,30 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useMounted } from "@/lib/utils/useMounted";
 import { useStoredFlag, notifyFlagChange } from "@/lib/utils/useStoredFlag";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import { MIN_PLATFORM_AGE } from "@/lib/config/constants";
+import { motion, AnimatePresence } from "framer-motion";
+import { HeroSection } from "@/components/landing/HeroSection";
+import { ImageGrid } from "@/components/landing/ImageGrid";
+import { Marquee } from "@/components/landing/Marquee";
+import { HowItWorks } from "@/components/landing/HowItWorks";
+import { LandingFooter } from "@/components/landing/LandingFooter";
+import Link from "next/link";
 
 /**
- * Homepage of the sweetscene platform. Renders a 16+ age gate (birthday
- * picker) on first visit (persisted via localStorage), then the full
- * cinematic landing page with hero, how-it-works steps, scenario
- * showcase, VIP teaser, and footer.
+ * Homepage of the sweetscene platform.
  *
- * The gate here is UX only and carries no security weight — see the
- * note in handleVerify.
+ * First visit: renders a full-screen age gate (birthday picker, 16+ floor).
+ * Gate is UX-only — security gate lives server-side in AgeCohortGate +
+ * Supabase RPCs. The DOB is stashed in sessionStorage for the post-auth
+ * set_own_age_cohort call; no cohort cookie is written (see handleVerify
+ * comment for history).
+ *
+ * After gate: renders the immersive landing page — hero with flanking
+ * image columns, horizontal image marquee, how-it-works, image grid,
+ * VIP teaser, and footer.
  */
 export default function Home() {
   const ageVerified = useStoredFlag("sweetscene_age_verified");
@@ -47,7 +57,10 @@ export default function Home() {
 
     const now = new Date();
     let age = now.getFullYear() - year;
-    if (now.getMonth() < month - 1 || (now.getMonth() === month - 1 && now.getDate() < day)) {
+    if (
+      now.getMonth() < month - 1 ||
+      (now.getMonth() === month - 1 && now.getDate() < day)
+    ) {
       age--;
     }
     return age;
@@ -111,16 +124,21 @@ export default function Home() {
     const currentYear = new Date().getFullYear();
     const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
     const daysInMonth = birthMonth
-      ? new Date(parseInt(String(birthYear || currentYear), 10), parseInt(String(birthMonth), 10), 0).getDate()
+      ? new Date(
+          parseInt(String(birthYear || currentYear), 10),
+          parseInt(String(birthMonth), 10),
+          0
+        ).getDate()
       : 31;
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
     return (
       <div className="fixed inset-0 z-50 bg-black flex items-center justify-center overflow-hidden">
-        {/* floating particles */}
+        {/* Floating particles */}
         {[...Array(8)].map((_, i) => (
           <span
             key={i}
+            aria-hidden="true"
             className="absolute rounded-full bg-brand/20"
             style={{
               width: `${4 + (i % 3) * 4}px`,
@@ -132,12 +150,14 @@ export default function Home() {
           />
         ))}
 
-        <div
-          className="relative z-10 flex flex-col items-center text-center px-6"
-          style={{ animation: "slowFade 2s ease-in-out forwards" }}
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.2, ease: "easeOut" }}
+          className="relative z-10 flex flex-col items-center text-center px-6 max-w-sm w-full"
         >
           <span className="text-xs tracking-[0.4em] text-brand/60 uppercase">
-            SWeetscene
+            sweetscene
           </span>
 
           <div className="w-16 mx-auto my-6 h-px bg-gradient-to-r from-transparent via-brand/50 to-transparent" />
@@ -146,18 +166,18 @@ export default function Home() {
             Enter the fog
           </h1>
 
-          <p className="text-sm text-muted-faint max-w-md mt-3 leading-relaxed">
+          <p className="text-sm text-muted max-w-md mt-3 leading-relaxed">
             This platform contains mature content. Please verify your date of
             birth to continue. You must be {MIN_PLATFORM_AGE} or older.
           </p>
 
           {/* Birthday picker */}
-          <div className="flex items-center gap-2 mt-6">
+          <div className="flex items-center gap-2 mt-6 flex-wrap justify-center">
             <select
               aria-label="Birth month"
               value={birthMonth}
               onChange={(e) => setBirthMonth(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-w-[100px]"
             >
               <option value="">Month</option>
               {MONTHS.map((m, i) => (
@@ -168,7 +188,7 @@ export default function Home() {
               aria-label="Birth day"
               value={birthDay}
               onChange={(e) => setBirthDay(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-w-[72px]"
             >
               <option value="">Day</option>
               {days.map((d) => (
@@ -179,7 +199,7 @@ export default function Home() {
               aria-label="Birth year"
               value={birthYear}
               onChange={(e) => setBirthYear(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand/50"
+              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-brand/50 min-w-[88px]"
             >
               <option value="">Year</option>
               {years.map((y) => (
@@ -188,9 +208,19 @@ export default function Home() {
             </select>
           </div>
 
-          {ageError && (
-            <p className="text-xs text-red-400 mt-3">{ageError}</p>
-          )}
+          <AnimatePresence>
+            {ageError && (
+              <motion.p
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-xs text-danger mt-3"
+                role="alert"
+              >
+                {ageError}
+              </motion.p>
+            )}
+          </AnimatePresence>
 
           <div className="flex items-center gap-3 mt-6">
             <button
@@ -202,7 +232,11 @@ export default function Home() {
                 !birthYear ||
                 (!!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !turnstileToken)
               }
-              className="px-8 py-3 rounded-xl font-medium text-white bg-gradient-to-r from-brand-dark to-pink-600 hover:from-brand hover:to-pink-500 active:scale-95 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-8 py-3 rounded-xl font-medium text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+              style={{
+                background: "linear-gradient(135deg, #9333ea, #ec4899)",
+                boxShadow: "0 0 20px rgba(168,85,247,0.3)",
+              }}
             >
               Enter
             </button>
@@ -231,41 +265,29 @@ export default function Home() {
 
           <p className="text-xs text-muted-faint mt-6">
             By entering, you agree to our{" "}
-            <a href="/legal/terms" className="text-brand/60 hover:text-brand-light underline">
+            <a
+              href="/legal/terms"
+              className="text-brand/60 hover:text-brand-light underline"
+            >
               Terms
             </a>{" "}
             and{" "}
-            <a href="/legal/privacy" className="text-brand/60 hover:text-brand-light underline">
+            <a
+              href="/legal/privacy"
+              className="text-brand/60 hover:text-brand-light underline"
+            >
               Privacy Policy
             </a>
             .
           </p>
-        </div>
+        </motion.div>
 
         <style jsx>{`
-          @keyframes slowFade {
-            0% {
-              opacity: 0;
-            }
-            100% {
-              opacity: 1;
-            }
-          }
           @keyframes floatUp {
-            0% {
-              transform: translateY(100vh);
-              opacity: 0;
-            }
-            10% {
-              opacity: 0.8;
-            }
-            90% {
-              opacity: 0.3;
-            }
-            100% {
-              transform: translateY(-10vh);
-              opacity: 0;
-            }
+            0% { transform: translateY(100vh); opacity: 0; }
+            10% { opacity: 0.8; }
+            90% { opacity: 0.3; }
+            100% { transform: translateY(-10vh); opacity: 0; }
           }
         `}</style>
       </div>
@@ -273,286 +295,79 @@ export default function Home() {
   }
 
   /* ───────────────────────────────────────────────
-   * LANDING PAGE
+   * FULL LANDING PAGE
    * ─────────────────────────────────────────────── */
   return (
-    <main className="bg-black text-white min-h-screen">
-      {/* ── HERO ── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_30%,rgba(88,28,135,0.15)_0%,transparent_60%)]" />
+    <main className="bg-black text-foreground overflow-x-hidden">
+      {/* ── Hero with flanking image columns ── */}
+      <HeroSection />
 
-        <div className="relative z-10 flex flex-col items-center text-center">
-          <span
-            className="text-xs tracking-[0.5em] text-brand/50 uppercase"
-            style={{ animation: "slowFade 1.5s ease-in-out forwards", opacity: 0 }}
-          >
-            ANONYMOUS &bull; UNCENSORED &bull; UNFORGETTABLE
-          </span>
+      {/* ── Auto-scrolling character marquee ── */}
+      <Marquee />
 
-          <h1
-            className="text-7xl md:text-8xl font-bold tracking-tight mt-4 bg-gradient-to-r from-brand-light via-pink-400 to-brand-light bg-clip-text text-transparent"
-            style={{ animation: "breathScale 4s infinite alternate ease-in-out" }}
-          >
-            sweetscene
-          </h1>
+      {/* ── How It Works ── */}
+      <HowItWorks />
 
-          <p
-            className="text-2xl font-light text-muted-strong italic mt-2"
-            style={{
-              animation: "slowFade 2s ease-in-out forwards",
-              animationDelay: "0.8s",
-              opacity: 0,
-            }}
-          >
-            Match. Roleplay. Reveal.
-          </p>
+      {/* ── Overwhelming image grid ── */}
+      <ImageGrid />
 
-          <p
-            className="text-base text-muted max-w-lg mt-6 leading-relaxed"
-            style={{
-              animation: "slowFade 2s ease-in-out forwards",
-              animationDelay: "1.4s",
-              opacity: 0,
-            }}
-          >
-            An anonymous roleplay dating platform where two strangers meet
-            inside a shared scene. An AI director breaks the ice. You
-            decide if the fog lifts.
-          </p>
-
-          <div
-            className="mt-10 flex flex-col items-center gap-3"
-            style={{
-              animation: "slowFade 2s ease-in-out forwards",
-              animationDelay: "2s",
-              opacity: 0,
-            }}
-          >
-            <Link
-              href="/lobby"
-              className="px-8 py-4 rounded-xl font-medium text-lg text-white bg-gradient-to-r from-brand-dark to-pink-600 hover:from-brand hover:to-pink-500 active:scale-95 transform transition-all duration-300 inline-flex items-center gap-2"
-            >
-              Enter the Lobby <span>&rarr;</span>
-            </Link>
-            <Link
-              href="/characters"
-              className="text-sm text-muted hover:text-foreground-dim mt-1 underline-offset-4 hover:underline transition-all"
-            >
-              Browse Characters
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ── HOW IT WORKS ── */}
-      <section className="py-24 px-6 bg-gradient-to-b from-black to-brand-deepest/10">
-        <h2 className="text-3xl font-light text-foreground-dim text-center mb-16 tracking-wide">
-          How It Works
-        </h2>
-
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          {/* Step 1 */}
-          <div
-            className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center hover:border-brand/30 transition-all duration-300"
-            style={{
-              animation: "slowFade 2s ease-in-out forwards",
-              animationDelay: "0.2s",
-              opacity: 0,
-            }}
-          >
-            <span className="block text-4xl mb-4">&#x1F52E;</span>
-            <h3 className="text-lg text-foreground font-light mb-3">
-              Match Anonymously
-            </h3>
-            <p className="text-sm text-muted-strong leading-relaxed">
-              Pick your scenario, spend your tokens, and get matched with a
-              stranger — or our AI.
-            </p>
-          </div>
-
-          {/* Step 2 */}
-          <div
-            className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center hover:border-brand/30 transition-all duration-300"
-            style={{
-              animation: "slowFade 2s ease-in-out forwards",
-              animationDelay: "0.4s",
-              opacity: 0,
-            }}
-          >
-            <span className="block text-4xl mb-4">&#x1F3AD;</span>
-            <h3 className="text-lg text-foreground font-light mb-3">
-              Roleplay Together
-            </h3>
-            <p className="text-sm text-muted-strong leading-relaxed">
-              An AI director joins your chat, breaks the ice, and keeps the
-              scene alive. Every 6 messages, the AI steps in.
-            </p>
-          </div>
-
-          {/* Step 3 */}
-          <div
-            className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center hover:border-brand/30 transition-all duration-300"
-            style={{
-              animation: "slowFade 2s ease-in-out forwards",
-              animationDelay: "0.6s",
-              opacity: 0,
-            }}
-          >
-            <span className="block text-4xl mb-4">&#x1F32B;&#xFE0F;</span>
-            <h3 className="text-lg text-foreground font-light mb-3">
-              Reveal or Fade
-            </h3>
-            <p className="text-sm text-muted-strong leading-relaxed">
-              When the tokens run out, the scene fades to black. Both must
-              agree to reveal. Or part ways in the mist.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SCENARIOS ── */}
-      <section className="py-24 px-6 bg-black">
-        <h2 className="text-3xl font-light text-foreground-dim text-center mb-16 tracking-wide">
-          Step Into a Scene
-        </h2>
-
-        <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
-          {[
-            "Hospital",
-            "Coffee Shop",
-            "Mansion",
-            "Library",
-            "Gym",
-            "Noir Office",
-          ].map((scenario) => (
-            <span
-              key={scenario}
-              className="px-6 py-3 rounded-full border border-white/10 bg-white/5 text-muted-strong text-sm hover:border-brand/40 hover:text-brand-lighter transition-all cursor-default"
-            >
-              {scenario}
-            </span>
-          ))}
-        </div>
-
-        <p className="text-muted-faint text-sm text-center mt-8">
-          More scenarios added weekly.
-        </p>
-      </section>
-
-      {/* ── VIP TEASER ── */}
-      <section className="py-24 px-6 bg-gradient-to-b from-brand-deepest/10 to-black">
-        <div className="max-w-xl mx-auto bg-gradient-to-br from-brand-deep/20 to-pink-900/20 border border-brand/20 rounded-3xl p-10 text-center">
+      {/* ── VIP Teaser ── */}
+      <section className="py-24 px-6">
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.9 }}
+          className="max-w-xl mx-auto rounded-3xl p-10 text-center border border-brand/20"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(147,51,234,0.15) 0%, rgba(236,72,153,0.10) 100%)",
+            boxShadow: "0 0 60px rgba(168,85,247,0.1)",
+          }}
+        >
           <span className="text-xs font-bold tracking-widest text-pink-400 uppercase">
             VIP
           </span>
 
-          <h2 className="text-2xl font-light text-foreground mt-4">
+          <h2 className="text-2xl font-light text-foreground mt-4 text-balance">
             Unlock Everything
           </h2>
 
           <div className="mt-6 space-y-3 text-muted-strong text-sm">
-            <p className="flex items-center justify-center gap-3">
-              <span>&#x2713;</span> Unlimited daily matches
-            </p>
-            <p className="flex items-center justify-center gap-3">
-              <span>&#x2713;</span> Deep Dive tier (10k tokens)
-            </p>
-            <p className="flex items-center justify-center gap-3">
-              <span>&#x2713;</span> 3 AI images per match
-            </p>
-            <p className="flex items-center justify-center gap-3">
-              <span>&#x2713;</span> Priority matchmaking
-            </p>
+            {[
+              "Unlimited daily matches",
+              "Deep Dive tier (10k tokens)",
+              "3 AI images per match",
+              "Priority matchmaking",
+              "NSFW scenes (18+ verified)",
+            ].map((perk) => (
+              <p key={perk} className="flex items-center justify-center gap-3">
+                <span className="text-success" aria-hidden="true">&#x2713;</span>
+                {perk}
+              </p>
+            ))}
           </div>
 
-          <p className="text-3xl font-light text-white mt-8">
-            $9.99 <span className="text-lg text-muted">/ month</span>
+          <p className="text-3xl font-light text-foreground mt-8">
+            $9.99{" "}
+            <span className="text-lg text-muted">/ month</span>
           </p>
 
           <Link
             href="/login"
-            className="mt-8 px-8 py-3 rounded-xl font-medium text-sm text-white bg-gradient-to-r from-brand-dark to-pink-600 hover:from-brand hover:to-pink-500 active:scale-95 transform transition-all duration-300 inline-block"
+            className="mt-8 px-8 py-3 rounded-xl font-medium text-sm text-white transition-all duration-300 active:scale-95 inline-block"
+            style={{
+              background: "linear-gradient(135deg, #9333ea, #ec4899)",
+              boxShadow: "0 0 20px rgba(168,85,247,0.3)",
+            }}
           >
             Become VIP
           </Link>
-        </div>
+        </motion.div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer className="py-12 px-6 border-t border-white/5 bg-black">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <span className="text-lg text-brand/50 font-medium">
-            sweetscene
-          </span>
-
-          <div className="flex items-center gap-4">
-            <a
-              href="/legal/privacy"
-              className="text-xs text-muted-faint hover:text-muted-strong transition-colors"
-            >
-              Privacy
-            </a>
-            <a
-              href="/legal/terms"
-              className="text-xs text-muted-faint hover:text-muted-strong transition-colors"
-            >
-              Terms
-            </a>
-            <a
-              href="https://discord.gg/sweetscene"
-              className="text-xs text-muted-faint hover:text-muted-strong transition-colors"
-            >
-              Discord
-            </a>
-            <a
-              href="mailto:support@sweetscene.app"
-              className="text-xs text-muted-faint hover:text-muted-strong transition-colors"
-            >
-              Contact
-            </a>
-          </div>
-
-          <span className="text-xs text-muted-faint">
-            &copy; 2025 sweetscene. All scenes reserved.
-          </span>
-        </div>
-      </footer>
-
-      {/* ── GLOBAL KEYFRAMES ── */}
-      <style jsx>{`
-        @keyframes slowFade {
-          0% {
-            opacity: 0;
-          }
-          100% {
-            opacity: 1;
-          }
-        }
-        @keyframes breathScale {
-          0% {
-            transform: scale(1);
-          }
-          100% {
-            transform: scale(1.02);
-          }
-        }
-        @keyframes floatUp {
-          0% {
-            transform: translateY(100vh);
-            opacity: 0;
-          }
-          10% {
-            opacity: 0.8;
-          }
-          90% {
-            opacity: 0.3;
-          }
-          100% {
-            transform: translateY(-10vh);
-            opacity: 0;
-          }
-        }
-      `}</style>
+      {/* ── Footer ── */}
+      <LandingFooter />
     </main>
   );
 }
