@@ -745,136 +745,128 @@ export default function ChatPage() {
     match.status === "ended" || match.status === "revealed";
   const isLocked = match.ai_turn_due || sending || showEnded;
 
+  /* ── Room name: deterministic from matchId ── */
+  const ROOM_NAMES = [
+    "Velvet Hour", "Crimson Veil", "Amber Haze", "Indigo Dusk",
+    "Rose Cipher", "Obsidian Bloom", "Scarlet Fog", "Ivory Dark",
+    "Gilded Dusk", "Violet Hollow",
+  ];
+  const roomName = ROOM_NAMES[
+    parseInt(matchId.replace(/-/g, "").slice(0, 8), 16) % ROOM_NAMES.length
+  ];
+
   return (
-    <div className="h-screen flex flex-col bg-black text-white overflow-hidden">
-      {/* background */}
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(88,28,135,0.08)_0%,transparent_50%)]" />
+    <div
+      className="h-[100dvh] flex overflow-hidden"
+      style={{ background: "var(--chat-bg)", color: "var(--chat-text-primary)" }}
+    >
+      {/* ══ DESKTOP SIDEBAR (≥768px) ══ */}
+      <aside
+        className="hidden md:flex flex-col shrink-0 w-[200px] h-full"
+        style={{
+          background: "#0a0007",
+          borderRight: "1px solid var(--chat-divider)",
+        }}
+      >
+        {/* Wordmark */}
+        <div className="px-5 pt-6 pb-5">
+          <span
+            className="text-xl italic"
+            style={{ color: "var(--chat-text-primary)", fontFamily: "var(--font-fraunces)" }}
+          >
+            sweetscene
+          </span>
+        </div>
 
-      {/* ── HEADER ── */}
-      <header className="relative z-10 border-b border-white/5 backdrop-blur-md bg-black/60 px-6 py-3">
-        <div className="flex items-center justify-between gap-4">
-          {/* left */}
-          <div className="flex items-center gap-3 min-w-0">
-            <Link
-              href="/lobby"
-              className="text-sm text-muted hover:text-foreground-dim transition-colors shrink-0"
-            >
-              &larr;
-            </Link>
-
-            <div className="min-w-0">
-              {match.is_ai_match ? (
-                <>
-                  <p className="text-sm text-brand-light font-medium">
-                    AI Match
-                  </p>
-                  <p className="text-xs text-muted truncate">
-                    {characterList()}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-white font-medium truncate">
-                    {partnerUsername ?? "Anonymous Stranger"}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {match?.tier === "deep" ? "Deep Dive" : "Quick Match"}
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* center */}
-          <div className="hidden sm:flex items-center gap-3 shrink-0">
-            <span
-              className={[
-                "text-xs px-2 py-1 rounded-full border",
-                match.tier === "deep"
-                  ? "border-pink-500/30 text-pink-400"
-                  : "border-brand/30 text-brand-light",
-              ].join(" ")}
-            >
-              {match.tier === "deep" ? "Deep Dive" : "Quick Chat"}
-            </span>
-            <span className="text-xs text-muted">
-              {(match.scenario_tags ?? [])
-                .map((t: string) => t.replace(/_/g, " "))
-                .join(" \u2022 ")}
-            </span>
-          </div>
-
-          {/* right */}
-          <div className="flex items-center gap-4 shrink-0">
-            {/* pool */}
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-sm text-brand-light font-medium">
-                &#9670; {match.shared_pool.toLocaleString()} tokens
-              </span>
-              <div className="w-24 h-1 rounded-full bg-white/10 mt-1">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-brand to-pink-500 transition-all duration-500"
-                  style={{ width: `${poolPercent()}%` }}
-                />
-              </div>
-            </div>
-
-            {/* VIP image button */}
-            {profile?.is_vip && (
-              <button
-                type="button"
-                onClick={handleGenerateImage}
-                disabled={imageLoading}
-                className="text-xs bg-white/5 border border-white/10 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-foreground-dim transition-all"
+        {/* Nav */}
+        <nav className="flex-1 px-3 flex flex-col gap-1">
+          {[
+            { label: "Home",      href: "/" },
+            { label: "Roleplay",  href: "/lobby" },
+            { label: "My Scenes", href: "/characters/my" },
+            { label: "Profile",   href: "/profile" },
+          ].map(({ label, href }) => {
+            const active = href === "/lobby";
+            return (
+              <Link
+                key={label}
+                href={href}
+                className="px-3 py-2.5 rounded-lg text-xs uppercase tracking-widest transition-colors"
+                style={{
+                  fontFamily: "var(--font-space)",
+                  background: active ? "rgba(201,54,95,0.14)" : "transparent",
+                  color: active ? "var(--chat-bubble-user)" : "var(--chat-text-muted)",
+                  letterSpacing: "0.06em",
+                }}
               >
-                &#x1F5BC;&#xFE0F; Generate
-              </button>
-            )}
+                {label}
+              </Link>
+            );
+          })}
+        </nav>
 
-            {/* Report — deliberately NOT gated on match.status. A scene
-                that just ended is exactly when someone reaches for this,
-                and gating it on "active" would mean the abuse that ended
-                the scene is the abuse you cannot report. */}
-            <button
-              type="button"
-              onClick={() => {
-                setReportDone(false);
-                setReportMsg("");
-                setShowReport(true);
+        {/* Token pool at bottom of sidebar */}
+        <div className="px-4 py-5 mt-auto">
+          <p
+            className="text-[10px] uppercase tracking-widest mb-1"
+            style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-space)" }}
+          >
+            Token pool
+          </p>
+          <p
+            className="text-sm font-medium"
+            style={{ color: "var(--chat-bubble-user)", fontFamily: "var(--font-manrope)" }}
+          >
+            {match.shared_pool.toLocaleString()}
+          </p>
+          <div
+            className="mt-1.5 w-full h-1 rounded-full overflow-hidden"
+            style={{ background: "rgba(255,255,255,0.06)" }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${poolPercent()}%`,
+                background: "var(--chat-bubble-user)",
               }}
-              className="text-xs bg-white/5 border border-white/10 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-foreground-dim transition-all"
-              title="Report this conversation"
-            >
-              Report
-            </button>
-
-            {/* Phase 9.6: leave scene — only when match is active */}
-            {match.status === "active" && (
-              <button
-                type="button"
-                onClick={() => setShowLeaveConfirm(true)}
-                className="text-xs bg-white/5 border border-red-500/20 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-all"
-              >
-                Leave
-              </button>
-            )}
+            />
           </div>
         </div>
-      </header>
+      </aside>
 
-      {/* ── MESSAGE LIST ── */}
-      <div className="flex-1 overflow-hidden relative">
-        <MessageList messages={messages} currentUserId={currentUserId ?? ""} />
+      {/* ══ CHAT COLUMN ══ */}
+      <div className="flex-1 flex flex-col min-w-0 h-full">
+
+        {/* ── HEADER ── */}
+        <ChatHeader
+          roomName={roomName}
+          matchTier={match.tier}
+          onReport={() => { setReportDone(false); setReportMsg(""); setShowReport(true); }}
+          onLeave={match.status === "active" ? () => setShowLeaveConfirm(true) : undefined}
+          onGenerateImage={profile?.is_vip ? handleGenerateImage : undefined}
+          imageLoading={imageLoading}
+          backHref="/lobby"
+        />
+
+        {/* ── MESSAGE LIST ── */}
+        <div className="flex-1 overflow-hidden">
+          <MessageList messages={messages} currentUserId={currentUserId ?? ""} />
+        </div>
+
+        {/* ── CHAT BOX ── */}
+        <ChatBox
+          isLocked={isLocked}
+          isEnded={match.status === "ended"}
+          isRevealed={match.status === "revealed"}
+          errorMessage={error}
+          onSend={handleSend}
+          freeMessagesLeft={
+            profile && !profile.is_vip
+              ? Math.max(0, 17 - (profile.reputation_score ?? 0))
+              : undefined
+          }
+        />
       </div>
-
-      {/* ── CHAT BOX ── */}
-      <ChatBox
-        isLocked={isLocked}
-        isEnded={match.status === "ended"}
-        isRevealed={match.status === "revealed"}
-        errorMessage={error}
-        onSend={handleSend}
-      />
 
       {/* ── FADE TO BLACK ── */}
       {(match.status === "ended" || match.status === "revealed") && (
@@ -894,68 +886,27 @@ export default function ChatPage() {
       {showImageModal && (
         <div
           className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6"
-          onClick={() => {
-            setShowImageModal(false);
-            setGeneratedImageUrl(null);
-          }}
+          onClick={() => { setShowImageModal(false); setGeneratedImageUrl(null); }}
         >
           <div
-            className="max-w-lg w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-center"
+            className="max-w-lg w-full rounded-2xl p-6 text-center"
+            style={{ background: "#14090f", border: "1px solid var(--chat-divider)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {imageLoading ? (
               <div className="flex flex-col items-center gap-3 py-12">
-                <p className="text-muted-strong text-sm">Generating scene...</p>
-                <div className="flex items-center gap-1.5">
-                  <span
-                    className="block w-2 h-2 rounded-full bg-brand-light"
-                    style={{
-                      animation:
-                        "typingBounce 1.4s infinite ease-in-out",
-                      animationDelay: "0s",
-                    }}
-                  />
-                  <span
-                    className="block w-2 h-2 rounded-full bg-brand-light"
-                    style={{
-                      animation:
-                        "typingBounce 1.4s infinite ease-in-out",
-                      animationDelay: "0.2s",
-                    }}
-                  />
-                  <span
-                    className="block w-2 h-2 rounded-full bg-brand-light"
-                    style={{
-                      animation:
-                        "typingBounce 1.4s infinite ease-in-out",
-                      animationDelay: "0.4s",
-                    }}
-                  />
-                </div>
+                <p className="text-sm" style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>Generating scene...</p>
               </div>
             ) : generatedImageUrl ? (
               <div className="flex flex-col items-center gap-4">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={generatedImageUrl}
-                  alt="Generated scene"
-                  className="max-w-full rounded-xl"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowImageModal(false);
-                    setGeneratedImageUrl(null);
-                  }}
-                  className="px-4 py-2 rounded-lg bg-white/10 text-muted-strong text-sm hover:bg-white/20 transition-all"
-                >
-                  Close
-                </button>
+                <img src={generatedImageUrl} alt="Generated scene" className="max-w-full rounded-xl" />
+                <button type="button" onClick={() => { setShowImageModal(false); setGeneratedImageUrl(null); }}
+                  className="px-4 py-2 rounded-lg text-sm transition-all hover:bg-white/10"
+                  style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>Close</button>
               </div>
             ) : (
-              <p className="text-muted text-sm py-8">
-                Could not generate image.
-              </p>
+              <p className="text-sm py-8" style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>Could not generate image.</p>
             )}
           </div>
         </div>
@@ -964,51 +915,29 @@ export default function ChatPage() {
       {/* ── LEAVE SCENE CONFIRMATION ── */}
       {showLeaveConfirm && (
         <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
-            <h2 className="text-xl font-light text-white mb-2">
-              Leave this scene?
-            </h2>
-            <p className="text-sm text-muted mt-2 mb-6">
-              Your shared token pool will be consumed and this match will
-              end. Your partner will be notified.
+          <div className="max-w-md w-full rounded-2xl p-8 text-center"
+            style={{ background: "#14090f", border: "1px solid var(--chat-divider)" }}>
+            <h2 className="text-xl italic mb-2" style={{ color: "var(--chat-text-primary)", fontFamily: "var(--font-fraunces)" }}>Leave this scene?</h2>
+            <p className="text-sm mt-2 mb-6" style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>
+              Your shared token pool will be consumed and this match will end.
             </p>
-
-            {/* Blocking on the way out, without having to file a report
-                first. Not everyone who wants never to see someone again
-                wants to write a moderator a paragraph about it. */}
             {partnerId() && (
               <label className="flex items-start gap-3 text-left mb-5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={blocked}
-                  disabled={blocking || blocked}
-                  onChange={handleBlock}
-                  className="mt-0.5 accent-red-500"
-                />
-                <span className="text-sm text-muted-strong">
-                  {blocked
-                    ? "Blocked. You won't be matched with them again."
-                    : "Also block this user — you'll never be matched again. They aren't told."}
+                <input type="checkbox" checked={blocked} disabled={blocking || blocked} onChange={handleBlock} className="mt-0.5 accent-red-500" />
+                <span className="text-sm" style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>
+                  {blocked ? "Blocked. You won't be matched again." : "Also block this user — they aren't told."}
                 </span>
               </label>
             )}
-
             <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={handleLeaveScene}
-                disabled={leaveLoading}
-                className="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white font-medium py-3 rounded-xl hover:from-red-500 hover:to-pink-500 active:scale-95 transition-all disabled:opacity-50"
-              >
+              <button type="button" onClick={handleLeaveScene} disabled={leaveLoading}
+                className="w-full font-medium py-3 rounded-xl active:scale-95 transition-all disabled:opacity-50"
+                style={{ background: "#c9365f", color: "#f3e4e9", fontFamily: "var(--font-manrope)" }}>
                 {leaveLoading ? "Leaving..." : "Yes, leave scene"}
               </button>
-              <button
-                type="button"
-                onClick={() => setShowLeaveConfirm(false)}
-                className="text-sm text-muted hover:text-foreground-dim transition-colors"
-              >
-                Cancel
-              </button>
+              <button type="button" onClick={() => setShowLeaveConfirm(false)}
+                className="text-sm transition-colors"
+                style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>Cancel</button>
             </div>
           </div>
         </div>
@@ -1017,150 +946,188 @@ export default function ChatPage() {
       {/* ── REPORT THIS SCENE ── */}
       {showReport && (
         <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8">
+          <div className="max-w-md w-full rounded-2xl p-8"
+            style={{ background: "#14090f", border: "1px solid var(--chat-divider)" }}>
             {reportDone ? (
               <div className="text-center">
-                <h2 className="text-xl font-light text-white mb-2">
-                  Report submitted
-                </h2>
-                <p className="text-sm text-muted mb-6">
-                  A moderator will review the conversation. You can keep
-                  chatting, or leave the scene now — the report stands
-                  either way.
+                <h2 className="text-xl italic mb-2" style={{ color: "var(--chat-text-primary)", fontFamily: "var(--font-fraunces)" }}>Report submitted</h2>
+                <p className="text-sm mb-6" style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>
+                  A moderator will review the conversation.
                 </p>
-                <div className="flex flex-col gap-3">
-                  {partnerId() && (
-                    <button
-                      type="button"
-                      onClick={handleBlock}
-                      disabled={blocking || blocked}
-                      className="w-full bg-red-500/10 border border-red-500/20 text-danger font-medium py-3 rounded-xl hover:bg-red-500/15 disabled:opacity-60 disabled:hover:bg-red-500/10 transition-all"
-                    >
-                      {blocked
-                        ? "Blocked — you won't be matched again"
-                        : blocking
-                          ? "Blocking..."
-                          : "Also block this user"}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowReport(false);
-                      setShowLeaveConfirm(true);
-                    }}
-                    className="w-full bg-white/10 border border-white/10 text-white font-medium py-3 rounded-xl hover:bg-white/15 transition-all"
-                  >
-                    Leave this scene
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowReport(false);
-                      setReportDone(false);
-                      setReportMsg("");
-                    }}
-                    className="text-sm text-muted hover:text-foreground-dim transition-colors"
-                  >
-                    Close
-                  </button>
-                </div>
+                <button type="button" onClick={() => { setShowReport(false); setReportDone(false); setReportMsg(""); }}
+                  className="text-sm transition-colors"
+                  style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>Close</button>
               </div>
             ) : (
               <>
-                <h2 className="text-xl font-light text-white mb-2">
-                  Report this scene
-                </h2>
-                <p className="text-sm text-muted mb-5">
-                  The last 100 messages are attached automatically as
-                  evidence. Your partner is not told you reported.
+                <h2 className="text-xl italic mb-2" style={{ color: "var(--chat-text-primary)", fontFamily: "var(--font-fraunces)" }}>Report this scene</h2>
+                <p className="text-sm mb-5" style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>
+                  The last 100 messages are attached as evidence.
                 </p>
-
                 <div className="flex flex-wrap gap-2 mb-4">
-                  {[
-                    "Harassment",
-                    "Sexual content involving a minor",
-                    "Threats or violence",
-                    "Asking for personal info",
-                    "Spam or scam",
-                    "Other",
-                  ].map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() =>
-                        setReportCategory((prev) => (prev === cat ? "" : cat))
-                      }
-                      className={[
-                        "px-3 py-1.5 rounded-full text-xs border transition-all",
-                        reportCategory === cat
-                          ? "bg-red-500/20 border-red-500/40 text-danger"
-                          : "bg-white/5 border-white/10 text-muted-strong hover:border-white/20",
-                      ].join(" ")}
-                    >
+                  {["Harassment","Sexual content involving a minor","Threats or violence","Asking for personal info","Spam or scam","Other"].map((cat) => (
+                    <button key={cat} type="button"
+                      onClick={() => setReportCategory((prev) => prev === cat ? "" : cat)}
+                      className="px-3 py-1.5 rounded-full text-xs border transition-all"
+                      style={{
+                        background: reportCategory === cat ? "rgba(201,54,95,0.15)" : "rgba(255,255,255,0.04)",
+                        borderColor: reportCategory === cat ? "rgba(201,54,95,0.4)" : "rgba(255,255,255,0.1)",
+                        color: reportCategory === cat ? "#c9365f" : "var(--chat-text-muted)",
+                        fontFamily: "var(--font-space)",
+                      }}>
                       {cat}
                     </button>
                   ))}
                 </div>
-
-                <label htmlFor="report-detail" className="sr-only">
-                  What happened
-                </label>
-                <textarea
-                  id="report-detail"
-                  value={reportReason}
-                  onChange={(e) => setReportReason(e.target.value)}
-                  maxLength={1000}
-                  rows={4}
-                  placeholder="What happened? (optional if you picked a reason above)"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500/40 transition-all resize-none"
-                />
-
-                {reportMsg && (
-                  <p className="mt-3 text-sm text-danger">{reportMsg}</p>
-                )}
-
+                <label htmlFor="report-detail" className="sr-only">What happened</label>
+                <textarea id="report-detail" value={reportReason} onChange={(e) => setReportReason(e.target.value)}
+                  maxLength={1000} rows={4} placeholder="What happened? (optional)"
+                  className="w-full rounded-xl px-4 py-3 text-sm resize-none outline-none transition-all"
+                  style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+                    color: "var(--chat-text-primary)", fontFamily: "var(--font-manrope)" }} />
+                {reportMsg && <p className="mt-3 text-sm text-red-400">{reportMsg}</p>}
                 <div className="flex flex-col gap-3 mt-5">
-                  <button
-                    type="button"
-                    onClick={handleReport}
-                    disabled={reporting}
-                    className="w-full bg-gradient-to-r from-red-600 to-pink-600 text-white font-medium py-3 rounded-xl hover:from-red-500 hover:to-pink-500 active:scale-95 transition-all disabled:opacity-50"
-                  >
+                  <button type="button" onClick={handleReport} disabled={reporting}
+                    className="w-full font-medium py-3 rounded-xl active:scale-95 transition-all disabled:opacity-50"
+                    style={{ background: "#c9365f", color: "#f3e4e9", fontFamily: "var(--font-manrope)" }}>
                     {reporting ? "Submitting..." : "Submit report"}
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowReport(false);
-                      setReportMsg("");
-                    }}
-                    className="text-sm text-muted hover:text-foreground-dim transition-colors"
-                  >
-                    Cancel
-                  </button>
+                  <button type="button" onClick={() => { setShowReport(false); setReportMsg(""); }}
+                    className="text-sm transition-colors"
+                    style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-manrope)" }}>Cancel</button>
                 </div>
               </>
             )}
           </div>
         </div>
       )}
-
-      {/* ── KEYFRAMES ── */}
-      <style jsx>{`
-        @keyframes typingBounce {
-          0%,
-          80%,
-          100% {
-            opacity: 0.3;
-            transform: translateY(0);
-          }
-          40% {
-            opacity: 1;
-            transform: translateY(-4px);
-          }
-        }
-      `}</style>
     </div>
+  );
+
+}
+
+/* ══════════════════════════════════════════════════════════════════
+ * ChatHeader — local component
+ * Left: back arrow + room name (Fraunces italic) + tier badge
+ * Right: diagonal 3-dot menu → Cancel / Report / Regenerate / Leave
+ * ══════════════════════════════════════════════════════════════════ */
+type ChatHeaderProps = {
+  roomName: string;
+  matchTier: "quick" | "deep";
+  onReport: () => void;
+  onLeave?: () => void;
+  onGenerateImage?: () => void;
+  imageLoading?: boolean;
+  backHref: string;
+};
+
+function ChatHeader({
+  roomName,
+  matchTier,
+  onReport,
+  onLeave,
+  onGenerateImage,
+  imageLoading,
+  backHref,
+}: ChatHeaderProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener("mousedown", handler);
+    return () => window.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  return (
+    <header
+      className="shrink-0 flex items-center justify-between px-4 h-14 relative"
+      style={{
+        background: "var(--chat-bg)",
+        borderBottom: "1px solid var(--chat-divider)",
+      }}
+    >
+      {/* Left: back + room name */}
+      <div className="flex items-center gap-3 min-w-0">
+        <Link
+          href={backHref}
+          aria-label="Back"
+          className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-colors hover:bg-white/5"
+          style={{ color: "var(--chat-text-muted)" }}
+        >
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M11 4L6 9l5 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Link>
+
+        <div className="min-w-0">
+          <p
+            className="text-base italic leading-none truncate"
+            style={{ color: "var(--chat-text-primary)", fontFamily: "var(--font-fraunces)" }}
+          >
+            {roomName}
+          </p>
+          <p
+            className="text-[10px] uppercase tracking-widest mt-0.5"
+            style={{ color: "var(--chat-text-muted)", fontFamily: "var(--font-space)" }}
+          >
+            {matchTier === "deep" ? "Deep Dive" : "Quick Chat"}
+          </p>
+        </div>
+      </div>
+
+      {/* Right: 3-dot diagonal menu trigger */}
+      <div ref={menuRef} className="relative">
+        <button
+          type="button"
+          aria-label="Chat options"
+          onClick={() => setMenuOpen((v) => !v)}
+          className="w-9 h-9 flex items-center justify-center rounded-full transition-colors hover:bg-white/5"
+          style={{ color: "var(--chat-text-muted)" }}
+        >
+          {/* Diagonal 3-dot arrangement */}
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+            <circle cx="5"  cy="15" r="1.6" />
+            <circle cx="10" cy="10" r="1.6" />
+            <circle cx="15" cy="5"  r="1.6" />
+          </svg>
+        </button>
+
+        {menuOpen && (
+          <div
+            className="ctx-menu-in absolute right-0 top-full mt-1 min-w-[190px] rounded-xl overflow-hidden shadow-2xl z-50"
+            style={{
+              background: "#14090f",
+              border: "1px solid var(--chat-divider)",
+            }}
+          >
+            {[
+              { label: "Cancel Chat",             action: onLeave,          danger: false },
+              { label: "Report Chat",              action: onReport,         danger: true  },
+              { label: "Regenerate Last Message",  action: onGenerateImage ?? (() => {}), danger: false, disabled: !onGenerateImage || imageLoading },
+            ].map(({ label, action, danger, disabled }) => (
+              <button
+                key={label}
+                type="button"
+                disabled={disabled}
+                onClick={() => { setMenuOpen(false); if (action) action(); }}
+                className="w-full text-left px-4 py-3 text-sm transition-colors hover:bg-white/5 disabled:opacity-30"
+                style={{
+                  color: danger ? "#f87171" : "var(--chat-text-primary)",
+                  fontFamily: "var(--font-manrope)",
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </header>
   );
 }

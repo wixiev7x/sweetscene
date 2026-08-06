@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Fraunces, Manrope, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import NotificationBell from "@/components/NotificationBell";
 import AgeCohortGate from "@/components/AgeCohortGate";
@@ -15,6 +15,25 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+/* ── Chat fonts ── loaded once at root; exposed as CSS vars in globals.css */
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  axes: ["opsz", "SOFT", "WONK"],
+});
+
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -39,7 +58,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased bg-black`}
+      className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${manrope.variable} ${spaceGrotesk.variable} h-full antialiased bg-black`}
     >
       <body className="min-h-full flex flex-col">
         <LenisProvider>
