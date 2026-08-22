@@ -1,24 +1,31 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter, Press_Start_2P } from "next/font/google";
 import "./globals.css";
 import NotificationBell from "@/components/NotificationBell";
 import AgeCohortGate from "@/components/AgeCohortGate";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import SiteNav from "@/components/SiteNav";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const pressStart2P = Press_Start_2P({
+  variable: "--font-press-start",
   subsets: ["latin"],
+  weight: "400",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "sweetscene — anonymous AI roleplay dating",
+  title: "SweetScene — Anonymous AI Matchmaking",
   description:
-    "Match anonymously, roleplay inside a shared scene with an AI director, and decide if the fog lifts. 16+.",
+    "Anonymous matchmaking. Match first. Build connection. Reveal only when both sides agree.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#050508",
 };
 
 export default function RootLayout({
@@ -29,10 +36,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${pressStart2P.variable} h-full antialiased scanline-overlay noise-overlay`}
     >
-      <body className="min-h-full flex flex-col">
-        {children}
+      <body className="min-h-full flex flex-col bg-background text-foreground">
+        <SiteNav />
+        <div className="flex-1">{children}</div>
         <div className="fixed top-3 right-3 z-50">
           <NotificationBell />
         </div>
