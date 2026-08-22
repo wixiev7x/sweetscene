@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useMounted } from "@/lib/utils/useMounted";
+
 import { playSound } from "@/lib/utils/sound";
 import { createClient } from "@/lib/supabase/client";
 
@@ -78,7 +78,6 @@ function hashStr(s: string): number {
 }
 
 export default function Home() {
-  const mounted = useMounted();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
   const [visibleCount, setVisibleCount] = useState(20);
@@ -141,8 +140,6 @@ export default function Home() {
     setShowNsfwConfirm(false);
     playSound("click");
   }
-
-  if (!mounted) return null;
 
   const filtered = characters.filter((c) => {
     if (c.is_nsfw && !nsfwMode) return false;
