@@ -1,12 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useMounted } from "@/lib/utils/useMounted";
-import { useStoredFlag, notifyFlagChange } from "@/lib/utils/useStoredFlag";
-import TurnstileWidget from "@/components/TurnstileWidget";
-import { MIN_PLATFORM_AGE } from "@/lib/config/constants";
 import { playSound } from "@/lib/utils/sound";
+import { createClient } from "@/lib/supabase/client";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -51,417 +49,300 @@ const FAQ = [
   { q: "What does the AI do?", a: "The AI director breaks the ice, throws curveball prompts, and keeps the scene alive. Every 6 messages, it steps in to keep things moving." },
 ];
 
-export default function Home() {
-  const ageVerified = useStoredFlag("sweetscene_age_verified");
-  const mounted = useMounted();
-  const [goodbyeClicked, setGoodbyeClicked] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
-  const [birthMonth, setBirthMonth] = useState("");
-  const [birthDay, setBirthDay] = useState("");
-  const [birthYear, setBirthYear] = useState("");
-  const [ageError, setAgeError] = useState("");
-  const [onlineCount, setOnlineCount] = useState(12847);
-  const [openFaq, setOpenFaq] = useState<number | null>(null);
+const FILTER_CATEGORIES = ["Hot Picks", "New", "Girlfriend", "Boyfriend", "Anime", "Gaming", "All Tags"];
+const NSFW_CATEGORIES = ["NSFW", "Dominant", "Submissive", "Taboo"];
 
-  useEffect(() => {
-    const id = setInterval(() => {
-      setOnlineCount((c) => Math.max(0, c + Math.floor(Math.random() * 11) - 5));
-    }, 3000);
-    return () => clearInterval(id);
+type Character = {
+  id: string;
+  name: string;
+  tagline: string;
+  is_nsfw: boolean;
+  genres: string[];
+};
+
+const GRADIENTS = [
+  "from-brand to-crimson-600",
+  "from-neon-purple to-brand",
+  "from-crimson-500 to-brand-dark",
+  "from-brand-light to-neon-purple",
+  "from-crimson-600 to-gold-600",
+  "from-neon-purple to-crimson-500",
+  "from-brand-dark to-neon-purple",
+  "from-gold-500 to-brand",
+];
+
+function hashStr(s: string): number {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+export default function Home() {
+  const mounted = useMounted();
+  const [characters, setCharacters] = useState<Character[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const [filter, setFilter] = useState("All");
+  const [nsfwMode, setNsfwMode] = useState(false);
+  const [showNsfwConfirm, setShowNsfwConfirm] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  const fetchCharacters = useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("bots")
+        .select("id, name, tagline, is_nsfw, genres")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        setCharacters(data.map((b: Record<string, unknown>) => ({
+          id: b.id as string,
+          name: b.name as string,
+          tagline: (b.tagline as string) || "",
+          is_nsfw: (b.is_nsfw as boolean) ?? false,
+          genres: (b.genres as string[]) ?? [],
+        })));
+      }
+    } catch {
+      // empty state
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  function calculateAge(): number {
-    const month = parseInt(birthMonth, 10);
-    const day = parseInt(birthDay, 10);
-    const year = parseInt(birthYear, 10);
-    if (!month || !day || !year) return -1;
-    const birth = new Date(year, month - 1, day);
-    if (birth.getMonth() !== month - 1 || birth.getDate() !== day) return -1;
-    const now = new Date();
-    let age = now.getFullYear() - year;
-    if (now.getMonth() < month - 1 || (now.getMonth() === month - 1 && now.getDate() < day)) {
-      age--;
+  useEffect(() => {
+    fetchCharacters();
+  }, [fetchCharacters]);
+
+  useEffect(() => {
+    function handleScroll() {
+      const scrollTop = window.scrollY;
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0);
     }
-    return age;
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  function handleNsfwToggle() {
+    if (!nsfwMode) {
+      setShowNsfwConfirm(true);
+    } else {
+      setNsfwMode(false);
+    }
   }
 
-  function birthdateISO(): string {
-    const month = parseInt(birthMonth, 10);
-    const day = parseInt(birthDay, 10);
-    const year = parseInt(birthYear, 10);
-    if (!month || !day || !year) return "";
-    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-  }
-
-  function handleVerify() {
-    const age = calculateAge();
-    if (age < 0) {
-      setAgeError("Please enter a valid date of birth.");
-      return;
-    }
-    if (age < MIN_PLATFORM_AGE) {
-      setGoodbyeClicked(true);
-      setAgeError(`You must be ${MIN_PLATFORM_AGE} or older to use this platform.`);
-      setTimeout(() => {
-        window.location.assign("https://www.google.com");
-      }, 2000);
-      return;
-    }
-    sessionStorage.setItem("sweetscene_pending_dob", birthdateISO());
-    localStorage.setItem("sweetscene_age_verified", "true");
-    notifyFlagChange();
-    playSound("matchFound");
-  }
-
-  function handleDecline() {
-    setGoodbyeClicked(true);
-    setTimeout(() => {
-      window.location.assign("https://www.google.com");
-    }, 1500);
+  function confirmNsfw() {
+    setNsfwMode(true);
+    setShowNsfwConfirm(false);
+    playSound("click");
   }
 
   if (!mounted) return null;
 
-  if (!ageVerified) {
-    const currentYear = new Date().getFullYear();
-    const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
-    const daysInMonth = birthMonth
-      ? new Date(parseInt(String(birthYear || currentYear), 10), parseInt(String(birthMonth), 10), 0).getDate()
-      : 31;
-    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-    const selectClass =
-      "bg-surface border border-white/10 rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-neon-magenta/50";
+  const filtered = characters.filter((c) => {
+    if (c.is_nsfw && !nsfwMode) return false;
+    if (filter === "SFW Only" && c.is_nsfw) return false;
+    if (filter === "NSFW Only" && !c.is_nsfw) return false;
+    return true;
+  });
 
-    return (
-      <div className="fixed inset-0 z-50 bg-void-950 flex items-center justify-center overflow-hidden">
-        {[...Array(8)].map((_, i) => (
-          <span
-            key={i}
-            className="absolute rounded-full bg-neon-magenta/20"
-            style={{
-              width: `${4 + (i % 3) * 4}px`,
-              height: `${4 + (i % 3) * 4}px`,
-              left: `${10 + (i * 12) % 80}%`,
-              animation: `floatUp ${12 + (i % 6)}s ${i * 1.5}s infinite linear`,
-              opacity: 0,
-            }}
-          />
-        ))}
-
-        <div
-          className="relative z-10 flex flex-col items-center text-center px-6"
-          style={{ animation: "slowFade 2s ease-in-out forwards" }}
-        >
-          <span className="font-retro text-sm tracking-[0.3em] text-neon-magenta neon-text uppercase">
-            SweetScene
-          </span>
-
-          <div className="w-16 mx-auto my-6 h-px bg-gradient-to-r from-transparent via-neon-magenta/50 to-transparent" />
-
-          <h1 className="text-2xl font-light text-foreground-dim">Enter the fog</h1>
-
-          <p className="text-sm text-muted-faint max-w-md mt-3 leading-relaxed">
-            This platform contains mature content. Please verify your date of
-            birth to continue. You must be {MIN_PLATFORM_AGE} or older.
-          </p>
-
-          <div className="flex items-center gap-2 mt-6">
-            <select aria-label="Birth month" value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)} className={selectClass}>
-              <option value="">Month</option>
-              {MONTHS.map((m, i) => (<option key={m} value={i + 1}>{m}</option>))}
-            </select>
-            <select aria-label="Birth day" value={birthDay} onChange={(e) => setBirthDay(e.target.value)} className={selectClass}>
-              <option value="">Day</option>
-              {days.map((d) => (<option key={d} value={d}>{d}</option>))}
-            </select>
-            <select aria-label="Birth year" value={birthYear} onChange={(e) => setBirthYear(e.target.value)} className={selectClass}>
-              <option value="">Year</option>
-              {years.map((y) => (<option key={y} value={y}>{y}</option>))}
-            </select>
-          </div>
-
-          {ageError && <p className="text-xs text-danger mt-3">{ageError}</p>}
-
-          <div className="flex items-center gap-3 mt-6">
-            <button
-              type="button"
-              onClick={handleVerify}
-              disabled={!birthMonth || !birthDay || !birthYear || (!!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && !turnstileToken)}
-              className="px-8 py-3 rounded-xl font-medium text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 active:scale-95 transform transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Enter
-            </button>
-            <div className="flex flex-col items-center">
-              <button
-                type="button"
-                onClick={handleDecline}
-                className="px-8 py-3 rounded-xl font-medium text-muted bg-surface border border-white/10 hover:bg-surface-raised active:scale-95 transform transition-all duration-300"
-              >
-                Leave
-              </button>
-              {goodbyeClicked && <span className="text-xs text-muted-faint mt-1">Goodbye.</span>}
-            </div>
-          </div>
-
-          {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
-            <div className="mt-6">
-              <TurnstileWidget siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} onVerify={setTurnstileToken} />
-            </div>
-          )}
-
-          <p className="text-xs text-muted-faint mt-6">
-            By entering, you agree to our{" "}
-            <Link href="/legal/terms" className="text-neon-magenta/70 hover:text-brand-light underline">Terms</Link>{" "}
-            and{" "}
-            <Link href="/legal/privacy" className="text-neon-magenta/70 hover:text-brand-light underline">Privacy Policy</Link>.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const visible = filtered.slice(0, visibleCount);
 
   return (
-    <main className="bg-void-950 text-foreground min-h-screen">
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6">
-        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_30%,rgba(255,45,149,0.12)_0%,transparent_60%)]" />
+    <div className="md:pl-16 pb-14 md:pb-0">
+      {/* Scroll progress heat bar */}
+      <div className="fixed top-12 left-0 right-0 h-[2px] z-50 bg-white/5">
+        <div
+          className="h-full bg-gradient-to-r from-neon-magenta to-crimson-600 transition-[width] duration-75"
+          style={{ width: `${scrollProgress * 100}%` }}
+        />
+      </div>
 
-        <div className="relative z-10 flex flex-col items-center text-center">
-          <span
-            className="text-xs tracking-[0.3em] text-neon-magenta/60 uppercase max-w-md"
-            style={{ animation: "slowFade 1.5s ease-in-out forwards", opacity: 0 }}
-          >
-            Match first. Build connection. Reveal only when both sides agree.
-          </span>
+      {/* Connection meter — vertical right edge */}
+      <div className="fixed right-0 top-12 bottom-14 md:bottom-0 w-[3px] z-40 bg-white/5">
+        <div
+          className="w-full bg-gradient-to-b from-neon-magenta via-crimson-500 to-neon-purple transition-[height] duration-75"
+          style={{ height: `${scrollProgress * 100}%` }}
+        />
+        <span className="absolute bottom-2 right-4 text-[7px] uppercase tracking-widest text-muted-faint rotate-90 origin-bottom-right whitespace-nowrap">
+          CONNECTION
+        </span>
+      </div>
 
-          <h1
-            className="gradient-text text-7xl md:text-8xl font-bold tracking-tight mt-6"
-            style={{ animation: "breathScale 4s infinite alternate ease-in-out" }}
-          >
-            SweetScene
-          </h1>
-
-          <p
-            className="text-2xl font-light text-muted-strong italic mt-2"
-            style={{ animation: "slowFade 2s ease-in-out forwards", animationDelay: "0.8s", opacity: 0 }}
-          >
-            Step into a scene. Start anonymous.
-          </p>
-
-          <p
-            className="text-base text-muted max-w-lg mt-6 leading-relaxed"
-            style={{ animation: "slowFade 2s ease-in-out forwards", animationDelay: "1.4s", opacity: 0 }}
-          >
-            No pictures. No names. Our AI pairs you on real shared interests. Total anonymity, zero judgment.
-          </p>
-
-          <div
-            className="mt-10 flex flex-col items-center gap-3"
-            style={{ animation: "slowFade 2s ease-in-out forwards", animationDelay: "2s", opacity: 0 }}
-          >
-            <Link
-              href="/scenarios"
-              onClick={() => playSound("matchSearch")}
-              className="pulse-glow px-8 py-4 rounded-xl font-medium text-lg text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 active:scale-95 transform transition-all duration-300 inline-flex items-center gap-2"
-            >
-              Join a Live Scene <span>&rarr;</span>
-            </Link>
-            <Link
-              href="/explore"
-              className="text-sm text-muted hover:text-foreground-dim mt-1 underline-offset-4 hover:underline transition-all"
-            >
-              Browse Characters
-            </Link>
+      {/* Slim banner */}
+      <section className="px-4 sm:px-6 pt-6 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl mx-auto">
+          <div>
+            <h1 className="text-lg font-light text-foreground">Matchmake Yourself</h1>
+            <p className="text-xs text-muted">Anonymous first. Reveal only when both agree.</p>
           </div>
-
-          <p
-            className="text-sm text-muted-faint mt-10 max-w-md"
-            style={{ animation: "slowFade 2s ease-in-out forwards", animationDelay: "2.4s", opacity: 0 }}
-          >
-            Join 50,000+ people sharing scenes, prompts, and stories. No faces, no names, just vibes.
-          </p>
-
-          <p
-            className="text-neon-green font-retro text-xs mt-4 neon-text"
-            style={{ animation: "slowFade 2s ease-in-out forwards", animationDelay: "2.8s", opacity: 0 }}
-          >
-            {onlineCount.toLocaleString()} online right now
-          </p>
-        </div>
-      </section>
-
-      <section className="py-24 px-6 bg-void-900">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-3xl font-light text-foreground-dim tracking-wide">
-            Three steps to anonymous connection
-          </h2>
-          <p className="text-neon-magenta/60 uppercase tracking-[0.2em] text-xs mt-3">
-            Don&apos;t just play scenes. BUILD them.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          {STEPS.map((step, i) => (
-            <div
-              key={step.title}
-              className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 text-center hover:border-neon-magenta/40 transition-all duration-300"
-              style={{ animation: "slowFade 2s ease-in-out forwards", animationDelay: `${0.2 + i * 0.2}s`, opacity: 0 }}
-            >
-              <span className="block text-4xl mb-4">{step.emoji}</span>
-              <h3 className="text-lg text-foreground font-light mb-3">{step.title}</h3>
-              <p className="text-sm text-muted-strong leading-relaxed">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="py-24 px-6 bg-void-950">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-3xl font-light text-foreground-dim tracking-wide">Step Into a Scene</h2>
-          <p className="text-sm text-muted mt-3 max-w-xl mx-auto">
-            Browse all available rooms and scenarios. Find scenes and matches that fit your vibe.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {SCENARIOS.map((s, i) => (
-            <Link
-              key={s.name}
-              href="/scenarios"
-              className="group bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 hover:border-neon-magenta/40 hover:bg-surface-raised transition-all duration-300"
-              style={{ animation: "slowFade 2s ease-in-out forwards", animationDelay: `${0.1 + i * 0.1}s`, opacity: 0 }}
-            >
-              <span className="block text-3xl mb-3">{s.emoji}</span>
-              <h3 className="text-lg text-foreground font-medium mb-2 group-hover:text-neon-magenta transition-colors">
-                {s.name}
-              </h3>
-              <p className="text-sm text-muted-strong leading-relaxed">{s.desc}</p>
-            </Link>
-          ))}
-        </div>
-
-        <div className="text-center mt-12">
-          <Link href="/scenarios" className="text-brand-lighter hover:text-neon-magenta underline-offset-4 hover:underline transition-all">
-            View all scenarios &rarr;
-          </Link>
-        </div>
-      </section>
-
-      <section className="py-24 px-6 bg-void-900">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-3xl font-light text-foreground-dim tracking-wide">Live Activity</h2>
-          <p className="text-sm text-muted mt-3">Live activity by interest category</p>
-        </div>
-
-        <div className="max-w-2xl mx-auto space-y-3">
-          {ACTIVITY.map((item, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-4 bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl px-5 py-4"
-              style={{ animation: "slowFade 1.5s ease-in-out forwards", animationDelay: `${i * 0.1}s`, opacity: 0 }}
-            >
-              <span className="relative flex h-2 w-2 shrink-0">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-neon-green opacity-75 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-neon-green" />
-              </span>
-              <span className="text-sm text-muted-strong flex-1">{item.text}</span>
-              <span className="text-xs text-muted-faint shrink-0">{item.time}</span>
-            </div>
-          ))}
-        </div>
-
-        <p className="text-center text-xs text-muted-faint mt-8">
-          Live now: Late-Night Diner scene &mdash; <span className="text-neon-green">2,847 watching</span>
-        </p>
-      </section>
-
-      <section className="py-24 px-6 bg-void-950">
-        <div className="max-w-4xl mx-auto text-center mb-16">
-          <h2 className="text-3xl font-light text-foreground-dim tracking-wide">Unlock badges as you explore</h2>
-          <p className="text-sm text-muted mt-3 max-w-xl mx-auto">
-            Your scenes stay in the dark until you say otherwise.
-          </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-          {FEATURES.map((f, i) => (
-            <Link
-              key={f.title}
-              href={f.href}
-              className="group bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 hover:border-neon-magenta/40 hover:bg-surface-raised transition-all duration-300"
-              style={{ animation: "slowFade 2s ease-in-out forwards", animationDelay: `${0.1 + i * 0.1}s`, opacity: 0 }}
-            >
-              <h3 className="font-retro text-sm text-neon-magenta mb-4 group-hover:neon-text transition-all">
-                {f.title}
-              </h3>
-              <p className="text-sm text-muted-strong leading-relaxed">{f.desc}</p>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="py-24 px-6 bg-void-900">
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-3xl font-light text-foreground-dim text-center tracking-wide mb-12">Questions</h2>
-
-          <div className="space-y-3">
-            {FAQ.map((item, i) => {
-              const open = openFaq === i;
-              return (
-                <div key={i} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-xl overflow-hidden">
-                  <button
-                    type="button"
-                    onClick={() => setOpenFaq(open ? null : i)}
-                    className="w-full flex items-center justify-between px-5 py-4 text-left"
-                  >
-                    <span className="text-sm text-foreground-dim font-medium">{item.q}</span>
-                    <span className={`text-neon-magenta transition-transform duration-300 ${open ? "rotate-45" : ""}`}>
-                      +
-                    </span>
-                  </button>
-                  {open && (
-                    <p className="px-5 pb-4 text-sm text-muted-strong leading-relaxed">{item.a}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      <section className="py-24 px-6 bg-void-950 text-center">
-        <div className="max-w-xl mx-auto">
-          <h2 className="text-4xl font-light text-foreground-dim mb-3">
-            Ready to enter the fog?
-          </h2>
-          <p className="text-muted mb-8">Step into a scene. The blur drops only when you both say so.</p>
           <Link
-            href="/login"
-            className="pulse-glow inline-block px-10 py-4 rounded-xl font-medium text-lg text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 active:scale-95 transform transition-all duration-300"
+            href="/quiz"
+            onClick={() => playSound("matchSearch")}
+            className="text-xs px-5 py-2 rounded-full text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all whitespace-nowrap"
           >
-            Get Started
+            Start Matching
           </Link>
         </div>
       </section>
 
-      <footer className="py-12 px-6 border-t border-white/5 bg-void-900">
-        <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <span className="flex items-center gap-2 text-lg text-brand font-medium">
-            <span className="pulse-glow w-2 h-2 rounded-full bg-neon-magenta inline-block" />
-            SweetScene
-          </span>
-
-          <div className="flex items-center gap-6">
-            <Link href="/legal/privacy" className="text-xs text-muted-faint hover:text-muted-strong transition-colors">Privacy</Link>
-            <Link href="/legal/terms" className="text-xs text-muted-faint hover:text-muted-strong transition-colors">Terms</Link>
-            <Link href="/pricing" className="text-xs text-muted-faint hover:text-muted-strong transition-colors">Pricing</Link>
-            <Link href="/confessions" className="text-xs text-muted-faint hover:text-muted-strong transition-colors">Confessions</Link>
-          </div>
-
-          <span className="text-xs text-muted-faint">
-            &copy; 2025 SweetScene. All scenes reserved.
-          </span>
+      {/* Filter row */}
+      <section className="px-4 sm:px-6 pb-4">
+        <div className="flex items-center gap-2 mb-3 max-w-7xl mx-auto">
+          <button
+            onClick={() => { setFilter("All"); playSound("click"); }}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${filter === "All" ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => { setFilter("SFW Only"); playSound("click"); }}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${filter === "SFW Only" ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+          >
+            SFW Only
+          </button>
+          <button
+            onClick={handleNsfwToggle}
+            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${nsfwMode ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+          >
+            NSFW Only
+          </button>
         </div>
-      </footer>
-    </main>
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 max-w-7xl mx-auto scrollbar-none">
+          {FILTER_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => { setFilter(cat); playSound("click"); }}
+              className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-all ${filter === cat ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+            >
+              {cat}
+            </button>
+          ))}
+          {nsfwMode && NSFW_CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => { setFilter(cat); playSound("click"); }}
+              className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-all ${filter === cat ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-crimson-500/5 border-crimson-500/20 text-crimson-400/70 hover:text-crimson-400"}`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Character grid */}
+      <section className="px-4 sm:px-6 pb-8">
+        <div className="max-w-7xl mx-auto">
+          {loading ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+              {[...Array(10)].map((_, i) => (
+                <div key={i} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden animate-pulse">
+                  <div className="aspect-[3/4] bg-surface-raised" />
+                  <div className="p-2.5">
+                    <div className="h-3 bg-surface-raised rounded w-20 mb-1.5" />
+                    <div className="h-2.5 bg-surface-raised rounded w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : visible.length === 0 ? (
+            <div className="text-center py-20">
+              <p className="text-muted text-lg mb-2">No characters yet</p>
+              <p className="text-muted-faint text-sm mb-6">Be the first to create one.</p>
+              <Link
+                href="/create"
+                className="inline-block text-xs px-5 py-2.5 rounded-full text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson--500 transition-all"
+              >
+                Create the first one
+              </Link>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {visible.map((c) => {
+                  const grad = GRADIENTS[hashStr(c.name) % GRADIENTS.length];
+                  const tags = (c.genres || []).slice(0, 2);
+                  return (
+                    <Link
+                      key={c.id}
+                      href={`/chat/${c.id}`}
+                      onClick={() => playSound("click")}
+                      className="group bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-neon-magenta/40 hover:scale-[1.02] transition-all duration-200"
+                    >
+                      <div className="aspect-[3/4] relative overflow-hidden">
+                        <div className={`absolute inset-0 bg-gradient-to-br ${grad} flex items-center justify-center`}>
+                          <span className="text-4xl font-bold text-white/30">{c.name[0] || "?"}</span>
+                        </div>
+                        {c.is_nsfw && (
+                          <span className="absolute top-1.5 right-1.5 text-[8px] px-1.5 py-0.5 rounded-full bg-crimson-500/80 text-white font-bold">
+                            18+
+                          </span>
+                        )}
+                      </div>
+                      <div className="p-2.5">
+                        <h3 className="text-sm text-foreground group-hover:text-neon-magenta transition-colors truncate">
+                          {c.name}
+                        </h3>
+                        {c.tagline && (
+                          <p className="text-[11px] text-muted truncate mt-0.5">{c.tagline}</p>
+                        )}
+                        {tags.length > 0 && (
+                          <div className="flex items-center gap-1 mt-1.5">
+                            {tags.map((t) => (
+                              <span key={t} className="text-[8px] px-1.5 py-0.5 rounded-full bg-neon-magenta/10 text-brand-light">
+                                {t}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+              {visibleCount < filtered.length && (
+                <div className="text-center mt-6">
+                  <button
+                    onClick={() => { setVisibleCount((c) => c + 20); playSound("click"); }}
+                    className="text-xs px-6 py-2.5 rounded-full text-foreground bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all"
+                  >
+                    Load More
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+
+      {/* Inline 18+ confirmation */}
+      {showNsfwConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-void-950/80 backdrop-blur-sm">
+          <div className="bg-surface border border-white/10 rounded-2xl p-6 max-w-sm mx-4">
+            <h2 className="text-base text-foreground mb-2">This section is 18+</h2>
+            <p className="text-xs text-muted mb-5">You are about to view NSFW content. Confirm you are 18 or older.</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={confirmNsfw}
+                className="text-xs px-5 py-2 rounded-full text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all"
+              >
+                Confirm
+              </button>
+              <button
+                onClick={() => setShowNsfwConfirm(false)}
+                className="text-xs px-5 py-2 rounded-full text-muted bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

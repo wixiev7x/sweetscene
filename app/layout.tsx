@@ -3,7 +3,6 @@ import { Inter, Press_Start_2P } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import NotificationBell from "@/components/NotificationBell";
-import AgeCohortGate from "@/components/AgeCohortGate";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SiteNav from "@/components/SiteNav";
 
@@ -45,7 +44,6 @@ export default function RootLayout({
         <div className="fixed top-3 right-3 z-50">
           <NotificationBell />
         </div>
-        <AgeCohortGate />
         <ServiceWorkerRegister />
         <Toaster
           position="bottom-right"
