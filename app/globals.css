@@ -1,0 +1,262 @@
+@import "tailwindcss";
+
+/* ════════════════════════════════════════════════════════════════════
+ * SweetScene Design System — Neon Dark Aesthetic
+ *
+ * Matches the Bolt preview: void-black base, neon-magenta brand,
+ * crimson/gold accents, Press Start 2P for retro headers.
+ * Raw values on :root, mapped to Tailwind utilities via @theme inline.
+ * ════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Void (deepest blacks) ── */
+  --void-950: #050508;
+  --void-900: #0a0a0f;
+  --void-700: #12121a;
+  --void-500: #1a1a25;
+  --void-400: #222230;
+
+  /* ── Surfaces ── */
+  --background: #050508;       /* page background — void-950 */
+  --surface-sunken: #050508;
+  --surface: #0d0d14;          /* cards, panels */
+  --surface-raised: #161620;   /* hover states, chips */
+  --surface-800: #0d0d14;
+  --surface-700: #12121a;
+  --surface-600: #1a1a25;
+  --surface-500: #222230;
+  --surface-300: #2a2a38;
+  --surface-200: #383848;
+  --surface-100: #48485a;
+
+  /* ── Lines (borders, dividers) ── */
+  --line: #1a1a25;
+  --line-strong: #2a2a38;
+  --line-focus: #3a3a4a;
+
+  /* ── Text, brightest to faintest ── */
+  --foreground: #ededed;
+  --foreground-dim: #d4d4d4;
+  --muted-strong: #a3a3a3;
+  --muted: #737373;
+  --muted-faint: #525252;
+
+  /* ── Brand (Neon Magenta) ── */
+  --brand: #ff2d95;            /* neon magenta */
+  --brand-light: #ff5ca8;
+  --brand-lighter: #ff8ac2;
+  --brand-dark: #e6197a;
+  --brand-deep: #8b1349;
+  --brand-deepest: #4a0a27;
+
+  /* ── Neon Accents ── */
+  --neon-magenta: #ff2d95;
+  --neon-crimson: #dc143c;
+  --neon-green: #00ff9f;
+
+  /* ── Crimson palette ── */
+  --crimson-600: #991b2e;
+  --crimson-500: #dc143c;
+  --crimson-400: #e83558;
+
+  /* ── Gold palette ── */
+  --gold-700: #8a6d1a;
+  --gold-600: #b8941f;
+  --gold-500: #d4af37;
+  --gold-400: #e8c558;
+
+  /* ── Semantic accents ── */
+  --accent: #ffffff;
+  --accent-foreground: #050508;
+  --danger: #f87171;
+  --warning: #d4af37;          /* gold for VIP */
+  --success: #00ff9f;          /* neon green */
+  --info: #60a5fa;
+  --restricted: #fb923c;
+
+  /* ── Shape ── */
+  --radius-card: 0.75rem;
+  --radius-control: 0.5rem;
+
+  /* ── Fonts ── */
+  --font-press-start: "Press Start 2P", monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-800: var(--surface-800);
+  --color-surface-700: var(--surface-700);
+  --color-surface-600: var(--surface-600);
+  --color-surface-500: var(--surface-500);
+  --color-surface-300: var(--surface-300);
+  --color-surface-200: var(--surface-200);
+  --color-surface-100: var(--surface-100);
+
+  --color-void-950: var(--void-950);
+  --color-void-900: var(--void-900);
+  --color-void-700: var(--void-700);
+  --color-void-500: var(--void-500);
+  --color-void-400: var(--void-400);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-line-focus: var(--line-focus);
+
+  --color-foreground-dim: var(--foreground-dim);
+  --color-muted: var(--muted);
+  --color-muted-strong: var(--muted-strong);
+  --color-muted-faint: var(--muted-faint);
+
+  --color-brand: var(--brand);
+  --color-brand-light: var(--brand-light);
+  --color-brand-lighter: var(--brand-lighter);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-deepest: var(--brand-deepest);
+
+  --color-neon-magenta: var(--neon-magenta);
+  --color-neon-crimson: var(--neon-crimson);
+  --color-neon-green: var(--neon-green);
+
+  --color-crimson-600: var(--crimson-600);
+  --color-crimson-500: var(--crimson-500);
+  --color-crimson-400: var(--crimson-400);
+
+  --color-gold-700: var(--gold-700);
+  --color-gold-600: var(--gold-600);
+  --color-gold-500: var(--gold-500);
+  --color-gold-400: var(--gold-400);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-success: var(--success);
+  --color-info: var(--info);
+  --color-restricted: var(--restricted);
+
+  --font-sans: var(--font-inter), var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-retro: var(--font-press-start);
+}
+
+html,
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  font-family: var(--font-inter), var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/* ── Scanline overlay effect ── */
+.scanline-overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.08) 2px,
+    rgba(0, 0, 0, 0.08) 3px
+  );
+  opacity: 0.4;
+}
+
+/* ── Noise overlay effect ── */
+.noise-overlay::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
+}
+
+/* ── Pulse glow animation ── */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px var(--brand), 0 0 10px rgba(255, 45, 149, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 15px var(--brand), 0 0 30px rgba(255, 45, 149, 0.5);
+  }
+}
+.pulse-glow {
+  animation: pulse-glow 2s infinite ease-in-out;
+}
+
+/* ── Neon text glow ── */
+.neon-text {
+  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
+}
+
+/* ── Retro font helper ── */
+.font-retro {
+  font-family: var(--font-press-start), "Press Start 2P", monospace;
+}
+
+/* ── Gradient text ── */
+.gradient-text {
+  background: linear-gradient(135deg, var(--neon-magenta), var(--neon-crimson));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Slow fade in ── */
+@keyframes slowFade {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* ── Breathing scale ── */
+@keyframes breathScale {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.02); }
+}
+
+/* ── Float up particles ── */
+@keyframes floatUp {
+  0% { transform: translateY(100vh); opacity: 0; }
+  10% { opacity: 0.8; }
+  90% { opacity: 0.3; }
+  100% { transform: translateY(-10vh); opacity: 0; }
+}
+
+/* ── Slide up ── */
+@keyframes slideUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+/* ── Shimmer ── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Honour a reduced-motion preference globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
