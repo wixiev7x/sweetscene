@@ -5,12 +5,12 @@ import { useState } from "react";
 import { playSound } from "@/lib/utils/sound";
 
 const SCENARIOS = [
-  { name: "Late-Night Diner", desc: "3am, greasy fries, a jukebox that only plays one song on repeat. The AI keeps throwing curveball questions at you both until sunrise.", emoji: "\u{1F374}", watchers: 2847 },
-  { name: "Rooftop Stargazing", desc: "Ten minutes until the show starts. No names, just a shared blanket and a skyline.", emoji: "\u{1F31F}", watchers: 1543 },
-  { name: "Train Compartment", desc: "You both swiped Anonymous. The AI seals the compartment doors. Six hours to the next stop.", emoji: "\u{1F686}", watchers: 3201 },
-  { name: "Airport Lounge", desc: "Delayed flight. Shared charger. The AI narrates your layover like a rom-com trailer.", emoji: "\u2708\uFE0F", watchers: 892 },
-  { name: "Food Truck Festival", desc: "Last two in line. Rain starts. The AI makes you share an umbrella and opinions.", emoji: "\u{1F32D}", watchers: 445 },
-  { name: "Masquerade Ball", desc: "Masks on. The AI assigns secret identities. Dance with a stranger who might be anyone.", emoji: "\u{1F3AD}", watchers: 1876 },
+  { name: "Late-Night Diner", desc: "3am, greasy fries, a jukebox that only plays one song on repeat. The AI keeps throwing curveball questions at you both until sunrise.", emoji: "\u{1F374}" },
+  { name: "Rooftop Stargazing", desc: "Ten minutes until the show starts. No names, just a shared blanket and a skyline.", emoji: "\u{1F31F}" },
+  { name: "Train Compartment", desc: "You both swiped Anonymous. The AI seals the compartment doors. Six hours to the next stop.", emoji: "\u{1F686}" },
+  { name: "Airport Lounge", desc: "Delayed flight. Shared charger. The AI narrates your layover like a rom-com trailer.", emoji: "\u2708\uFE0F" },
+  { name: "Food Truck Festival", desc: "Last two in line. Rain starts. The AI makes you share an umbrella and opinions.", emoji: "\u{1F32D}" },
+  { name: "Masquerade Ball", desc: "Masks on. The AI assigns secret identities. Dance with a stranger who might be anyone.", emoji: "\u{1F3AD}" },
 ];
 
 export default function ScenariosPage() {
@@ -54,7 +54,6 @@ export default function ScenariosPage() {
                 <span className="text-3xl">{s.emoji}</span>
                 <div>
                   <h3 className="text-lg text-foreground font-light">{s.name}</h3>
-                  <p className="text-xs text-neon-green mt-1">{s.watchers.toLocaleString()} watching</p>
                 </div>
               </div>
               <p className="text-sm text-muted leading-relaxed mb-4">{s.desc}</p>

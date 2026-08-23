@@ -6,49 +6,6 @@ import Link from "next/link";
 import { playSound } from "@/lib/utils/sound";
 import { createClient } from "@/lib/supabase/client";
 
-const MONTHS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
-];
-
-const STEPS = [
-  { emoji: "\u{1F52E}", title: "Match Anonymously", desc: "Our AI pairs you on shared interests, not faces. Pick a scene, get matched instantly." },
-  { emoji: "\u{1F3AD}", title: "Roleplay Together", desc: "An AI director joins your chat, breaks the ice, and keeps the scene alive with curveball prompts." },
-  { emoji: "\u{1F32B}\uFE0F", title: "Reveal or Fade", desc: "When BOTH click Unmask, the blur drops. Stay anonymous forever or walk away." },
-];
-
-const SCENARIOS = [
-  { name: "Late-Night Diner", emoji: "\u{1F374}", desc: "3am, greasy fries, a jukebox that only plays one song on repeat. The AI keeps throwing curveball questions at you both until sunrise." },
-  { name: "Rooftop Stargazing", emoji: "\u{1F31F}", desc: "Ten minutes until the show starts. No names, just a shared blanket and a skyline." },
-  { name: "Train Compartment", emoji: "\u{1F686}", desc: "You both swiped Anonymous. The AI seals the compartment doors. Six hours to the next stop." },
-  { name: "Airport Lounge", emoji: "\u2708\uFE0F", desc: "Delayed flight. Shared charger. The AI narrates your layover like a rom-com trailer." },
-  { name: "Food Truck Festival", emoji: "\u{1F32D}", desc: "Last two in line. Rain starts. The AI makes you share an umbrella and opinions." },
-  { name: "Masquerade Ball", emoji: "\u{1F3AD}", desc: "Masks on. The AI assigns secret identities. Dance with a stranger who might be anyone." },
-];
-
-const ACTIVITY = [
-  { text: "New blind match formed in Train Compartment", time: "just now" },
-  { text: "User_7734 just unmasked after a 2hr scene", time: "12s ago" },
-  { text: "User_1104 earned the Marathon Talker badge", time: "34s ago" },
-  { text: "New character published: The Moonlit Witch", time: "1m ago" },
-  { text: "Rooftop Stargazing scene reached 3,000 watchers", time: "2m ago" },
-  { text: "Anonymous confession posted: \u2018We talked till 4am...\u2019", time: "3m ago" },
-];
-
-const FEATURES = [
-  { title: "The Blind Match", desc: "30-min scene together. Timer hits zero \u2014 reveal or lose match forever.", href: "/scenarios" },
-  { title: "AI-Guided Roleplay", desc: "Pre-built scenes with AI driving conversation. Just show up.", href: "/explore" },
-  { title: "Unmask Together", desc: "Mutual consent only. When BOTH click Unmask, the blur drops.", href: "/bounties" },
-  { title: "Create Characters", desc: "Design AI personalities for others to interact with.", href: "/create" },
-];
-
-const FAQ = [
-  { q: "What if I don't want to unmask?", a: "You never have to. Reveal is 100% mutual consent. Stay anonymous forever or walk away \u2014 both are valid." },
-  { q: "Will my chats leak?", a: "Your scenes stay in the dark until you say otherwise. Messages are encrypted at rest." },
-  { q: "Is this like a dating app?", a: "No. It's a roleplay-first platform. You match on shared interests, build connection through scenes, and reveal only if you both choose to." },
-  { q: "What does the AI do?", a: "The AI director breaks the ice, throws curveball prompts, and keeps the scene alive. Every 6 messages, it steps in to keep things moving." },
-];
-
 const FILTER_CATEGORIES = ["Hot Picks", "New", "Girlfriend", "Boyfriend", "Anime", "Gaming", "All Tags"];
 const NSFW_CATEGORIES = ["NSFW", "Dominant", "Submissive", "Taboo"];
 

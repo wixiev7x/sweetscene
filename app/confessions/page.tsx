@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
 import { createClient } from "@/lib/supabase/client";
@@ -14,15 +14,6 @@ type Confession = {
   time: string;
   likes: number;
 };
-
-const FALLBACK_CONFESSIONS: Confession[] = [
-  { id: "1", text: "We talked till 4am in the Train Compartment scene. Never revealed. Never will. But I think about them.", mood: "Heartwarming", time: "2h ago", likes: 342 },
-  { id: "2", text: "The AI asked us what we'd save from a burning house. They said 'my cat.' I said 'the letter my mom never sent.' We didn't speak for 10 minutes after that.", mood: "Melancholic", time: "5h ago", likes: 891 },
-  { id: "3", text: "Matched with someone in the Diner scene. They ordered for me. It was exactly what I wanted. I still don't know how.", mood: "Funny", time: "8h ago", likes: 567 },
-  { id: "4", text: "We did the Masquerade Ball. I was a duchess. They were a thief. The AI made us dance. I haven't felt that alive in years.", mood: "Spicy", time: "12h ago", likes: 1203 },
-  { id: "5", text: "Awkward moment: the AI asked us to describe our ideal first date. We both described the same cafe. We lived 3000 miles apart.", mood: "Awkward", time: "1d ago", likes: 745 },
-  { id: "6", text: "I matched with someone who turned out to be my actual neighbor. We never unmasked. We still nod at each other in the hallway.", mood: "Funny", time: "2d ago", likes: 2104 },
-];
 
 const moods: Mood[] = ["Heartwarming", "Funny", "Awkward", "Spicy", "Melancholic"];
 
@@ -56,40 +47,38 @@ export default function ConfessionsPage() {
   const charCount = text.length;
   const maxChars = 500;
 
-  const fetchConfessions = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("confessions")
-        .select("id, text, mood, likes, created_at")
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setConfessions(
-          data.map((c: Record<string, unknown>) => ({
-            id: c.id as string,
-            text: c.text as string,
-            mood: (c.mood as Mood) || "Heartwarming",
-            likes: (c.likes as number) ?? 0,
-            time: timeAgo(c.created_at as string),
-          }))
-        );
-      } else {
-        setConfessions(FALLBACK_CONFESSIONS);
-      }
-    } catch {
-      setConfessions(FALLBACK_CONFESSIONS);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchConfessions();
-  }, [fetchConfessions]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("confessions")
+          .select("id, text, mood, likes, created_at")
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        if (!cancelled && data) {
+          setConfessions(
+            data.map((c: Record<string, unknown>) => ({
+              id: c.id as string,
+              text: c.text as string,
+              mood: (c.mood as Mood) || "Heartwarming",
+              likes: (c.likes as number) ?? 0,
+              time: timeAgo(c.created_at as string),
+            }))
+          );
+        }
+      } catch {
+        // show empty state on error
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

@@ -2,6 +2,7 @@
 
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server-admin";
 import { verifyTurnstile } from "@/lib/utils/turnstile";
 import { rateLimitByIp } from "@/lib/utils/ratelimit";
 import { redirect } from "next/navigation";
@@ -53,4 +54,97 @@ export async function signInWithProvider(
 
   /* signInWithOAuth returns a URL we must send the browser to. */
   redirect(data.url);
+}
+
+/**
+ * Email/password signup. Creates the user, auto-confirms the email via
+ * the service-role admin client (so the user doesn't have to check
+ * their inbox), then signs them in immediately.
+ */
+export async function signUpWithEmail(
+  email: string,
+  password: string,
+  turnstileToken: string
+): Promise<{ error?: string }> {
+  const headerList = await headers();
+  const req = new Request("https://internal/auth-check", { headers: headerList });
+  const { getClientIp } = await import("@/lib/utils/ratelimit");
+  const ip = getClientIp(req);
+
+  if (!(await rateLimitByIp(ip, 5, "5 m"))) {
+    return { error: "Too many signup attempts. Please try again later." };
+  }
+
+  const captcha = await verifyTurnstile(turnstileToken);
+  if ("error" in captcha) return { error: captcha.error };
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) return { error: error.message };
+  if (!data.user) return { error: "Signup failed — no user returned." };
+
+  try {
+    const admin = createAdminClient();
+    await admin.auth.admin.updateUserById(data.user.id, {
+      email_confirm: true,
+    });
+  } catch {
+    /* If the admin client is unavailable (missing service role key),
+       the user can still confirm via the email link. */
+  }
+
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (signInError) {
+    return {
+      error:
+        "Account created! Please check your email to confirm, then log in.",
+    };
+  }
+
+  redirect("/lobby");
+}
+
+/**
+ * Email/password login. Signs the user in and redirects to the lobby
+ * (or the `next` search-param if one was provided).
+ */
+export async function signInWithEmail(
+  email: string,
+  password: string,
+  turnstileToken: string
+): Promise<{ error?: string }> {
+  const headerList = await headers();
+  const req = new Request("https://internal/auth-check", { headers: headerList });
+  const { getClientIp } = await import("@/lib/utils/ratelimit");
+  const ip = getClientIp(req);
+
+  if (!(await rateLimitByIp(ip, 5, "5 m"))) {
+    return { error: "Too many login attempts. Please try again later." };
+  }
+
+  const captcha = await verifyTurnstile(turnstileToken);
+  if ("error" in captcha) return { error: captcha.error };
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (error) return { error: error.message };
+
+  redirect("/lobby");
+}
+
+/**
+ * Sign out the current user. Clears the session and redirects home.
+ */
+export async function signOut(): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  await supabase.auth.signOut();
+  redirect("/");
 }

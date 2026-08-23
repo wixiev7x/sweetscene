@@ -1,20 +1,19 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { signInWithProvider } from "@/lib/actions/auth";
+import Link from "next/link";
+import { signInWithProvider, signInWithEmail } from "@/lib/actions/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
-/**
- * Login page. Offers Google and Discord OAuth via Supabase. Cloudflare
- * Turnstile is shown when a site key is configured.
- */
 export default function LoginPage() {
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const [tosAccepted, setTosAccepted] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   function handleSignIn(provider: "google" | "discord") {
     setError("");
@@ -27,11 +26,28 @@ export default function LoginPage() {
       return;
     }
     startTransition(async () => {
-      const result = await signInWithProvider(
-        provider,
-        turnstileToken ?? ""
-      );
-      /* redirect() throws on success; reaching here means an error. */
+      const result = await signInWithProvider(provider, turnstileToken ?? "");
+      if (result?.error) setError(result.error);
+    });
+  }
+
+  function handleEmailSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    if (!tosAccepted) {
+      setError("Please accept the Terms of Service to continue.");
+      return;
+    }
+    if (SITE_KEY && !turnstileToken) {
+      setError("Please complete the captcha first.");
+      return;
+    }
+    if (!email || !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+    startTransition(async () => {
+      const result = await signInWithEmail(email, password, turnstileToken ?? "");
       if (result?.error) setError(result.error);
     });
   }
@@ -51,7 +67,41 @@ export default function LoginPage() {
           Sign in anonymously to match, roleplay, and reveal.
         </p>
 
-        <label className="flex items-start gap-2 w-full mt-6 text-left cursor-pointer">
+        <form onSubmit={handleEmailSignIn} className="w-full mt-6 flex flex-col gap-3">
+          <input
+            type="email"
+            placeholder="Email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-neon-magenta/30 transition-colors"
+            autoComplete="email"
+            disabled={pending}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-neon-magenta/30 transition-colors"
+            autoComplete="current-password"
+            disabled={pending}
+          />
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full px-5 py-3 rounded-xl font-medium text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 active:scale-95 transform transition-all disabled:opacity-50"
+          >
+            {pending ? "Signing in…" : "Sign In"}
+          </button>
+        </form>
+
+        <div className="w-full flex items-center gap-3 my-4">
+          <div className="flex-1 h-px bg-white/10" />
+          <span className="text-xs text-muted-faint">or</span>
+          <div className="flex-1 h-px bg-white/10" />
+        </div>
+
+        <label className="flex items-start gap-2 w-full text-left cursor-pointer">
           <input
             type="checkbox"
             checked={tosAccepted}
@@ -77,7 +127,7 @@ export default function LoginPage() {
           </span>
         </label>
 
-        <div className="flex flex-col gap-3 w-full mt-6">
+        <div className="flex flex-col gap-3 w-full mt-4">
           <button
             type="button"
             disabled={pending}
@@ -109,9 +159,15 @@ export default function LoginPage() {
           <p className="text-xs text-danger mt-4">{error}</p>
         )}
 
-        {pending && (
-          <p className="text-xs text-muted mt-4">Redirecting…</p>
-        )}
+        <p className="text-xs text-muted mt-6">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/signup"
+            className="text-brand-light hover:text-brand-lighter underline"
+          >
+            Create one.
+          </Link>
+        </p>
       </div>
     </div>
   );

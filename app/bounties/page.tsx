@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
 import { createClient } from "@/lib/supabase/client";
@@ -14,14 +13,6 @@ type Bounty = {
   responses: number;
   time: string;
 };
-
-const FALLBACK_BOUNTIES: Bounty[] = [
-  { id: "1", author: "User_4921", text: "Want a slow-burn scene, someone patient, into indie music. No rush.", tags: ["slow-burn", "indie", "patient"], responses: 3, time: "5m ago" },
-  { id: "2", author: "User_7782", text: "Late night diner scene. Need someone who can keep up with weird questions.", tags: ["diner", "late-night", "weird"], responses: 7, time: "12m ago" },
-  { id: "3", author: "User_3344", text: "Looking for a mystery partner. Train compartment scenario. 6 hours to kill.", tags: ["mystery", "train", "long-form"], responses: 2, time: "1h ago" },
-  { id: "4", author: "User_8890", text: "Rooftop stargazing. Someone quiet. Let the AI do the talking.", tags: ["quiet", "stargazing", "ai-led"], responses: 5, time: "2h ago" },
-  { id: "5", author: "User_1247", text: "Masquerade ball scene. Be someone else for a night. No unmasking.", tags: ["masquerade", "anonymous", "no-reveal"], responses: 11, time: "3h ago" },
-];
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -41,41 +32,39 @@ export default function BountiesPage() {
   const [tags, setTags] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const fetchBounties = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("bounties")
-        .select("id, anonymous_author, text, tags, responses, created_at")
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        setBounties(
-          data.map((b: Record<string, unknown>) => ({
-            id: b.id as string,
-            author: (b.anonymous_author as string) || "Anonymous",
-            text: b.text as string,
-            tags: (b.tags as string[]) ?? [],
-            responses: (b.responses as number) ?? 0,
-            time: timeAgo(b.created_at as string),
-          }))
-        );
-      } else {
-        setBounties(FALLBACK_BOUNTIES);
-      }
-    } catch {
-      setBounties(FALLBACK_BOUNTIES);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchBounties();
-  }, [fetchBounties]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("bounties")
+          .select("id, anonymous_author, text, tags, responses, created_at")
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        if (!cancelled && data) {
+          setBounties(
+            data.map((b: Record<string, unknown>) => ({
+              id: b.id as string,
+              author: (b.anonymous_author as string) || "Anonymous",
+              text: b.text as string,
+              tags: (b.tags as string[]) ?? [],
+              responses: (b.responses as number) ?? 0,
+              time: timeAgo(b.created_at as string),
+            }))
+          );
+        }
+      } catch {
+        // show empty state on error
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

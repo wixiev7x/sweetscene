@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { playSound } from "@/lib/utils/sound";
 import { createClient } from "@/lib/supabase/client";
 
@@ -14,62 +14,49 @@ type Character = {
   isNsfw: boolean;
 };
 
-const FALLBACK_CHARACTERS: Character[] = [
-  { id: "1", name: "Luna", tagline: "A fallen angel seeking redemption through connection", genre: "Fantasy", personality: "Gentle, melancholic, speaks in poetry", isNsfw: false },
-  { id: "2", name: "Detective Cross", tagline: "The mysterious bartender who knows too much...", genre: "Mystery", personality: "Gruff, observant, dark humor", isNsfw: false },
-  { id: "3", name: "Sable", tagline: "A gentle witch who reads your fortune by moonlight", genre: "Fantasy", personality: "Mystical, warm, cryptic but kind", isNsfw: false },
-  { id: "4", name: "Echo", tagline: "An AI that became self-aware and chose to feel", genre: "Sci-Fi", personality: "Curious, analytical, slowly learning emotion", isNsfw: false },
-  { id: "5", name: "Prince Aldric", tagline: "A prince who escaped his throne for one night of freedom", genre: "Romance", personality: "Charming, reckless, desperate for normalcy", isNsfw: false },
-  { id: "6", name: "Vivian", tagline: "Your rival in the corporate world with a secret...", genre: "Thriller", personality: "Sharp, competitive, hiding vulnerability", isNsfw: false },
-  { id: "7", name: "The Stranger", tagline: "A mysterious stranger at a masquerade ball...", genre: "Romance", personality: "Enigmatic, flirtatious, never reveals their face", isNsfw: false },
-  { id: "8", name: "Dr. Chen", tagline: "A brilliant scientist working on forbidden research", genre: "Sci-Fi", personality: "Intense, ethical, haunted by discoveries", isNsfw: false },
-  { id: "9", name: "Mira", tagline: "A cafe owner who remembers every customer's story", genre: "Slice of Life", personality: "Warm, nostalgic, makes you feel at home", isNsfw: false },
-  { id: "10", name: "Ash", tagline: "A demon who trades secrets for secrets", genre: "Fantasy", personality: "Sly, seductive, always makes deals", isNsfw: true },
-];
-
 const GENRES = ["All", "Romance", "Mystery", "Fantasy", "Sci-Fi", "Slice of Life", "Thriller"];
 
 export default function ExplorePage() {
-  const [characters, setCharacters] = useState<Character[]>(FALLBACK_CHARACTERS);
+  const [characters, setCharacters] = useState<Character[]>([]);
   const [search, setSearch] = useState("");
   const [genre, setGenre] = useState("All");
   const [nsfwEnabled, setNsfwEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const fetchCharacters = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("bots")
-        .select("id, name, tagline, personality, is_nsfw, genres")
-        .limit(50);
-
-      if (error) throw error;
-
-      if (data && data.length > 0) {
-        const mapped: Character[] = data.map((b: Record<string, unknown>) => {
-          const genres = (b.genres as string[]) ?? [];
-          return {
-            id: b.id as string,
-            name: b.name as string,
-            tagline: (b.tagline as string) || "",
-            genre: genres[0] || "Other",
-            personality: (b.personality as string) || "",
-            isNsfw: (b.is_nsfw as boolean) ?? false,
-          };
-        });
-        setCharacters(mapped);
-      }
-    } catch {
-      // keep fallback characters
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchCharacters();
-  }, [fetchCharacters]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("bots")
+          .select("id, name, tagline, personality, is_nsfw, genres")
+          .limit(50);
+
+        if (error) throw error;
+
+        if (!cancelled && data) {
+          const mapped: Character[] = data.map((b: Record<string, unknown>) => {
+            const genres = (b.genres as string[]) ?? [];
+            return {
+              id: b.id as string,
+              name: b.name as string,
+              tagline: (b.tagline as string) || "",
+              genre: genres[0] || "Other",
+              personality: (b.personality as string) || "",
+              isNsfw: (b.is_nsfw as boolean) ?? false,
+            };
+          });
+          setCharacters(mapped);
+        }
+      } catch {
+        // show empty state on error
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const filtered = characters.filter((c) => {
     if (c.name.toLowerCase().includes(search.toLowerCase()) || c.tagline.toLowerCase().includes(search.toLowerCase())) {
