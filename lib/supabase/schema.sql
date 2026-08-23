@@ -3850,12 +3850,12 @@ BEGIN
   p_limit := LEAST(p_limit, 100);
 
   RETURN QUERY
-  SELECT id, content_type, content_id, reported_by, reason,
-         status, reviewed_by, reviewed_at, created_at
-    FROM moderation_queue
-   WHERE (p_status = 'all' OR status = p_status)
-     AND (p_content_type = '' OR content_type = p_content_type)
-   ORDER BY created_at DESC
+  SELECT mq.id, mq.content_type, mq.content_id, mq.reported_by, mq.reason,
+         mq.status, mq.reviewed_by, mq.reviewed_at, mq.created_at
+    FROM moderation_queue mq
+   WHERE (p_status = 'all' OR mq.status = p_status)
+     AND (p_content_type = '' OR mq.content_type = p_content_type)
+   ORDER BY mq.created_at DESC
    LIMIT p_limit OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -3885,11 +3885,11 @@ BEGIN
   p_limit := LEAST(p_limit, 100);
 
   RETURN QUERY
-  SELECT id, admin_id, action, target_id, target_type, reason,
-         metadata, occurred_at
-    FROM admin_audit_log
-   WHERE (p_action = '' OR action = p_action)
-   ORDER BY occurred_at DESC
+  SELECT al.id, al.admin_id, al.action, al.target_id, al.target_type, al.reason,
+         al.metadata, al.occurred_at
+    FROM admin_audit_log al
+   WHERE (p_action = '' OR al.action = p_action)
+   ORDER BY al.occurred_at DESC
    LIMIT p_limit OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -3913,10 +3913,10 @@ BEGIN
   END IF;
 
   RETURN QUERY
-  SELECT id, banned_by, reason, banned_at, expires_at, active
-    FROM bans
-   WHERE user_id = p_user_id
-   ORDER BY banned_at DESC;
+  SELECT b.id, b.banned_by, b.reason, b.banned_at, b.expires_at, b.active
+    FROM bans b
+   WHERE b.user_id = p_user_id
+   ORDER BY b.banned_at DESC;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
