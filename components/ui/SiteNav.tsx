@@ -7,17 +7,13 @@ import { createClient } from "@/lib/supabase/client";
 
 const SIDEBAR_ITEMS = [
   { href: "/", label: "Explore", icon: "M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10" },
-  { href: "/quiz", label: "Matchmake", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" },
+  { href: "/quiz", label: "Matchmaker", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" },
   { href: "/chat/1", label: "Chat", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
-  { href: "/scenarios", label: "Scenarios", icon: "M4 4h16v16H4zM4 9h16M9 9v11" },
-  { href: "/quiz", label: "Quiz", icon: "M9 11a3 3 0 106 0 3 3 0 00-6 0zM12 14v3M12 7V4M21 12a9 9 0 11-18 0 9 9 0 0118 0z" },
   { href: "/bounties", label: "Bounties", icon: "M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z" },
   { href: "/confessions", label: "Confessions", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
   { href: "/community", label: "Community", icon: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" },
   { href: "/store", label: "Store", icon: "M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 8h18M16 12a4 4 0 11-8 0 4 4 0 018 0z" },
-  { href: "/premium", label: "Premium", icon: "M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" },
-  { href: "/achievements", label: "Achievements", icon: "M8 21h8M12 17v4M6 4h12v7a6 6 0 01-12 0zM4 4h2v7a2 2 0 01-2-2zM18 4h2v5a2 2 0 01-2 2z" },
-  { href: "/safety", label: "Safety", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+  { href: "/achievements", label: "Awards", icon: "M8 21h8M12 17v4M6 4h12v7a6 6 0 01-12 0zM4 4h2v7a2 2 0 01-2-2zM18 4h2v5a2 2 0 01-2 2z" },
 ];
 
 const MOBILE_TABS = [
@@ -29,17 +25,15 @@ const MOBILE_TABS = [
 ];
 
 const MOBILE_DRAWER_ITEMS = [
-  { href: "/scenarios", label: "Scenarios" },
   { href: "/bounties", label: "Bounties" },
   { href: "/confessions", label: "Confessions" },
   { href: "/community", label: "Community" },
-  { href: "/premium", label: "Premium" },
-  { href: "/achievements", label: "Achievements" },
-  { href: "/safety", label: "Safety" },
+  { href: "/achievements", label: "Awards" },
   { href: "/how", label: "How It Works" },
   { href: "/trending", label: "Trending" },
   { href: "/events", label: "Events" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/safety", label: "Safety" },
 ];
 
 export function SiteNav({ className = "" }: { className?: string }) {
@@ -87,7 +81,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
             <span className="hidden sm:inline">SWEETSCENE</span>
           </Link>
 
-          {/* Middle: search */}
+          {/* Middle: search — squared-off */}
           <div className="flex-1 max-w-md mx-3">
             <input
               type="text"
@@ -99,7 +93,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
                   window.location.href = `/explore`;
                 }
               }}
-              className="w-full bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-xs text-foreground placeholder-muted-faint focus:outline-none focus:border-neon-magenta/30 transition-colors"
+              className="w-full bg-white/5 border border-white/10 rounded-md px-3 py-1.5 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-neon-magenta/30 transition-colors"
             />
           </div>
 
@@ -107,7 +101,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
           <div className="flex items-center gap-2 flex-shrink-0">
             <Link
               href="/store"
-              className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full px-2.5 py-1 text-xs text-foreground hover:border-neon-magenta/30 transition-colors"
+              className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-md px-2.5 py-1 text-sm text-foreground hover:border-neon-magenta/30 transition-colors"
             >
               <span className="text-neon-magenta">&#x25C8;</span>
               <span>{tokens != null ? tokens : 0}</span>
@@ -115,13 +109,13 @@ export function SiteNav({ className = "" }: { className?: string }) {
             </Link>
             <Link
               href="/login"
-              className="text-xs px-3 py-1.5 rounded-full text-muted hover:text-foreground-dim border border-white/10 hover:border-white/20 transition-colors"
+              className="text-sm px-3 py-1.5 rounded-md text-muted hover:text-foreground-dim border border-white/10 hover:border-white/20 transition-colors"
             >
               Login
             </Link>
             <Link
               href="/signup"
-              className="text-xs px-3 py-1.5 rounded-full text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all"
+              className="text-sm px-3 py-1.5 rounded-md text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all"
             >
               Start
             </Link>

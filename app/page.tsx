@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 import { playSound } from "@/lib/utils/sound";
@@ -36,10 +36,10 @@ const ACTIVITY = [
 ];
 
 const FEATURES = [
-  { title: "THE BLIND MATCH", desc: "30-min scene together. Timer hits zero \u2014 reveal or lose match forever.", href: "/scenarios" },
-  { title: "AI-GUIDED ROLEPLAY", desc: "Pre-built scenes with AI driving conversation. Just show up.", href: "/explore" },
-  { title: "UNMASK TOGETHER", desc: "Mutual consent only. When BOTH click Unmask, the blur drops.", href: "/bounties" },
-  { title: "CREATE CHARACTERS", desc: "Design AI personalities for others to interact with.", href: "/create" },
+  { title: "The Blind Match", desc: "30-min scene together. Timer hits zero \u2014 reveal or lose match forever.", href: "/scenarios" },
+  { title: "AI-Guided Roleplay", desc: "Pre-built scenes with AI driving conversation. Just show up.", href: "/explore" },
+  { title: "Unmask Together", desc: "Mutual consent only. When BOTH click Unmask, the blur drops.", href: "/bounties" },
+  { title: "Create Characters", desc: "Design AI personalities for others to interact with.", href: "/create" },
 ];
 
 const FAQ = [
@@ -71,6 +71,8 @@ const GRADIENTS = [
   "from-gold-500 to-brand",
 ];
 
+const BATCH_SIZE = 12;
+
 function hashStr(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
@@ -80,41 +82,42 @@ function hashStr(s: string): number {
 export default function Home() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [visibleCount, setVisibleCount] = useState(BATCH_SIZE);
   const [filter, setFilter] = useState("All");
   const [nsfwMode, setNsfwMode] = useState(false);
   const [showNsfwConfirm, setShowNsfwConfirm] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
-
-  const fetchCharacters = useCallback(async () => {
-    try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("bots")
-        .select("id, name, tagline, is_nsfw, genres")
-        .order("created_at", { ascending: false })
-        .limit(50);
-
-      if (error) throw error;
-      if (data && data.length > 0) {
-        setCharacters(data.map((b: Record<string, unknown>) => ({
-          id: b.id as string,
-          name: b.name as string,
-          tagline: (b.tagline as string) || "",
-          is_nsfw: (b.is_nsfw as boolean) ?? false,
-          genres: (b.genres as string[]) ?? [],
-        })));
-      }
-    } catch {
-      // empty state
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchCharacters();
-  }, [fetchCharacters]);
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("bots")
+          .select("id, name, tagline, is_nsfw, genres")
+          .order("created_at", { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+        if (!cancelled && data && data.length > 0) {
+          setCharacters(data.map((b: Record<string, unknown>) => ({
+            id: b.id as string,
+            name: b.name as string,
+            tagline: (b.tagline as string) || "",
+            is_nsfw: (b.is_nsfw as boolean) ?? false,
+            genres: (b.genres as string[]) ?? [],
+          })));
+        }
+      } catch {
+        // empty state
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     function handleScroll() {
@@ -126,6 +129,28 @@ export default function Home() {
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  const filtered = characters.filter((c) => {
+    if (c.is_nsfw && !nsfwMode) return false;
+    if (filter === "SFW Only" && c.is_nsfw) return false;
+    if (filter === "NSFW Only" && !c.is_nsfw) return false;
+    return true;
+  });
+
+  const visible = filtered.slice(0, visibleCount);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && visibleCount < filtered.length) {
+          setVisibleCount((c) => Math.min(c + BATCH_SIZE, filtered.length));
+        }
+      },
+      { rootMargin: "300px" }
+    );
+    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [visibleCount, filtered.length]);
 
   function handleNsfwToggle() {
     if (!nsfwMode) {
@@ -140,15 +165,6 @@ export default function Home() {
     setShowNsfwConfirm(false);
     playSound("click");
   }
-
-  const filtered = characters.filter((c) => {
-    if (c.is_nsfw && !nsfwMode) return false;
-    if (filter === "SFW Only" && c.is_nsfw) return false;
-    if (filter === "NSFW Only" && !c.is_nsfw) return false;
-    return true;
-  });
-
-  const visible = filtered.slice(0, visibleCount);
 
   return (
     <div className="md:pl-16 pb-14 md:pb-0">
@@ -171,51 +187,34 @@ export default function Home() {
         </span>
       </div>
 
-      {/* Slim banner */}
-      <section className="px-4 sm:px-6 pt-6 pb-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl mx-auto">
-          <div>
-            <h1 className="text-lg font-light text-foreground">Matchmake Yourself</h1>
-            <p className="text-xs text-muted">Anonymous first. Reveal only when both agree.</p>
-          </div>
-          <Link
-            href="/quiz"
-            onClick={() => playSound("matchSearch")}
-            className="text-xs px-5 py-2 rounded-full text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all whitespace-nowrap"
-          >
-            Start Matching
-          </Link>
-        </div>
-      </section>
-
-      {/* Filter row */}
-      <section className="px-4 sm:px-6 pb-4">
-        <div className="flex items-center gap-2 mb-3 max-w-7xl mx-auto">
+      {/* Filter row — top, above hero */}
+      <section className="px-4 sm:px-6 pt-4 pb-3">
+        <div className="flex items-center gap-2 mb-2 max-w-7xl mx-auto">
           <button
             onClick={() => { setFilter("All"); playSound("click"); }}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${filter === "All" ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+            className={`text-sm px-4 py-2 rounded-md border transition-all ${filter === "All" ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
           >
             All
           </button>
           <button
             onClick={() => { setFilter("SFW Only"); playSound("click"); }}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${filter === "SFW Only" ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+            className={`text-sm px-4 py-2 rounded-md border transition-all ${filter === "SFW Only" ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
           >
             SFW Only
           </button>
           <button
             onClick={handleNsfwToggle}
-            className={`text-xs px-3 py-1.5 rounded-full border transition-all ${nsfwMode ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+            className={`text-sm px-4 py-2 rounded-md border transition-all ${nsfwMode ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
           >
             NSFW Only
           </button>
         </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 max-w-7xl mx-auto scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-7xl mx-auto scrollbar-none">
           {FILTER_CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => { setFilter(cat); playSound("click"); }}
-              className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-all ${filter === cat ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+              className={`text-sm px-4 py-2 rounded-md border whitespace-nowrap transition-all ${filter === cat ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
             >
               {cat}
             </button>
@@ -224,11 +223,28 @@ export default function Home() {
             <button
               key={cat}
               onClick={() => { setFilter(cat); playSound("click"); }}
-              className={`text-xs px-3 py-1.5 rounded-full border whitespace-nowrap transition-all ${filter === cat ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-crimson-500/5 border-crimson-500/20 text-crimson-400/70 hover:text-crimson-400"}`}
+              className={`text-sm px-4 py-2 rounded-md border whitespace-nowrap transition-all ${filter === cat ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-crimson-500/5 border-crimson-500/20 text-crimson-400/70 hover:text-crimson-400"}`}
             >
               {cat}
             </button>
           ))}
+        </div>
+      </section>
+
+      {/* Hero banner — below filter row */}
+      <section className="px-4 sm:px-6 pt-2 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl mx-auto">
+          <div>
+            <h1 className="text-xl font-medium text-foreground">Matchmake Yourself</h1>
+            <p className="text-sm text-muted">Anonymous first. Reveal only when both agree.</p>
+          </div>
+          <Link
+            href="/create"
+            onClick={() => playSound("click")}
+            className="text-sm px-5 py-2.5 rounded-md text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all whitespace-nowrap inline-flex items-center gap-2"
+          >
+            <span className="text-base leading-none">+</span> Create
+          </Link>
         </div>
       </section>
 
@@ -237,25 +253,25 @@ export default function Home() {
         <div className="max-w-7xl mx-auto">
           {loading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {[...Array(10)].map((_, i) => (
+              {[...Array(BATCH_SIZE)].map((_, i) => (
                 <div key={i} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden animate-pulse">
                   <div className="aspect-[3/4] bg-surface-raised" />
-                  <div className="p-2.5">
-                    <div className="h-3 bg-surface-raised rounded w-20 mb-1.5" />
-                    <div className="h-2.5 bg-surface-raised rounded w-full" />
+                  <div className="p-3">
+                    <div className="h-4 bg-surface-raised rounded w-24 mb-2" />
+                    <div className="h-3 bg-surface-raised rounded w-full" />
                   </div>
                 </div>
               ))}
             </div>
           ) : visible.length === 0 ? (
-            <div className="text-center py-20">
-              <p className="text-muted text-lg mb-2">No characters yet</p>
+            <div className="text-center py-16">
+              <p className="text-muted text-xl mb-2">No characters yet</p>
               <p className="text-muted-faint text-sm mb-6">Be the first to create one.</p>
               <Link
                 href="/create"
-                className="inline-block text-xs px-5 py-2.5 rounded-full text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson--500 transition-all"
+                className="inline-flex items-center gap-2 text-sm px-6 py-3 rounded-md text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all"
               >
-                Create the first one
+                <span className="text-base leading-none">+</span> Create the first one
               </Link>
             </div>
           ) : (
@@ -273,25 +289,25 @@ export default function Home() {
                     >
                       <div className="aspect-[3/4] relative overflow-hidden">
                         <div className={`absolute inset-0 bg-gradient-to-br ${grad} flex items-center justify-center`}>
-                          <span className="text-4xl font-bold text-white/30">{c.name[0] || "?"}</span>
+                          <span className="text-5xl font-bold text-white/30">{c.name[0] || "?"}</span>
                         </div>
                         {c.is_nsfw && (
-                          <span className="absolute top-1.5 right-1.5 text-[8px] px-1.5 py-0.5 rounded-full bg-crimson-500/80 text-white font-bold">
+                          <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md bg-crimson-500/80 text-white font-bold">
                             18+
                           </span>
                         )}
                       </div>
-                      <div className="p-2.5">
-                        <h3 className="text-sm text-foreground group-hover:text-neon-magenta transition-colors truncate">
+                      <div className="p-3">
+                        <h3 className="text-base text-foreground group-hover:text-neon-magenta transition-colors truncate font-medium">
                           {c.name}
                         </h3>
                         {c.tagline && (
-                          <p className="text-[11px] text-muted truncate mt-0.5">{c.tagline}</p>
+                          <p className="text-xs text-muted truncate mt-1">{c.tagline}</p>
                         )}
                         {tags.length > 0 && (
-                          <div className="flex items-center gap-1 mt-1.5">
+                          <div className="flex items-center gap-1.5 mt-2">
                             {tags.map((t) => (
-                              <span key={t} className="text-[8px] px-1.5 py-0.5 rounded-full bg-neon-magenta/10 text-brand-light">
+                              <span key={t} className="text-[10px] px-2 py-0.5 rounded-md bg-neon-magenta/10 text-brand-light">
                                 {t}
                               </span>
                             ))}
@@ -302,14 +318,10 @@ export default function Home() {
                   );
                 })}
               </div>
+              {/* Infinite scroll sentinel */}
               {visibleCount < filtered.length && (
-                <div className="text-center mt-6">
-                  <button
-                    onClick={() => { setVisibleCount((c) => c + 20); playSound("click"); }}
-                    className="text-xs px-6 py-2.5 rounded-full text-foreground bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20 transition-all"
-                  >
-                    Load More
-                  </button>
+                <div ref={sentinelRef} className="flex items-center justify-center py-8">
+                  <div className="h-6 w-6 border-2 border-white/10 border-t-neon-magenta rounded-full animate-spin" />
                 </div>
               )}
             </>
@@ -317,22 +329,32 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Safety link — footer-level, below character listings */}
+      <footer className="px-4 sm:px-6 py-6 border-t border-white/5">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <span className="text-xs text-muted-faint">&copy; 2025 SweetScene</span>
+          <Link href="/safety" className="text-xs text-muted hover:text-foreground-dim transition-colors">
+            Safety
+          </Link>
+        </div>
+      </footer>
+
       {/* Inline 18+ confirmation */}
       {showNsfwConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-void-950/80 backdrop-blur-sm">
           <div className="bg-surface border border-white/10 rounded-2xl p-6 max-w-sm mx-4">
             <h2 className="text-base text-foreground mb-2">This section is 18+</h2>
-            <p className="text-xs text-muted mb-5">You are about to view NSFW content. Confirm you are 18 or older.</p>
+            <p className="text-sm text-muted mb-5">You are about to view NSFW content. Confirm you are 18 or older.</p>
             <div className="flex items-center gap-3">
               <button
                 onClick={confirmNsfw}
-                className="text-xs px-5 py-2 rounded-full text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all"
+                className="text-sm px-5 py-2.5 rounded-md text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all"
               >
                 Confirm
               </button>
               <button
                 onClick={() => setShowNsfwConfirm(false)}
-                className="text-xs px-5 py-2 rounded-full text-muted bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+                className="text-sm px-5 py-2.5 rounded-md text-muted bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
               >
                 Cancel
               </button>
