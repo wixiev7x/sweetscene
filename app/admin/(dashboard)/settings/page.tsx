@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  isAdmin,
   listPlatformSettings,
   setPlatformSetting,
   clearPlatformSetting,
@@ -43,8 +41,6 @@ const SOURCE_STYLES: Record<
 };
 
 export default function AdminSettingsPage() {
-  const router = useRouter();
-  const [authorized, setAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<PlatformSettingRow[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -65,16 +61,10 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     (async () => {
-      const admin = await isAdmin();
-      if (!admin) {
-        router.replace("/lobby");
-        return;
-      }
-      setAuthorized(true);
       await load();
       setLoading(false);
     })();
-  }, [router, load]);
+  }, [load]);
 
   async function handleSave(key: string) {
     const value = drafts[key] ?? "";
@@ -125,7 +115,7 @@ export default function AdminSettingsPage() {
     setBusyKey(null);
   }
 
-  if (!authorized || loading) {
+  if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <p className="text-muted">Loading...</p>

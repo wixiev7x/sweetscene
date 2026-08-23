@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { isAdmin, getAdminStats } from "@/lib/actions/admin";
+import { getAdminStatsV2 } from "@/lib/actions/admin";
 
 type Stats = {
   open_reports: number;
@@ -12,32 +11,26 @@ type Stats = {
   total_characters: number;
   banned_users: number;
   featured_characters: number;
+  active_bans: number;
+  pending_moderation: number;
+  reports_last_24h: number;
 };
 
 export default function AdminPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
     (async () => {
-      const admin = await isAdmin();
-      if (!admin) {
-        router.replace("/lobby");
-        return;
-      }
-      setAuthorized(true);
-
-      const result = await getAdminStats();
+      const result = await getAdminStatsV2();
       if (!("error" in result)) {
         setStats(result);
       }
       setLoading(false);
     })();
-  }, [router]);
+  }, []);
 
-  if (!authorized || loading) {
+  if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <p className="text-muted">Loading...</p>
@@ -47,34 +40,46 @@ export default function AdminPage() {
 
   const cards = [
     {
-      label: "Open Reports",
-      value: stats?.open_reports ?? 0,
-      href: "/admin/reports",
-      color: "text-red-400",
-    },
-    {
-      label: "Total Reports",
-      value: stats?.total_reports ?? 0,
-      href: "/admin/reports",
-      color: "text-amber-400",
-    },
-    {
       label: "Total Users",
       value: stats?.total_users ?? 0,
       href: "/admin/users",
       color: "text-blue-400",
     },
     {
-      label: "Total Characters",
-      value: stats?.total_characters ?? 0,
-      href: "/admin/characters",
-      color: "text-green-400",
+      label: "Active Bans",
+      value: stats?.active_bans ?? 0,
+      href: "/admin/users",
+      color: "text-orange-400",
     },
     {
       label: "Banned Users",
       value: stats?.banned_users ?? 0,
       href: "/admin/users",
-      color: "text-orange-400",
+      color: "text-red-400",
+    },
+    {
+      label: "Open Reports",
+      value: stats?.open_reports ?? 0,
+      href: "/admin/reports",
+      color: "text-red-400",
+    },
+    {
+      label: "Reports (24h)",
+      value: stats?.reports_last_24h ?? 0,
+      href: "/admin/reports",
+      color: "text-amber-400",
+    },
+    {
+      label: "Pending Moderation",
+      value: stats?.pending_moderation ?? 0,
+      href: "/admin/moderation",
+      color: "text-amber-400",
+    },
+    {
+      label: "Total Characters",
+      value: stats?.total_characters ?? 0,
+      href: "/admin/characters",
+      color: "text-green-400",
     },
     {
       label: "Featured Characters",
@@ -89,7 +94,7 @@ export default function AdminPage() {
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {cards.map((c) => (
             <Link
               key={c.label}
@@ -116,10 +121,22 @@ export default function AdminPage() {
             User Management
           </Link>
           <Link
+            href="/admin/moderation"
+            className="px-4 py-2 bg-surface border border-line rounded-lg hover:border-line-strong transition-colors"
+          >
+            Moderation Queue
+          </Link>
+          <Link
             href="/admin/characters"
             className="px-4 py-2 bg-surface border border-line rounded-lg hover:border-line-strong transition-colors"
           >
             Character Management
+          </Link>
+          <Link
+            href="/admin/audit-log"
+            className="px-4 py-2 bg-surface border border-line rounded-lg hover:border-line-strong transition-colors"
+          >
+            Audit Log
           </Link>
           <Link
             href="/admin/settings"

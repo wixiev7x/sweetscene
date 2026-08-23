@@ -2,9 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
-  isAdmin,
   listCharacters,
   setCharacterFlag,
   deleteCharacter,
@@ -24,25 +22,17 @@ type Character = {
 };
 
 export default function AdminCharactersPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
   const [characters, setCharacters] = useState<Character[]>([]);
   const [search, setSearch] = useState("");
   const [actioning, setActioning] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
-      const admin = await isAdmin();
-      if (!admin) {
-        router.replace("/lobby");
-        return;
-      }
-      setAuthorized(true);
       await loadCharacters("");
       setLoading(false);
     })();
-  }, [router]);
+  }, []);
 
   async function loadCharacters(s: string) {
     const result = await listCharacters(s, 50, 0);
@@ -75,7 +65,7 @@ export default function AdminCharactersPage() {
     await loadCharacters(search);
   }
 
-  if (!authorized || loading) {
+  if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <p className="text-muted">Loading...</p>

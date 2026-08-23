@@ -33,6 +33,8 @@ const PROTECTED_PREFIXES = [
   "/admin",
 ];
 
+const PUBLIC_EXCEPTIONS = ["/admin/login"];
+
 function hasSessionCookie(req: NextRequest): boolean {
   const cookies = req.cookies.getAll();
   return cookies.some(
@@ -106,7 +108,7 @@ export function proxy(req: NextRequest) {
     (p) => pathname === p || pathname.startsWith(`${p}/`)
   );
 
-  if (isProtected && !hasSessionCookie(req)) {
+  if (isProtected && !hasSessionCookie(req) && !PUBLIC_EXCEPTIONS.includes(pathname)) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
@@ -117,6 +119,15 @@ export function proxy(req: NextRequest) {
   if (pathname === "/login" && hasSessionCookie(req)) {
     const url = req.nextUrl.clone();
     url.pathname = "/lobby";
+    url.search = "";
+    return withSecurityHeaders(NextResponse.redirect(url), req);
+  }
+
+  /* If already signed in and visiting /admin/login, bounce to /admin.
+     The admin layout will re-check is_admin server-side. */
+  if (pathname === "/admin/login" && hasSessionCookie(req)) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/admin";
     url.search = "";
     return withSecurityHeaders(NextResponse.redirect(url), req);
   }

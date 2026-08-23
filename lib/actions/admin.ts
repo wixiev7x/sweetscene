@@ -69,6 +69,63 @@ export type AdminStats = {
   featured_characters: number;
 };
 
+export type AdminStatsV2 = {
+  open_reports: number;
+  total_reports: number;
+  total_users: number;
+  total_characters: number;
+  banned_users: number;
+  featured_characters: number;
+  active_bans: number;
+  pending_moderation: number;
+  reports_last_24h: number;
+};
+
+export type ModerationQueueRow = {
+  id: string;
+  content_type: string;
+  content_id: string;
+  reported_by: string | null;
+  reason: string;
+  status: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+};
+
+export type AuditLogRow = {
+  id: string;
+  admin_id: string;
+  action: string;
+  target_id: string | null;
+  target_type: string | null;
+  reason: string | null;
+  metadata: Record<string, unknown> | null;
+  occurred_at: string;
+};
+
+export type BanHistoryRow = {
+  id: string;
+  banned_by: string;
+  reason: string;
+  banned_at: string;
+  expires_at: string | null;
+  active: boolean;
+};
+
+export type AdminUserWithEmail = {
+  id: string;
+  email: string;
+  anonymous_username: string;
+  reputation_score: number;
+  tokens_balance: number;
+  is_vip: boolean;
+  is_admin: boolean;
+  is_banned: boolean;
+  banned_until: string | null;
+  created_at: string;
+};
+
 /* ── Guard ── */
 
 async function assertAdmin(): Promise<string> {
@@ -512,6 +569,278 @@ export async function expireBans(): Promise<
   if (error) return { error: "Failed to expire bans" };
 
   return { expired: (data as unknown as number) ?? 0 };
+}
+
+/* ── Phase 16: Moderation queue, audit log, ban-with-reason ── */
+
+export async function getAdminStatsV2(): Promise<
+  AdminStatsV2 | { error: string }
+> {
+  try {
+    await assertAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("get_admin_stats_v2");
+
+  if (error || !data || !Array.isArray(data) || data.length === 0) {
+    return { error: "Failed to load stats" };
+  }
+
+  return data[0] as AdminStatsV2;
+}
+
+export async function listModerationQueue(
+  status: string = "pending",
+  contentType: string | null = null,
+  limit: number = 50,
+  offset: number = 0
+): Promise<{ items: ModerationQueueRow[] } | { error: string }> {
+  try {
+    await assertAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_moderation_queue", {
+    p_status: status,
+    p_content_type: contentType,
+    p_limit: limit,
+    p_offset: offset,
+  });
+
+  if (error) return { error: "Failed to load moderation queue" };
+
+  return { items: (data ?? []) as ModerationQueueRow[] };
+}
+
+export async function resolveModerationItem(
+  itemId: string,
+  resolution: "approved" | "removed"
+): Promise<{ success: true } | { error: string }> {
+  try {
+    await assertAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("resolve_moderation_item", {
+    p_item_id: itemId,
+    p_resolution: resolution,
+  });
+
+  if (error) return { error: "Failed to resolve moderation item" };
+
+  return { success: true };
+}
+
+export async function listAuditLog(
+  action: string | null = null,
+  limit: number = 50,
+  offset: number = 0
+): Promise<{ entries: AuditLogRow[] } | { error: string }> {
+  try {
+    await assertAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_audit_log", {
+    p_action: action,
+    p_limit: limit,
+    p_offset: offset,
+  });
+
+  if (error) return { error: "Failed to load audit log" };
+
+  return { entries: (data ?? []) as AuditLogRow[] };
+}
+
+export async function banUserWithReason(
+  userId: string,
+  reason: string,
+  expiresAt: string | null
+): Promise<{ success: true } | { error: string }> {
+  try {
+    await assertAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  if (!reason.trim()) return { error: "A reason is required" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("ban_user_with_reason", {
+    p_user_id: userId,
+    p_reason: reason.trim(),
+    p_expires_at: expiresAt,
+  });
+
+  if (error) return { error: "Failed to ban user" };
+
+  return { success: true };
+}
+
+export async function unbanUserWithReason(
+  userId: string,
+  reason: string
+): Promise<{ success: true } | { error: string }> {
+  try {
+    await assertAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  if (!reason.trim()) return { error: "A reason is required" };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("unban_user_with_reason", {
+    p_user_id: userId,
+    p_reason: reason.trim(),
+  });
+
+  if (error) return { error: "Failed to unban user" };
+
+  return { success: true };
+}
+
+export async function listBanHistory(
+  userId: string
+): Promise<{ bans: BanHistoryRow[] } | { error: string }> {
+  try {
+    await assertAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_ban_history", {
+    p_user_id: userId,
+  });
+
+  if (error) return { error: "Failed to load ban history" };
+
+  return { bans: (data ?? []) as BanHistoryRow[] };
+}
+
+export async function searchUsersByEmail(
+  email: string
+): Promise<{ users: AdminUserWithEmail[] } | { error: string }> {
+  try {
+    await assertAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  const trimmed = email.trim();
+  if (!trimmed) return { users: [] };
+
+  const admin = createAdminClient();
+
+  const {
+    data: { users },
+    error: listError,
+  } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+
+  if (listError) return { error: "Failed to search users" };
+
+  const lower = trimmed.toLowerCase();
+  const matched = users.filter((u) =>
+    u.email?.toLowerCase().includes(lower)
+  );
+
+  if (matched.length === 0) return { users: [] };
+
+  const ids = matched.map((u) => u.id);
+  const { data: profiles } = await admin
+    .from("profiles")
+    .select(
+      "id, anonymous_username, reputation_score, tokens_balance, is_vip, is_admin, is_banned, banned_until, created_at"
+    )
+    .in("id", ids);
+
+  const profileMap = new Map<
+    string,
+    {
+      id: string;
+      anonymous_username: string;
+      reputation_score: number;
+      tokens_balance: number;
+      is_vip: boolean;
+      is_admin: boolean;
+      is_banned: boolean;
+      banned_until: string | null;
+      created_at: string;
+    }
+  >();
+  for (const p of (profiles ?? []) as Array<{
+    id: string;
+    anonymous_username: string;
+    reputation_score: number;
+    tokens_balance: number;
+    is_vip: boolean;
+    is_admin: boolean;
+    is_banned: boolean;
+    banned_until: string | null;
+    created_at: string;
+  }>) {
+    profileMap.set(p.id, p);
+  }
+
+  const result: AdminUserWithEmail[] = matched.map((u) => {
+    const p = profileMap.get(u.id);
+    return {
+      id: u.id,
+      email: u.email ?? "",
+      anonymous_username: p?.anonymous_username ?? "—",
+      reputation_score: p?.reputation_score ?? 0,
+      tokens_balance: p?.tokens_balance ?? 0,
+      is_vip: p?.is_vip ?? false,
+      is_admin: p?.is_admin ?? false,
+      is_banned: p?.is_banned ?? false,
+      banned_until: p?.banned_until ?? null,
+      created_at: p?.created_at ?? u.created_at ?? "",
+    };
+  });
+
+  return { users: result };
+}
+
+export async function flagContent(
+  contentType: string,
+  contentId: string,
+  reason: string
+): Promise<{ success: true } | { error: string }> {
+  try {
+    await assertAdmin();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  if (!reason.trim()) return { error: "A reason is required" };
+
+  const admin = createAdminClient();
+  const adminId = await assertAdmin();
+
+  const { error } = await admin.from("moderation_queue").insert({
+    content_type: contentType,
+    content_id: contentId,
+    reported_by: adminId,
+    reason: reason.trim(),
+    status: "pending",
+  });
+
+  if (error) return { error: "Failed to flag content" };
+
+  return { success: true };
 }
 
 /* ── Current user check (for client pages) ── */
