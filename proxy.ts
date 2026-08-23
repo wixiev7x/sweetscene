@@ -68,7 +68,7 @@ function withSecurityHeaders(res: NextResponse, req: NextRequest): NextResponse 
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
     `img-src 'self' data: blob: ${supabaseUrl} https://image.pollinations.ai https://images.unsplash.com`,
-    `connect-src 'self' ${supabaseUrl} https://challenges.cloudflare.com`,
+    `connect-src 'self' ${supabaseUrl} wss://${supabaseUrl.replace(/^https?:\/\//, "")} https://challenges.cloudflare.com`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     "frame-src https://challenges.cloudflare.com",
