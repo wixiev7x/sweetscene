@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { isAdmin, listReports, resolveReport } from "@/lib/actions/admin";
+import { listReports, resolveReport } from "@/lib/actions/admin";
 
 type Report = {
   id: string;
@@ -18,9 +17,7 @@ type Report = {
 };
 
 export default function AdminReportsPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [authorized, setAuthorized] = useState(false);
   const [reports, setReports] = useState<Report[]>([]);
   const [filter, setFilter] = useState<"open" | "resolved" | "dismissed" | "all">("open");
   const [actioning, setActioning] = useState<string | null>(null);
@@ -35,17 +32,11 @@ export default function AdminReportsPage() {
 
   useEffect(() => {
     (async () => {
-      const admin = await isAdmin();
-      if (!admin) {
-        router.replace("/lobby");
-        return;
-      }
-      setAuthorized(true);
       await loadReports("open");
       setLoading(false);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router]);
+  }, []);
 
   async function handleResolve(
     reportId: string,
@@ -57,7 +48,7 @@ export default function AdminReportsPage() {
     await loadReports(filter);
   }
 
-  if (!authorized || loading) {
+  if (loading) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <p className="text-muted">Loading...</p>

@@ -3562,3 +3562,397 @@ CREATE POLICY "avatars_owner_delete"
   ON storage.objects FOR DELETE TO authenticated
   USING (bucket_id = 'avatars'
          AND (storage.foldername(name))[1] = (SELECT auth.uid())::text);
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- Phase 16 — Admin panel: ban history, moderation queue, audit log
+--
+-- Additive only. All new tables and functions. Does not modify or
+-- remove anything from prior phases.
+--
+-- Tables added:
+--   bans             — every ban/restriction with reason + admin identity
+--   moderation_queue — flagged content awaiting review
+--   admin_audit_log  — every admin action, for accountability
+--
+-- Functions added:
+--   is_current_user_admin_bool  — scalar helper for RLS policies
+--   ban_user_with_reason        — ban + bans row + audit log (atomic)
+--   unban_user_with_reason      — unban + deactivate bans row + audit log
+--   resolve_moderation_item     — approve/remove + content action + audit log
+--   list_moderation_queue       — admin-only listing
+--   list_audit_log              — admin-only listing
+--   list_ban_history            — admin-only listing
+--   get_admin_stats_v2          — dashboard counts including new tables
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- ── is_current_user_admin_bool: scalar boolean for RLS policies ──
+-- assert_current_user_admin() returns a table; RLS USING/WITH CHECK
+-- need a scalar. This wrapper is SECURITY DEFINER so it can read the
+-- is_admin column that is REVOKE'd from authenticated/anon.
+CREATE OR REPLACE FUNCTION is_current_user_admin_bool()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT COALESCE(
+    (SELECT is_admin FROM profiles WHERE id = auth.uid()),
+    false
+  );
+$$;
+
+GRANT EXECUTE ON FUNCTION is_current_user_admin_bool() TO authenticated;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- bans — history of every ban/restriction with reason and admin identity
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS bans (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  banned_by   UUID NOT NULL REFERENCES profiles(id) ON DELETE SET NULL,
+  reason      TEXT NOT NULL DEFAULT '',
+  banned_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  expires_at  TIMESTAMPTZ,
+  active      BOOLEAN NOT NULL DEFAULT true
+);
+
+CREATE INDEX IF NOT EXISTS idx_bans_user_id ON bans (user_id);
+CREATE INDEX IF NOT EXISTS idx_bans_active ON bans (active) WHERE active = true;
+
+ALTER TABLE bans ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY bans_admin_all
+  ON bans FOR ALL TO authenticated
+  USING (is_current_user_admin_bool())
+  WITH CHECK (is_current_user_admin_bool());
+
+REVOKE ALL ON bans FROM anon;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- moderation_queue — flagged content awaiting admin review
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS moderation_queue (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  content_type  TEXT NOT NULL CHECK (content_type IN ('character','bounty','confession','message','bot')),
+  content_id    TEXT NOT NULL,
+  reported_by   UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  reason        TEXT NOT NULL DEFAULT '',
+  status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','removed')),
+  reviewed_by   UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  reviewed_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_mod_queue_status ON moderation_queue (status);
+CREATE INDEX IF NOT EXISTS idx_mod_queue_type ON moderation_queue (content_type);
+
+ALTER TABLE moderation_queue ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY mod_queue_user_insert
+  ON moderation_queue FOR INSERT TO authenticated
+  WITH CHECK (true);
+
+CREATE POLICY mod_queue_user_select_own
+  ON moderation_queue FOR SELECT TO authenticated
+  USING (reported_by = (SELECT auth.uid()));
+
+CREATE POLICY mod_queue_admin_all
+  ON moderation_queue FOR ALL TO authenticated
+  USING (is_current_user_admin_bool())
+  WITH CHECK (is_current_user_admin_bool());
+
+REVOKE ALL ON moderation_queue FROM anon;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- admin_audit_log — every admin action, for accountability
+-- ═══════════════════════════════════════════════════════════════════════
+
+CREATE TABLE IF NOT EXISTS admin_audit_log (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  admin_id    UUID NOT NULL REFERENCES profiles(id) ON DELETE SET NULL,
+  action      TEXT NOT NULL,
+  target_id   TEXT,
+  target_type TEXT,
+  reason      TEXT,
+  metadata    JSONB DEFAULT '{}'::jsonb,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_admin ON admin_audit_log (admin_id);
+CREATE INDEX IF NOT EXISTS idx_audit_log_action ON admin_audit_log (action);
+CREATE INDEX IF NOT EXISTS idx_audit_log_occurred_at ON admin_audit_log (occurred_at DESC);
+
+ALTER TABLE admin_audit_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY audit_log_admin_select
+  ON admin_audit_log FOR SELECT TO authenticated
+  USING (is_current_user_admin_bool());
+
+REVOKE INSERT ON admin_audit_log FROM authenticated, anon;
+REVOKE UPDATE ON admin_audit_log FROM authenticated, anon;
+REVOKE DELETE ON admin_audit_log FROM authenticated, anon;
+REVOKE ALL ON admin_audit_log FROM anon;
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- RPCs — atomic operations that check admin + write audit log
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- ── ban_user_with_reason ──
+-- Bans a user, records the ban with reason in the bans table, and
+-- writes an audit log entry — all in one transaction.
+CREATE OR REPLACE FUNCTION ban_user_with_reason(
+  p_user_id     UUID,
+  p_reason      TEXT DEFAULT '',
+  p_expires_at  TIMESTAMPTZ DEFAULT NULL
+) RETURNS VOID AS $$
+BEGIN
+  IF NOT assert_current_user_admin() THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  IF p_user_id = auth.uid() THEN
+    RAISE EXCEPTION 'Cannot ban yourself';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM profiles WHERE id = p_user_id AND is_admin = true) THEN
+    RAISE EXCEPTION 'Cannot ban an admin';
+  END IF;
+
+  IF p_expires_at IS NOT NULL AND p_expires_at <= now() THEN
+    RAISE EXCEPTION 'Ban expiry must be in the future';
+  END IF;
+
+  UPDATE profiles
+     SET is_banned = true,
+         banned_until = p_expires_at
+   WHERE id = p_user_id;
+
+  INSERT INTO bans (user_id, banned_by, reason, expires_at)
+  VALUES (p_user_id, auth.uid(), p_reason, p_expires_at);
+
+  INSERT INTO admin_audit_log (admin_id, action, target_id, target_type, reason)
+  VALUES (auth.uid(), 'banned_user', p_user_id::text, 'user', p_reason);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION ban_user_with_reason(UUID, TEXT, TIMESTAMPTZ) TO authenticated;
+
+-- ── unban_user_with_reason ──
+-- Lifts a ban, deactivates all active bans rows for the user, and
+-- writes an audit log entry.
+CREATE OR REPLACE FUNCTION unban_user_with_reason(
+  p_user_id  UUID,
+  p_reason   TEXT DEFAULT ''
+) RETURNS VOID AS $$
+BEGIN
+  IF NOT assert_current_user_admin() THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  UPDATE profiles
+     SET is_banned = false,
+         banned_until = NULL
+   WHERE id = p_user_id;
+
+  UPDATE bans SET active = false WHERE user_id = p_user_id AND active = true;
+
+  INSERT INTO admin_audit_log (admin_id, action, target_id, target_type, reason)
+  VALUES (auth.uid(), 'unbanned_user', p_user_id::text, 'user', p_reason);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION unban_user_with_reason(UUID, TEXT) TO authenticated;
+
+-- ── resolve_moderation_item ──
+-- Approves or removes a moderation queue item. When removing, also
+-- deletes or hides the underlying content. Writes an audit log entry.
+CREATE OR REPLACE FUNCTION resolve_moderation_item(
+  p_item_id    UUID,
+  p_resolution TEXT
+) RETURNS VOID AS $$
+DECLARE
+  v_content_type  TEXT;
+  v_content_id    TEXT;
+BEGIN
+  IF NOT assert_current_user_admin() THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  IF p_resolution NOT IN ('approved', 'removed') THEN
+    RAISE EXCEPTION 'Invalid resolution';
+  END IF;
+
+  SELECT content_type, content_id INTO v_content_type, v_content_id
+    FROM moderation_queue WHERE id = p_item_id AND status = 'pending';
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Item not found or already resolved';
+  END IF;
+
+  UPDATE moderation_queue
+     SET status = p_resolution,
+         reviewed_by = auth.uid(),
+         reviewed_at = now()
+   WHERE id = p_item_id;
+
+  IF p_resolution = 'removed' THEN
+    IF v_content_type = 'character' THEN
+      UPDATE characters SET is_hidden = true WHERE id = v_content_id::uuid;
+    ELSIF v_content_type = 'bot' THEN
+      DELETE FROM bots WHERE id = v_content_id::uuid;
+    ELSIF v_content_type = 'bounty' THEN
+      DELETE FROM bounties WHERE id = v_content_id::uuid;
+    ELSIF v_content_type = 'confession' THEN
+      DELETE FROM confessions WHERE id = v_content_id::uuid;
+    ELSIF v_content_type = 'message' THEN
+      DELETE FROM messages WHERE id = v_content_id::uuid;
+    END IF;
+  END IF;
+
+  INSERT INTO admin_audit_log (admin_id, action, target_id, target_type, reason, metadata)
+  VALUES (
+    auth.uid(),
+    'resolved_moderation',
+    p_item_id::text,
+    'moderation_queue',
+    p_resolution,
+    jsonb_build_object('content_type', v_content_type, 'content_id', v_content_id)
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION resolve_moderation_item(UUID, TEXT) TO authenticated;
+
+-- ── list_moderation_queue ──
+CREATE OR REPLACE FUNCTION list_moderation_queue(
+  p_status       TEXT DEFAULT 'pending',
+  p_content_type TEXT DEFAULT '',
+  p_limit        INT DEFAULT 50,
+  p_offset       INT DEFAULT 0
+) RETURNS TABLE (
+  id            UUID,
+  content_type  TEXT,
+  content_id    TEXT,
+  reported_by   UUID,
+  reason        TEXT,
+  status        TEXT,
+  reviewed_by   UUID,
+  reviewed_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ
+) AS $$
+BEGIN
+  IF NOT assert_current_user_admin() THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  p_limit := LEAST(p_limit, 100);
+
+  RETURN QUERY
+  SELECT id, content_type, content_id, reported_by, reason,
+         status, reviewed_by, reviewed_at, created_at
+    FROM moderation_queue
+   WHERE (p_status = 'all' OR status = p_status)
+     AND (p_content_type = '' OR content_type = p_content_type)
+   ORDER BY created_at DESC
+   LIMIT p_limit OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION list_moderation_queue(TEXT, TEXT, INT, INT) TO authenticated;
+
+-- ── list_audit_log ──
+CREATE OR REPLACE FUNCTION list_audit_log(
+  p_action  TEXT DEFAULT '',
+  p_limit   INT DEFAULT 50,
+  p_offset  INT DEFAULT 0
+) RETURNS TABLE (
+  id          UUID,
+  admin_id    UUID,
+  action      TEXT,
+  target_id   TEXT,
+  target_type TEXT,
+  reason      TEXT,
+  metadata    JSONB,
+  occurred_at TIMESTAMPTZ
+) AS $$
+BEGIN
+  IF NOT assert_current_user_admin() THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  p_limit := LEAST(p_limit, 100);
+
+  RETURN QUERY
+  SELECT id, admin_id, action, target_id, target_type, reason,
+         metadata, occurred_at
+    FROM admin_audit_log
+   WHERE (p_action = '' OR action = p_action)
+   ORDER BY occurred_at DESC
+   LIMIT p_limit OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION list_audit_log(TEXT, INT, INT) TO authenticated;
+
+-- ── list_ban_history ──
+CREATE OR REPLACE FUNCTION list_ban_history(
+  p_user_id UUID
+) RETURNS TABLE (
+  id          UUID,
+  banned_by   UUID,
+  reason      TEXT,
+  banned_at   TIMESTAMPTZ,
+  expires_at  TIMESTAMPTZ,
+  active      BOOLEAN
+) AS $$
+BEGIN
+  IF NOT assert_current_user_admin() THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  RETURN QUERY
+  SELECT id, banned_by, reason, banned_at, expires_at, active
+    FROM bans
+   WHERE user_id = p_user_id
+   ORDER BY banned_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION list_ban_history(UUID) TO authenticated;
+
+-- ── get_admin_stats_v2 ──
+-- Extends the original get_admin_stats with new table counts.
+CREATE OR REPLACE FUNCTION get_admin_stats_v2()
+RETURNS TABLE (
+  open_reports        INT,
+  total_reports       INT,
+  total_users         INT,
+  total_characters    INT,
+  banned_users        INT,
+  featured_characters INT,
+  active_bans         INT,
+  pending_moderation  INT,
+  reports_last_24h    INT
+) AS $$
+BEGIN
+  IF NOT assert_current_user_admin() THEN
+    RAISE EXCEPTION 'Not authorized';
+  END IF;
+
+  SELECT count(*) INTO open_reports FROM reports WHERE status = 'open';
+  SELECT count(*) INTO total_reports FROM reports;
+  SELECT count(*) INTO total_users FROM profiles WHERE is_admin = false OR is_admin IS NULL;
+  SELECT count(*) INTO total_characters FROM characters;
+  SELECT count(*) INTO banned_users FROM profiles WHERE is_banned = true;
+  SELECT count(*) INTO featured_characters FROM characters WHERE is_featured = true;
+  SELECT count(*) INTO active_bans FROM bans WHERE active = true;
+  SELECT count(*) INTO pending_moderation FROM moderation_queue WHERE status = 'pending';
+  SELECT count(*) INTO reports_last_24h FROM reports WHERE created_at > now() - INTERVAL '24 hours';
+
+  RETURN NEXT;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION get_admin_stats_v2() TO authenticated;

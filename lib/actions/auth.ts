@@ -148,3 +148,47 @@ export async function signOut(): Promise<{ error?: string }> {
   await supabase.auth.signOut();
   redirect("/");
 }
+
+/**
+ * Admin-only email/password login. Same mechanism as signInWithEmail,
+ * but checks is_admin after sign-in. If the user is not an admin, the
+ * session is immediately signed out and an error is returned. On
+ * success, redirects to /admin.
+ */
+export async function signInAsAdmin(
+  email: string,
+  password: string,
+  turnstileToken: string
+): Promise<{ error?: string }> {
+  const headerList = await headers();
+  const req = new Request("https://internal/admin-auth-check", {
+    headers: headerList,
+  });
+  const { getClientIp } = await import("@/lib/utils/ratelimit");
+  const ip = getClientIp(req);
+
+  if (!(await rateLimitByIp(ip, 5, "5 m"))) {
+    return { error: "Too many login attempts. Please try again later." };
+  }
+
+  const captcha = await verifyTurnstile(turnstileToken);
+  if ("error" in captcha) return { error: captcha.error };
+
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
+  if (error) return { error: error.message };
+
+  const { data } = await supabase.rpc("assert_current_user_admin");
+  const isAdmin = (data as unknown as boolean[] | null)?.[0];
+
+  if (!isAdmin) {
+    await supabase.auth.signOut();
+    return { error: "Not authorized. This login is for administrators only." };
+  }
+
+  redirect("/admin");
+}
