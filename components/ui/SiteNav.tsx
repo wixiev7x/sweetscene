@@ -96,24 +96,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
         className={`sticky top-0 z-50 ios-frosted border-b border-[var(--ios-hairline)] ${className}`}
         style={{ height: "56px" }}
       >
-        <div className="flex items-center justify-between h-full px-4">
-          {/* Left: bell icon (moved to far left) */}
-          <div className="flex items-center gap-2.5 flex-shrink-0">
-            <button
-              onClick={() => setNotifOpen(!notifOpen)}
-              className="ios-press relative flex items-center justify-center w-11 h-11 rounded-full bg-white/5 border border-[var(--ios-hairline)] text-white transition-all hover:bg-white/10"
-              aria-label="Notifications"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
-              <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-ios-red text-white text-[9px] font-bold flex items-center justify-center">
-                0
-              </span>
-            </button>
-          </div>
-
+        <div className="flex items-center justify-end h-full px-4">
           {/* Right cluster */}
           <div className="flex items-center gap-2.5">
             {/* Token pill with gloss + small + icon */}
@@ -149,26 +132,35 @@ export function SiteNav({ className = "" }: { className?: string }) {
                 <path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" />
               </svg>
             </Link>
+
+            {/* Notifications bell — on right */}
+            <button
+              onClick={() => setNotifOpen(!notifOpen)}
+              className="ios-press relative flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-[var(--ios-hairline)] text-white transition-all hover:bg-white/10"
+              aria-label="Notifications"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-ios-red text-white text-[8px] font-bold flex items-center justify-center">
+                0
+              </span>
+            </button>
           </div>
         </div>
 
         {/* Notifications dropdown sheet */}
         {notifOpen && (
-          <div className="ios-dropdown absolute left-4 top-14 w-80 ios-card ios-frosted border border-[var(--ios-hairline)] p-4 z-50">
+          <div className="ios-dropdown absolute right-4 top-14 w-80 ios-card ios-frosted border border-[var(--ios-hairline)] p-4 z-50">
             <h3 className="text-[17px] font-semibold text-white mb-3">Notifications</h3>
             <p className="text-[15px] text-[var(--ios-text-secondary)] text-center py-8">No notifications yet</p>
           </div>
         )}
       </header>
 
-      {/* Desktop sidebar — iOS Settings style */}
-      <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-72 flex-col ios-frosted border-r border-[var(--ios-hairline)] z-40 overflow-y-auto scrollbar-none">
-        {/* Logo at top */}
-        <div className="flex items-center gap-2 px-4 border-b border-[var(--ios-hairline)]" style={{ height: "56px" }}>
-          <span className="text-brand text-lg">&#x2665;</span>
-          <span className="font-retro text-[10px] tracking-wider text-brand neon-text">SWEETSCENE</span>
-        </div>
-
+      {/* Desktop sidebar — starts below top bar to avoid layer overlap */}
+      <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-72 flex-col ios-frosted border-r border-[var(--ios-hairline)] z-40 overflow-y-auto scrollbar-none">
         {/* Primary CTA — Matchmake button */}
         <div className="px-4 pt-4 pb-3">
           <Link

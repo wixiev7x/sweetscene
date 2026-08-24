@@ -136,24 +136,24 @@ export default function Home() {
         />
       </div>
 
-      {/* Hero banner */}
+      {/* Search bar */}
       <section className="px-4 sm:px-6 pt-5 pb-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl mx-auto">
-          <div>
-            <h1 className="text-[22px] font-semibold text-white">Matchmake Yourself</h1>
-            <p className="text-[15px] text-[var(--ios-text-secondary)] mt-0.5">Anonymous first. Reveal only when both agree.</p>
-          </div>
-          <Link
-            href="/create"
-            onClick={() => playSound("click")}
-            className="ios-press flex items-center gap-2 text-[17px] font-semibold px-6 rounded-full text-white transition-all hover:opacity-90 whitespace-nowrap"
-            style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 5v14M5 12h14" />
+        <div className="max-w-7xl mx-auto">
+          <div className="relative">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ios-text-tertiary)] pointer-events-none">
+              <path d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.35-4.35" />
             </svg>
-            Create
-          </Link>
+            <input
+              type="text"
+              placeholder="Search characters..."
+              onChange={(e) => {
+                const q = e.target.value.toLowerCase();
+                setFilter(q ? q : "All");
+              }}
+              className="w-full bg-white/5 border border-[var(--ios-hairline)] rounded-full pl-11 pr-4 text-[15px] text-white placeholder-[var(--ios-text-tertiary)] focus:outline-none focus:border-brand/30 transition-all"
+              style={{ height: "44px" }}
+            />
+          </div>
         </div>
       </section>
 
