@@ -161,8 +161,14 @@ export function SiteNav({ className = "" }: { className?: string }) {
 
       {/* Desktop sidebar — starts below top bar to avoid layer overlap */}
       <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-72 flex-col ios-frosted border-r border-[var(--ios-hairline)] z-40 overflow-y-auto scrollbar-none">
+        {/* Logo */}
+        <div className="flex items-center gap-2 px-4 py-3">
+          <span className="text-brand text-lg">&#x2665;</span>
+          <span className="font-retro text-[10px] tracking-wider text-brand neon-text">SWEETSCENE</span>
+        </div>
+
         {/* Primary CTA — Matchmake button */}
-        <div className="px-4 pt-4 pb-3">
+        <div className="px-4 pb-3">
           <Link
             href="/quiz"
             className="ios-press flex items-center justify-center gap-2 w-full rounded-full text-white font-semibold text-[17px] transition-all hover:opacity-90"
