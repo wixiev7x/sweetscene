@@ -160,7 +160,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
       </header>
 
       {/* Desktop sidebar — starts below top bar to avoid layer overlap */}
-      <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-72 flex-col ios-frosted border-r border-[var(--ios-hairline)] z-40 overflow-y-auto scrollbar-none">
+      <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-56 flex-col ios-frosted border-r border-[var(--ios-hairline)] z-40 overflow-y-auto scrollbar-none">
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 py-3">
           <span className="text-brand text-lg">&#x2665;</span>

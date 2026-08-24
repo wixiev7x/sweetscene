@@ -39,7 +39,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <SiteNav />
-        <div className="flex-1 md:pl-72">{children}</div>
+        <div className="flex-1 md:pl-56">{children}</div>
         <ServiceWorkerRegister />
         <Toaster
           position="bottom-right"
