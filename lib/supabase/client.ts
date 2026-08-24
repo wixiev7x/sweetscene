@@ -1,11 +1,13 @@
 import { createBrowserClient } from "@supabase/ssr";
 
-const SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ||
-  "https://vnugflrlzrvngopweixe.supabase.co";
-const SUPABASE_ANON_KEY =
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudWdmbHJsenJ2bmdvcHdlaXhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczNzk0NzQsImV4cCI6MjEwMjk1NTQ3NH0.vn1xL2AQQxqql_06mEhkaILlbjvrcs9XR0bGowengTI";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  throw new Error(
+    "Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY environment variables."
+  );
+}
 
 let cachedClient: ReturnType<typeof createBrowserClient> | null = null;
 

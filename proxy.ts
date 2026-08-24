@@ -65,12 +65,13 @@ function withSecurityHeaders(res: NextResponse, req: NextRequest): NextResponse 
          in server actions, so the browser never talks to it directly.
          The endpoint is admin-configurable now, so an allowlist entry
          here would be wrong the moment it is changed. */
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "https://*.supabase.co";
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+  const supabaseWs = supabaseUrl ? ` wss://${supabaseUrl.replace(/^https?:\/\//, "")}` : "";
   const csp = [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
     `img-src 'self' data: blob: ${supabaseUrl} https://image.pollinations.ai https://images.unsplash.com`,
-    `connect-src 'self' ${supabaseUrl} wss://${supabaseUrl.replace(/^https?:\/\//, "")} https://challenges.cloudflare.com`,
+    `connect-src 'self'${supabaseUrl ? ` ${supabaseUrl}` : ""}${supabaseWs} https://challenges.cloudflare.com`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
     "frame-src https://challenges.cloudflare.com",
