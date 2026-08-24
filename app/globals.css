@@ -74,6 +74,26 @@
   --info: #60a5fa;
   --restricted: #fb923c;
 
+  /* ── iOS Design Tokens ── */
+  --ios-bg: #000000;
+  --ios-elevated: #1c1c1e;
+  --ios-secondary: #2c2c2e;
+  --ios-hairline: rgba(255, 255, 255, 0.08);
+  --ios-red: #ff3b30;
+  --ios-green: #30d158;
+  --ios-blue: #0a84ff;
+  --ios-orange: #ff9f0a;
+  --ios-purple: #bf5af2;
+  --ios-yellow: #ffd60a;
+  --ios-teal: #64d2ff;
+  --ios-indigo: #5e5ce6;
+  --ios-gray: #8e8e93;
+  --ios-text-secondary: rgba(235, 235, 245, 0.6);
+  --ios-text-tertiary: rgba(235, 235, 245, 0.3);
+  --ios-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --ios-radius-card: 20px;
+  --ios-radius-row: 10px;
+
   /* ── Shape ── */
   --radius-card: 0.75rem;
   --radius-control: 0.5rem;
@@ -143,6 +163,19 @@
   --font-sans: var(--font-inter), var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-retro: var(--font-press-start);
+
+  --color-ios-bg: var(--ios-bg);
+  --color-ios-elevated: var(--ios-elevated);
+  --color-ios-secondary: var(--ios-secondary);
+  --color-ios-red: var(--ios-red);
+  --color-ios-green: var(--ios-green);
+  --color-ios-blue: var(--ios-blue);
+  --color-ios-orange: var(--ios-orange);
+  --color-ios-purple: var(--ios-purple);
+  --color-ios-yellow: var(--ios-yellow);
+  --color-ios-teal: var(--ios-teal);
+  --color-ios-indigo: var(--ios-indigo);
+  --color-ios-gray: var(--ios-gray);
 }
 
 html,
@@ -247,6 +280,70 @@ body {
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
+}
+
+/* ── iOS Frosted material ── */
+.ios-frosted {
+  background-color: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+}
+
+/* ── iOS Card ── */
+.ios-card {
+  background-color: var(--ios-elevated);
+  border-radius: var(--ios-radius-card);
+}
+
+/* ── iOS Row ── */
+.ios-row {
+  border-radius: var(--ios-radius-row);
+  min-height: 50px;
+}
+
+/* ── iOS Hairline divider ── */
+.ios-hairline {
+  border-bottom: 1px solid var(--ios-hairline);
+}
+
+/* ── iOS Press feedback ── */
+.ios-press {
+  transition: transform 0.15s var(--ios-ease);
+}
+.ios-press:active {
+  transform: scale(0.97);
+}
+
+/* ── iOS Smooth transition ── */
+.ios-transition {
+  transition: all 0.35s var(--ios-ease);
+}
+
+/* ── Hide scrollbar ── */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── iOS Sheet slide-up ── */
+@keyframes iosSheetUp {
+  0% { transform: translateY(100%); opacity: 0.5; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.ios-sheet {
+  animation: iosSheetUp 0.4s var(--ios-ease) forwards;
+}
+
+/* ── iOS Dropdown slide-down ── */
+@keyframes iosDropdown {
+  0% { transform: translateY(-8px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.ios-dropdown {
+  animation: iosDropdown 0.3s var(--ios-ease) forwards;
 }
 
 /* Honour a reduced-motion preference globally */

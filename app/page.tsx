@@ -124,54 +124,102 @@ export default function Home() {
   }
 
   return (
-    <div className="md:pl-16 pb-14 md:pb-0">
-      {/* Scroll progress heat bar */}
-      <div className="fixed top-12 left-0 right-0 h-[2px] z-50 bg-white/5">
+    <div className="pb-14 md:pb-0">
+      {/* Scroll progress — subtle iOS-style */}
+      <div className="fixed top-14 left-0 right-0 h-[2px] z-50 bg-transparent">
         <div
-          className="h-full bg-gradient-to-r from-neon-magenta to-crimson-600 transition-[width] duration-75"
+          className="h-full bg-brand transition-[width] duration-150"
           style={{ width: `${scrollProgress * 100}%` }}
         />
       </div>
 
-      {/* Connection meter — vertical right edge */}
-      <div className="fixed right-0 top-12 bottom-14 md:bottom-0 w-[3px] z-40 bg-white/5">
-        <div
-          className="w-full bg-gradient-to-b from-neon-magenta via-crimson-500 to-neon-purple transition-[height] duration-75"
-          style={{ height: `${scrollProgress * 100}%` }}
-        />
-        <span className="absolute bottom-2 right-4 text-[7px] uppercase tracking-widest text-muted-faint rotate-90 origin-bottom-right whitespace-nowrap">
-          CONNECTION
-        </span>
-      </div>
+      {/* Hero banner */}
+      <section className="px-4 sm:px-6 pt-5 pb-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl mx-auto">
+          <div>
+            <h1 className="text-[22px] font-semibold text-white">Matchmake Yourself</h1>
+            <p className="text-[15px] text-[var(--ios-text-secondary)] mt-0.5">Anonymous first. Reveal only when both agree.</p>
+          </div>
+          <Link
+            href="/create"
+            onClick={() => playSound("click")}
+            className="ios-press flex items-center gap-2 text-[17px] font-semibold px-6 rounded-full text-white transition-all hover:opacity-90 whitespace-nowrap"
+            style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Create
+          </Link>
+        </div>
+      </section>
 
-      {/* Filter row — top, above hero */}
-      <section className="px-4 sm:px-6 pt-4 pb-3">
-        <div className="flex items-center gap-2 mb-2 max-w-7xl mx-auto">
+      {/* iOS Segmented Control — Popular / New / Top */}
+      <section className="px-4 sm:px-6 pb-3">
+        <div className="max-w-7xl mx-auto">
+          <div className="inline-flex items-center rounded-full bg-white/10 p-1">
+            {["Popular", "New", "Top"].map((seg) => (
+              <button
+                key={seg}
+                onClick={() => { setFilter(seg); playSound("click"); }}
+                className={`ios-press rounded-full px-5 py-2 text-[15px] font-medium transition-all ${
+                  filter === seg
+                    ? "bg-white text-black"
+                    : "text-[var(--ios-text-secondary)] hover:text-white"
+                }`}
+                style={{ height: "36px" }}
+              >
+                {seg}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* iOS Tag pills — horizontal scroll */}
+      <section className="px-4 sm:px-6 pb-4">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-7xl mx-auto scrollbar-none">
+          {/* SFW / NSFW toggle pills */}
           <button
             onClick={() => { setFilter("All"); playSound("click"); }}
-            className={`text-sm px-4 py-2 rounded-md border transition-all ${filter === "All" ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+            className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
+              filter === "All" ? "bg-white text-black" : "bg-white/10 text-white hover:bg-white/15"
+            }`}
+            style={{ height: "40px" }}
           >
             All
           </button>
           <button
             onClick={() => { setFilter("SFW Only"); playSound("click"); }}
-            className={`text-sm px-4 py-2 rounded-md border transition-all ${filter === "SFW Only" ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+            className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
+              filter === "SFW Only" ? "bg-white text-black" : "bg-white/10 text-white hover:bg-white/15"
+            }`}
+            style={{ height: "40px" }}
           >
-            SFW Only
+            SFW
           </button>
           <button
             onClick={handleNsfwToggle}
-            className={`text-sm px-4 py-2 rounded-md border transition-all ${nsfwMode ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+            className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
+              nsfwMode ? "bg-ios-red text-white" : "bg-white/10 text-white hover:bg-white/15"
+            }`}
+            style={{ height: "40px" }}
           >
-            NSFW Only
+            NSFW
           </button>
-        </div>
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-7xl mx-auto scrollbar-none">
+
+          {/* Divider */}
+          <div className="w-px h-6 bg-[var(--ios-hairline)] flex-shrink-0" />
+
+          {/* Category pills */}
           {FILTER_CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => { setFilter(cat); playSound("click"); }}
-              className={`text-sm px-4 py-2 rounded-md border whitespace-nowrap transition-all ${filter === cat ? "bg-brand/20 border-brand/40 text-brand-light" : "bg-white/5 border-white/10 text-muted hover:text-foreground-dim"}`}
+              className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
+                filter === cat ? "bg-white text-black" : "bg-white/10 text-white hover:bg-white/15"
+              }`}
+              style={{ height: "40px" }}
             >
               {cat}
             </button>
@@ -180,28 +228,14 @@ export default function Home() {
             <button
               key={cat}
               onClick={() => { setFilter(cat); playSound("click"); }}
-              className={`text-sm px-4 py-2 rounded-md border whitespace-nowrap transition-all ${filter === cat ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-crimson-500/5 border-crimson-500/20 text-crimson-400/70 hover:text-crimson-400"}`}
+              className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
+                filter === cat ? "bg-ios-red text-white" : "bg-ios-red/15 text-ios-red hover:bg-ios-red/25"
+              }`}
+              style={{ height: "40px" }}
             >
               {cat}
             </button>
           ))}
-        </div>
-      </section>
-
-      {/* Hero banner — below filter row */}
-      <section className="px-4 sm:px-6 pt-2 pb-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 max-w-7xl mx-auto">
-          <div>
-            <h1 className="text-xl font-medium text-foreground">Matchmake Yourself</h1>
-            <p className="text-sm text-muted">Anonymous first. Reveal only when both agree.</p>
-          </div>
-          <Link
-            href="/create"
-            onClick={() => playSound("click")}
-            className="text-sm px-5 py-2.5 rounded-md text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all whitespace-nowrap inline-flex items-center gap-2"
-          >
-            <span className="text-base leading-none">+</span> Create
-          </Link>
         </div>
       </section>
 
@@ -211,24 +245,28 @@ export default function Home() {
           {loading ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {[...Array(BATCH_SIZE)].map((_, i) => (
-                <div key={i} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden animate-pulse">
-                  <div className="aspect-[3/4] bg-surface-raised" />
+                <div key={i} className="ios-card overflow-hidden animate-pulse">
+                  <div className="aspect-[3/4] bg-ios-secondary" />
                   <div className="p-3">
-                    <div className="h-4 bg-surface-raised rounded w-24 mb-2" />
-                    <div className="h-3 bg-surface-raised rounded w-full" />
+                    <div className="h-4 bg-ios-secondary rounded w-24 mb-2" />
+                    <div className="h-3 bg-ios-secondary rounded w-full" />
                   </div>
                 </div>
               ))}
             </div>
           ) : visible.length === 0 ? (
             <div className="text-center py-16">
-              <p className="text-muted text-xl mb-2">No characters yet</p>
-              <p className="text-muted-faint text-sm mb-6">Be the first to create one.</p>
+              <p className="text-white text-[19px] font-semibold mb-2">No characters yet</p>
+              <p className="text-[var(--ios-text-secondary)] text-[15px] mb-6">Be the first to create one.</p>
               <Link
                 href="/create"
-                className="inline-flex items-center gap-2 text-sm px-6 py-3 rounded-md text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all"
+                className="ios-press inline-flex items-center gap-2 text-[17px] font-semibold px-6 rounded-full text-white transition-all hover:opacity-90"
+                style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
               >
-                <span className="text-base leading-none">+</span> Create the first one
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                Create the first one
               </Link>
             </div>
           ) : (
@@ -242,29 +280,29 @@ export default function Home() {
                       key={c.id}
                       href={`/chat/${c.id}`}
                       onClick={() => playSound("click")}
-                      className="group bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-neon-magenta/40 hover:scale-[1.02] transition-all duration-200"
+                      className="ios-press group ios-card overflow-hidden hover:opacity-95 transition-all"
                     >
                       <div className="aspect-[3/4] relative overflow-hidden">
                         <div className={`absolute inset-0 bg-gradient-to-br ${grad} flex items-center justify-center`}>
                           <span className="text-5xl font-bold text-white/30">{c.name[0] || "?"}</span>
                         </div>
                         {c.is_nsfw && (
-                          <span className="absolute top-2 right-2 text-[10px] px-2 py-0.5 rounded-md bg-crimson-500/80 text-white font-bold">
+                          <span className="absolute top-2 right-2 text-[11px] px-2 py-0.5 rounded-full bg-ios-red text-white font-bold">
                             18+
                           </span>
                         )}
                       </div>
                       <div className="p-3">
-                        <h3 className="text-base text-foreground group-hover:text-neon-magenta transition-colors truncate font-medium">
+                        <h3 className="text-[17px] text-white group-hover:text-brand transition-colors truncate font-medium">
                           {c.name}
                         </h3>
                         {c.tagline && (
-                          <p className="text-xs text-muted truncate mt-1">{c.tagline}</p>
+                          <p className="text-[13px] text-[var(--ios-text-secondary)] truncate mt-1">{c.tagline}</p>
                         )}
                         {tags.length > 0 && (
                           <div className="flex items-center gap-1.5 mt-2">
                             {tags.map((t) => (
-                              <span key={t} className="text-[10px] px-2 py-0.5 rounded-md bg-neon-magenta/10 text-brand-light">
+                              <span key={t} className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white">
                                 {t}
                               </span>
                             ))}
@@ -278,7 +316,7 @@ export default function Home() {
               {/* Infinite scroll sentinel */}
               {visibleCount < filtered.length && (
                 <div ref={sentinelRef} className="flex items-center justify-center py-8">
-                  <div className="h-6 w-6 border-2 border-white/10 border-t-neon-magenta rounded-full animate-spin" />
+                  <div className="w-7 h-7 border-2 border-white/10 border-t-brand rounded-full animate-spin" />
                 </div>
               )}
             </>
@@ -286,32 +324,38 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Safety link — footer-level, below character listings */}
-      <footer className="px-4 sm:px-6 py-6 border-t border-white/5">
+      {/* Safety link — footer */}
+      <footer className="px-4 sm:px-6 py-6 border-t border-[var(--ios-hairline)]">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <span className="text-xs text-muted-faint">&copy; 2025 SweetScene</span>
-          <Link href="/safety" className="text-xs text-muted hover:text-foreground-dim transition-colors">
+          <span className="text-[13px] text-[var(--ios-text-tertiary)]">&copy; 2025 SweetScene</span>
+          <Link href="/safety" className="text-[13px] text-[var(--ios-text-secondary)] hover:text-white transition-colors">
             Safety
           </Link>
         </div>
       </footer>
 
-      {/* Inline 18+ confirmation */}
+      {/* Inline 18+ confirmation — iOS sheet */}
       {showNsfwConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-void-950/80 backdrop-blur-sm">
-          <div className="bg-surface border border-white/10 rounded-2xl p-6 max-w-sm mx-4">
-            <h2 className="text-base text-foreground mb-2">This section is 18+</h2>
-            <p className="text-sm text-muted mb-5">You are about to view NSFW content. Confirm you are 18 or older.</p>
-            <div className="flex items-center gap-3">
+        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowNsfwConfirm(false)}>
+          <div
+            className="ios-sheet w-full max-w-md rounded-t-[24px] ios-frosted border-t border-[var(--ios-hairline)] p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-10 h-1 bg-[var(--ios-hairline)] rounded-full mx-auto mb-5" />
+            <h2 className="text-[19px] font-semibold text-white mb-2">This section is 18+</h2>
+            <p className="text-[15px] text-[var(--ios-text-secondary)] mb-6">You are about to view NSFW content. Confirm you are 18 or older.</p>
+            <div className="flex flex-col gap-3">
               <button
                 onClick={confirmNsfw}
-                className="text-sm px-5 py-2.5 rounded-md text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 transition-all"
+                className="ios-press w-full rounded-full text-white font-semibold text-[17px] transition-all hover:opacity-90"
+                style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
               >
                 Confirm
               </button>
               <button
                 onClick={() => setShowNsfwConfirm(false)}
-                className="text-sm px-5 py-2.5 rounded-md text-muted bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
+                className="ios-press w-full rounded-full text-white text-[17px] bg-white/10 hover:bg-white/15 transition-all"
+                style={{ height: "52px" }}
               >
                 Cancel
               </button>

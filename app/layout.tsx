@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Press_Start_2P } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
-import NotificationBell from "@/components/NotificationBell";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SiteNav from "@/components/SiteNav";
 
@@ -40,10 +39,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <SiteNav />
-        <div className="flex-1">{children}</div>
-        <div className="fixed top-3 right-3 z-50">
-          <NotificationBell />
-        </div>
+        <div className="flex-1 md:pl-72">{children}</div>
         <ServiceWorkerRegister />
         <Toaster
           position="bottom-right"
