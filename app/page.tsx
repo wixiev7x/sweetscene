@@ -44,6 +44,9 @@ export default function Home() {
   const [nsfwMode, setNsfwMode] = useState(false);
   const [showNsfwConfirm, setShowNsfwConfirm] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sortMode, setSortMode] = useState("Popular");
+  const [sortSub, setSortSub] = useState("This Week");
   const sentinelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -154,25 +157,55 @@ export default function Home() {
         </div>
       </section>
 
-      {/* iOS Segmented Control — Popular / New / Top */}
+      {/* Sort dropdown — Popular / New / Top with sub-options */}
       <section className="px-4 sm:px-6 pb-3">
-        <div className="max-w-7xl mx-auto">
-          <div className="inline-flex items-center rounded-full bg-white/10 p-1">
-            {["Popular", "New", "Top"].map((seg) => (
-              <button
-                key={seg}
-                onClick={() => { setFilter(seg); playSound("click"); }}
-                className={`ios-press rounded-full px-5 py-2 text-[15px] font-medium transition-all ${
-                  filter === seg
-                    ? "bg-white text-black"
-                    : "text-[var(--ios-text-secondary)] hover:text-white"
-                }`}
-                style={{ height: "36px" }}
-              >
-                {seg}
-              </button>
-            ))}
-          </div>
+        <div className="max-w-7xl mx-auto relative inline-block">
+          <button
+            onClick={() => setSortOpen(!sortOpen)}
+            className="ios-press flex items-center gap-2 rounded-full bg-white/10 px-5 text-[15px] font-medium text-white transition-all hover:bg-white/15"
+            style={{ height: "40px" }}
+          >
+            <span>{sortMode}</span>
+            <span className="text-[var(--ios-text-tertiary)] text-[13px]">· {sortSub}</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${sortOpen ? "rotate-180" : ""}`}>
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+
+          {sortOpen && (
+            <div className="ios-dropdown absolute left-0 top-11 w-56 ios-card ios-frosted border border-[var(--ios-hairline)] p-2 z-50">
+              {["Popular", "New", "Top"].map((mode) => {
+                const subs = mode === "Popular" ? ["This Week", "This Month", "All Time"] : mode === "New" ? ["Today", "This Week", "This Month"] : ["This Month", "This Year", "All Time"];
+                return (
+                  <div key={mode} className="mb-1">
+                    <button
+                      onClick={() => { setSortMode(mode); setSortSub(subs[0]); playSound("click"); }}
+                      className={`ios-press w-full text-left px-3 py-2 rounded-[10px] text-[15px] transition-all ${
+                        sortMode === mode ? "bg-white/10 text-white font-medium" : "text-[var(--ios-text-secondary)] hover:bg-white/5"
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                    {sortMode === mode && (
+                      <div className="pl-3">
+                        {subs.map((sub) => (
+                          <button
+                            key={sub}
+                            onClick={() => { setSortSub(sub); setSortOpen(false); playSound("click"); }}
+                            className={`ios-press w-full text-left px-3 py-1.5 rounded-[8px] text-[13px] transition-all ${
+                              sortSub === sub ? "text-brand font-medium" : "text-[var(--ios-text-tertiary)] hover:text-white"
+                            }`}
+                          >
+                            {sub}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
