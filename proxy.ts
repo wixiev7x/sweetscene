@@ -30,6 +30,7 @@ const PROTECTED_PREFIXES = [
   "/characters",
   "/create-character",
   "/profile",
+  "/complete-profile",
   "/admin",
 ];
 

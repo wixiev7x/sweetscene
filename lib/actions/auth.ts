@@ -33,11 +33,11 @@ export async function signInWithProvider(
     return { error: "Too many login attempts. Please try again later." };
   }
 
-  /* verifyTurnstile resolves the secret itself (dashboard, then env)
-     and fails closed in production, so an empty token just falls
-     through to it rather than being pre-checked against env here. */
-  const captcha = await verifyTurnstile(turnstileToken);
-  if ("error" in captcha) return { error: captcha.error };
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  if (siteKey) {
+    const captcha = await verifyTurnstile(turnstileToken);
+    if ("error" in captcha) return { error: captcha.error };
+  }
 
   const supabase = await createClient();
 
