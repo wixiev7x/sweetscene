@@ -12,6 +12,7 @@ type State = {
   startTime: number;
   matchedWith: string | null;
   matchId: string | null;
+  queuePosition: number | null;
 };
 
 type Action =
@@ -19,7 +20,8 @@ type Action =
   | { type: "MATCHED"; matchedWith: string; matchId: string }
   | { type: "TIMEOUT" }
   | { type: "CANCEL" }
-  | { type: "RESET" };
+  | { type: "RESET" }
+  | { type: "UPDATE_POSITION"; position: number | null };
 
 const initialState: State = {
   phase: "idle",
@@ -27,6 +29,7 @@ const initialState: State = {
   startTime: 0,
   matchedWith: null,
   matchId: null,
+  queuePosition: null,
 };
 
 function reducer(state: State, action: Action): State {
@@ -41,6 +44,8 @@ function reducer(state: State, action: Action): State {
       return { ...initialState, phase: "cancelled" };
     case "RESET":
       return initialState;
+    case "UPDATE_POSITION":
+      return { ...state, queuePosition: action.position };
     default:
       return state;
   }
@@ -80,6 +85,8 @@ export default function MatchmakePage() {
         } else if (statusData.status === "timeout") {
           if (pollRef.current) clearInterval(pollRef.current);
           dispatch({ type: "TIMEOUT" });
+        } else if (statusData.queue_position != null) {
+          dispatch({ type: "UPDATE_POSITION", position: statusData.queue_position });
         }
       }, MATCHMAKING_POLL_INTERVAL_MS);
     }
@@ -102,6 +109,8 @@ export default function MatchmakePage() {
       if (pollRef.current) clearInterval(pollRef.current);
     };
   }, []);
+
+  const roomNumber = state.matchId ? state.matchId.substring(0, 6).toUpperCase() : "XXX";
 
   return (
     <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
@@ -163,7 +172,12 @@ export default function MatchmakePage() {
 
         {state.phase === "searching" && (
           <>
-            <SearchingUI startTime={state.startTime} kinkTags={selectedTags} onCancel={cancelSearch} />
+            <SearchingUI
+              startTime={state.startTime}
+              kinkTags={selectedTags}
+              queuePosition={state.queuePosition}
+              onCancel={cancelSearch}
+            />
             <div className="border-t border-white/5 pt-4">
               <SuggestedBots kinkTags={selectedTags} />
             </div>
@@ -173,22 +187,25 @@ export default function MatchmakePage() {
         {state.phase === "matched" && (
           <div className="flex flex-col items-center py-12">
             <div className="flex items-center justify-center gap-10 mb-8">
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-brand/20">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand to-brand-dark flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-brand/20">
                 YOU
               </div>
               <div className="h-0.5 w-16 bg-brand" />
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-dark to-crimson-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-brand/20">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-brand-dark to-crimson-600 flex items-center justify-center text-sm font-bold text-white shadow-lg shadow-brand/20">
                 ???
               </div>
             </div>
             <p className="text-2xl font-bold text-foreground mb-2">Match found!</p>
-            <p className="text-sm text-muted mb-8">Your anonymous partner is ready.</p>
-            <Link
+            <p className="text-sm text-muted mb-2">Your anonymous partner is ready.</p>
+            <p className="text-xs text-muted mb-8">Room #{roomNumber}</p>
+            <a
               href={`/chat/${state.matchId}`}
+              target="_blank"
+              rel="noopener noreferrer"
               className="w-full max-w-xs h-[52px] rounded-full bg-gradient-to-r from-brand to-brand-dark text-white text-base font-semibold flex items-center justify-center ios-press shadow-lg shadow-brand/20 mb-3"
             >
-              Start Roleplay
-            </Link>
+              Go to Room #{roomNumber}
+            </a>
             <button
               onClick={() => dispatch({ type: "RESET" })}
               className="text-sm text-muted hover:text-foreground transition-colors ios-press"
@@ -201,19 +218,19 @@ export default function MatchmakePage() {
         {state.phase === "timeout" && (
           <div className="flex flex-col items-center py-12">
             <p className="text-lg font-semibold text-foreground mb-2">No match found right now</p>
-            <p className="text-sm text-muted mb-8">Try again or chat with a suggested bot.</p>
+            <p className="text-sm text-muted mb-8">Try again or chat solo with a character.</p>
             <button
               onClick={() => dispatch({ type: "RESET" })}
               className="w-full max-w-xs h-[52px] rounded-full bg-gradient-to-r from-brand to-brand-dark text-white text-base font-semibold ios-press shadow-lg shadow-brand/20 mb-3"
             >
-              Try Again
+              Find Again
             </button>
-            <Link
+            <a
               href="/explore"
               className="w-full max-w-xs h-[44px] rounded-full border border-white/15 text-muted hover:text-foreground hover:border-white/30 transition-all flex items-center justify-center text-sm ios-press"
             >
-              Browse Bots
-            </Link>
+              Go Solo
+            </a>
           </div>
         )}
       </div>

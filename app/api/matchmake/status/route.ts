@@ -24,5 +24,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ status: "timeout" });
   }
 
-  return NextResponse.json(data);
+  let queuePosition: number | null = null;
+  if (data.status === "waiting") {
+    const { count } = await supabase
+      .from("matchmaking_queue")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "waiting")
+      .lte("created_at", data.created_at);
+    queuePosition = count ?? null;
+  }
+
+  return NextResponse.json({ ...data, queue_position: queuePosition });
 }
