@@ -99,7 +99,7 @@ export default function QuizPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6 md:pl-16 pb-14 md:pb-0">
+      <main className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6 pb-14 md:pb-0">
         <div className="text-center">
           <p className="text-lg text-brand-light italic animate-pulse">Finding your matches...</p>
           <p className="text-sm text-muted mt-2">Setting the scene...</p>
@@ -115,7 +115,7 @@ export default function QuizPage() {
       : [];
 
     return (
-      <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 md:pl-16 pb-14 md:pb-0">
+      <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <span className="text-sm tracking-[0.3em] text-neon-magenta/60 uppercase font-retro">Your Matches</span>
@@ -201,7 +201,7 @@ export default function QuizPage() {
   const progress = ((current + 1) / QUESTIONS.length) * 100;
 
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 flex items-center justify-center md:pl-16 pb-14 md:pb-0">
+    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 flex items-center justify-center pb-14 md:pb-0">
       <div className="max-w-lg w-full">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-light text-foreground-dim">Matchmaker</h1>

@@ -20,7 +20,7 @@ export default function PremiumPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 md:pl-16 pb-14 md:pb-0">
+    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-10">
           <h1 className="text-2xl font-light text-foreground-dim mb-1">Choose Your Plan</h1>

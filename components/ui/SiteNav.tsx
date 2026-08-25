@@ -13,7 +13,7 @@ type NavItem = {
 
 const MAIN_GROUP: NavItem[] = [
   { href: "/", label: "Explore", icon: "M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10" },
-  { href: "/quiz", label: "Discover", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" },
+  { href: "/matchmake", label: "Matchmake", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" },
   { href: "/chat/1", label: "Chat", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
   { href: "/scenarios", label: "Scenarios", icon: "M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z" },
   { href: "/community", label: "Community", icon: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" },
@@ -31,7 +31,7 @@ const MORE_GROUP: NavItem[] = [
 const MOBILE_TABS: NavItem[] = [
   { href: "/", label: "Explore", icon: "M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10" },
   { href: "/chat/1", label: "Chat", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
-  { href: "/quiz", label: "Discover", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" },
+  { href: "/matchmake", label: "Match", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" },
   { href: "/store", label: "Store", icon: "M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 8h18" },
   { href: "/profile", label: "Profile", icon: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" },
 ];
@@ -169,14 +169,14 @@ export function SiteNav({ className = "" }: { className?: string }) {
         {/* Primary CTA — Matchmake button */}
         <div className="px-4 pb-3">
           <Link
-            href="/quiz"
+            href="/matchmake"
             className="ios-press flex items-center justify-center gap-2 w-full rounded-full text-white font-semibold text-[17px] transition-all hover:opacity-90"
             style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" />
             </svg>
-            Discover
+            Matchmake
           </Link>
         </div>
 

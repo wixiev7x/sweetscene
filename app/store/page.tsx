@@ -49,7 +49,7 @@ export default function StorePage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 md:pl-16 pb-14 md:pb-0">
+    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-light text-foreground-dim mb-2">Store</h1>
         <p className="text-sm text-muted mb-8">Subscriptions and tokens for AI matchmaking and chat.</p>

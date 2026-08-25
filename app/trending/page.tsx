@@ -13,7 +13,7 @@ const CATEGORIES = [
 
 export default function TrendingPage() {
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 md:pl-16 pb-14 md:pb-0">
+    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-light text-foreground-dim mb-2">Trending</h1>
         <p className="text-sm text-muted mb-8">Live activity by interest category.</p>
