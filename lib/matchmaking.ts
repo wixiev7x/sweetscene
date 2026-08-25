@@ -13,4 +13,5 @@ export interface QueueRow {
   matched_with_user_id: string | null;
   matched_at: string | null;
   created_at: string;
+  match_id: string | null;
 }

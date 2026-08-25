@@ -29,6 +29,25 @@ export async function findAndCreateMatches(): Promise<number> {
         b.kink_tags.length === 0 ||
         a.kink_tags.some((t) => b.kink_tags.includes(t));
       if (tagsOverlap) {
+        const tier = a.mode === "blind_date" || b.mode === "blind_date" ? "deep" : "quick";
+        const sharedTags = [...new Set([...a.kink_tags, ...b.kink_tags])];
+
+        const { data: matchRow } = await admin
+          .from("matches")
+          .insert({
+            user_a: a.user_id,
+            user_b: b.user_id,
+            is_ai_match: false,
+            status: "active",
+            tier,
+            scenario_tags: sharedTags,
+            shared_pool: tier === "deep" ? 10000 : 2000,
+          })
+          .select("id")
+          .single();
+
+        const matchId = matchRow?.id;
+
         await admin
           .from("matchmaking_queue")
           .update({ status: "matched", matched_with_user_id: b.user_id, matched_at: new Date().toISOString() })
@@ -37,6 +56,14 @@ export async function findAndCreateMatches(): Promise<number> {
           .from("matchmaking_queue")
           .update({ status: "matched", matched_with_user_id: a.user_id, matched_at: new Date().toISOString() })
           .eq("id", b.id);
+
+        if (matchId) {
+          await admin
+            .from("matchmaking_queue")
+            .update({ match_id: matchId } as never)
+            .in("id", [a.id, b.id]);
+        }
+
         matchedIds.add(a.id);
         matchedIds.add(b.id);
         matched++;

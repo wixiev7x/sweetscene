@@ -61,6 +61,7 @@ export default function MatchmakePage() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [mode, setMode] = useState<MatchMode>("quick");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [searching, setSearching] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const toggleTag = (tag: string) => {
@@ -68,38 +69,54 @@ export default function MatchmakePage() {
   };
 
   const startSearch = useCallback(async () => {
-    const res = await fetch("/api/matchmake/join", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ kink_tags: selectedTags, mode }),
-    });
-    const data = await res.json();
-    if (data.id) {
-      dispatch({ type: "START_SEARCH", queueId: data.id });
-      pollRef.current = setInterval(async () => {
-        const statusRes = await fetch(`/api/matchmake/status?id=${data.id}`);
-        const statusData = await statusRes.json();
-        if (statusData.status === "matched") {
-          if (pollRef.current) clearInterval(pollRef.current);
-          dispatch({ type: "MATCHED", matchedWith: statusData.matched_with_user_id, matchId: data.id });
-        } else if (statusData.status === "timeout") {
-          if (pollRef.current) clearInterval(pollRef.current);
-          dispatch({ type: "TIMEOUT" });
-        } else if (statusData.queue_position != null) {
-          dispatch({ type: "UPDATE_POSITION", position: statusData.queue_position });
-        }
-      }, MATCHMAKING_POLL_INTERVAL_MS);
+    setSearching(true);
+    try {
+      const res = await fetch("/api/matchmake/join", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kink_tags: selectedTags, mode }),
+      });
+      const data = await res.json();
+      if (data.id) {
+        dispatch({ type: "START_SEARCH", queueId: data.id });
+        pollRef.current = setInterval(async () => {
+          try {
+            const statusRes = await fetch(`/api/matchmake/status?id=${data.id}`);
+            const statusData = await statusRes.json();
+            if (statusData.status === "matched") {
+              if (pollRef.current) clearInterval(pollRef.current);
+              dispatch({
+                type: "MATCHED",
+                matchedWith: statusData.matched_with_user_id || "unknown",
+                matchId: statusData.match_id || data.id,
+              });
+            } else if (statusData.status === "timeout") {
+              if (pollRef.current) clearInterval(pollRef.current);
+              dispatch({ type: "TIMEOUT" });
+            } else if (statusData.queue_position != null) {
+              dispatch({ type: "UPDATE_POSITION", position: statusData.queue_position });
+            }
+          } catch {
+          }
+        }, MATCHMAKING_POLL_INTERVAL_MS);
+      }
+    } catch {
+    } finally {
+      setSearching(false);
     }
   }, [selectedTags, mode]);
 
   const cancelSearch = useCallback(async () => {
     if (pollRef.current) clearInterval(pollRef.current);
     if (state.queueId) {
-      await fetch("/api/matchmake/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: state.queueId }),
-      });
+      try {
+        await fetch("/api/matchmake/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: state.queueId }),
+        });
+      } catch {
+      }
     }
     dispatch({ type: "CANCEL" });
   }, [state.queueId]);
@@ -110,7 +127,7 @@ export default function MatchmakePage() {
     };
   }, []);
 
-  const roomNumber = state.matchId ? state.matchId.substring(0, 6).toUpperCase() : "XXX";
+  const roomNumber = state.matchId ? state.matchId.substring(0, 6).toUpperCase() : "XXXXXX";
 
   return (
     <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
@@ -155,9 +172,10 @@ export default function MatchmakePage() {
 
             <button
               onClick={startSearch}
-              className="w-full max-w-xs h-[52px] rounded-full bg-gradient-to-r from-brand to-brand-dark text-white text-base font-semibold ios-press shadow-lg shadow-brand/20"
+              disabled={searching}
+              className="w-full max-w-xs h-[52px] rounded-full bg-gradient-to-r from-brand to-brand-dark text-white text-base font-semibold ios-press shadow-lg shadow-brand/20 disabled:opacity-50"
             >
-              Find My Match
+              {searching ? "Starting..." : "Find My Match"}
             </button>
 
             <p className="text-xs text-muted text-center mt-4 max-w-xs leading-relaxed">

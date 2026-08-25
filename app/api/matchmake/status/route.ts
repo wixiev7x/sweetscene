@@ -1,18 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server-admin";
 import { MATCHMAKING_TIMEOUT_MS } from "@/lib/matchmaking";
+import { findAndCreateMatches, expireOldEntries } from "@/lib/matchmaking-server";
 
 export async function GET(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
-  const { data, error } = await supabase
+  await findAndCreateMatches();
+  await expireOldEntries();
+
+  const admin = createAdminClient();
+  const { data, error } = await admin
     .from("matchmaking_queue")
-    .select("status, matched_with_user_id, matched_at, created_at, kink_tags, mode")
+    .select("status, matched_with_user_id, matched_at, created_at, kink_tags, mode, match_id")
     .eq("id", id)
     .single();
 
@@ -20,13 +21,13 @@ export async function GET(req: NextRequest) {
 
   const elapsed = Date.now() - new Date(data.created_at).getTime();
   if (data.status === "waiting" && elapsed > MATCHMAKING_TIMEOUT_MS) {
-    await supabase.from("matchmaking_queue").update({ status: "timeout" }).eq("id", id);
-    return NextResponse.json({ status: "timeout" });
+    await admin.from("matchmaking_queue").update({ status: "timeout" }).eq("id", id);
+    return NextResponse.json({ status: "timeout", match_id: null });
   }
 
   let queuePosition: number | null = null;
   if (data.status === "waiting") {
-    const { count } = await supabase
+    const { count } = await admin
       .from("matchmaking_queue")
       .select("id", { count: "exact", head: true })
       .eq("status", "waiting")
