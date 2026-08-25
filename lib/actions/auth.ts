@@ -64,7 +64,8 @@ export async function signInWithProvider(
 export async function signUpWithEmail(
   email: string,
   password: string,
-  turnstileToken: string
+  turnstileToken: string,
+  username?: string
 ): Promise<{ error?: string }> {
   const headerList = await headers();
   const req = new Request("https://internal/auth-check", { headers: headerList });
@@ -89,9 +90,16 @@ export async function signUpWithEmail(
     await admin.auth.admin.updateUserById(data.user.id, {
       email_confirm: true,
     });
+
+    if (username && username.trim().length >= 2) {
+      await admin
+        .from("profiles")
+        .update({
+          anonymous_username: username.trim(),
+        })
+        .eq("id", data.user.id);
+    }
   } catch {
-    /* If the admin client is unavailable (missing service role key),
-       the user can still confirm via the email link. */
   }
 
   const { error: signInError } = await supabase.auth.signInWithPassword({

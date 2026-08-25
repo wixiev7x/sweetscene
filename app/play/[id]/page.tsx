@@ -7,6 +7,7 @@ import { useMounted } from "@/lib/utils/useMounted";
 import { Spinner } from "@/components/ui";
 import ChatBox from "@/components/ChatBox";
 import MessageList from "@/components/MessageList";
+import { createClient } from "@/lib/supabase/client";
 import {
   getOrCreateSoloSession,
   continueSoloSession,
@@ -63,6 +64,8 @@ function hashGradient(name: string): number {
 }
 
 const RATING_THRESHOLD = 20;
+const GUEST_MSG_LIMIT = 5;
+const GUEST_MSG_KEY = "sweetscene-guest-msgs";
 
 /**
  * Converts server-side SoloMessage[] to the ChatMessage[] shape
@@ -112,14 +115,26 @@ export default function PlayPage() {
   const [showPaywall, setShowPaywall] = useState(false);
   const [topUpQty, setTopUpQty] = useState(10000);
   const [topUpLoading, setTopUpLoading] = useState(false);
+  const [showGuestLimit, setShowGuestLimit] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+  const [guestMsgCount, setGuestMsgCount] = useState(0);
   const mounted = useMounted();
 
   /* ── load or resume session on mount ── */
   useEffect(() => {
     async function load() {
-      /* Check for ?session= query param (from the "Continue chatting"
-         carousel on /characters). If present, resume that specific
-         session; otherwise get-or-create the most recent one. */
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsLoggedIn(!!user);
+        if (!user) {
+          const stored = localStorage.getItem(GUEST_MSG_KEY);
+          setGuestMsgCount(stored ? parseInt(stored, 10) : 0);
+        }
+      } catch {
+        setIsLoggedIn(false);
+      }
+
       const searchParams = new URLSearchParams(window.location.search);
       const sessionParam = searchParams.get("session");
 
@@ -153,6 +168,11 @@ export default function PlayPage() {
   async function handleSend(text: string) {
     if (aiResponding) return;
     if (!character || !sessionId) return;
+
+    if (isLoggedIn === false && guestMsgCount >= GUEST_MSG_LIMIT) {
+      setShowGuestLimit(true);
+      return;
+    }
 
     if (tokensUsed >= TOKEN_BUDGET) {
       setShowPaywall(true);
@@ -202,6 +222,12 @@ export default function PlayPage() {
 
       setMessages((prev) => [...prev, aiMsg]);
       setTokensUsed((prev) => prev + result.tokensUsed);
+
+      if (isLoggedIn === false) {
+        const newCount = guestMsgCount + 1;
+        setGuestMsgCount(newCount);
+        localStorage.setItem(GUEST_MSG_KEY, String(newCount));
+      }
 
       /* Show rating popup after the threshold. messages.length is
          the count before this turn; +2 accounts for user + AI. */
@@ -583,6 +609,35 @@ export default function PlayPage() {
               >
                 Dismiss
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── GUEST LIMIT MODAL ── */}
+      {showGuestLimit && (
+        <div className="fixed inset-0 z-40 bg-void-950/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
+            <span className="block text-4xl mb-4">&#x1F510;</span>
+            <h2 className="text-xl font-light text-white">
+              You&apos;ve used your {GUEST_MSG_LIMIT} free messages
+            </h2>
+            <p className="text-sm text-muted mt-2">
+              Create an account to keep chatting with {character?.name} and unlock unlimited messages, matchmaking, and more.
+            </p>
+            <div className="flex flex-col gap-3 mt-6">
+              <Link
+                href={`/signup?next=/play/${characterId}`}
+                className="w-full bg-gradient-to-r from-brand-dark to-crimson-600 text-white font-medium py-3 rounded-xl hover:from-brand hover:to-crimson-500 active:scale-95 transition-all text-center"
+              >
+                Create Free Account
+              </Link>
+              <Link
+                href={`/login?next=/play/${characterId}`}
+                className="w-full border border-white/15 text-muted hover:text-foreground-dim hover:border-white/30 font-medium py-3 rounded-xl transition-all text-center"
+              >
+                I already have one
+              </Link>
             </div>
           </div>
         </div>

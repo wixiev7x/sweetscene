@@ -6,19 +6,7 @@ import { expireOldEntries, findAndCreateMatches } from "@/lib/matchmaking-server
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-
-  let userId: string;
-
-  if (user) {
-    userId = user.id;
-  } else {
-    const tempId = req.cookies.get("sweetscene-anon-id")?.value;
-    if (tempId && tempId.length === 36) {
-      userId = tempId;
-    } else {
-      userId = crypto.randomUUID();
-    }
-  }
+  if (!user) return NextResponse.json({ error: "Please sign up to start matchmaking" }, { status: 401 });
 
   await expireOldEntries();
 
@@ -29,12 +17,12 @@ export async function POST(req: NextRequest) {
   await admin
     .from("matchmaking_queue")
     .update({ status: "cancelled" })
-    .eq("user_id", userId)
+    .eq("user_id", user.id)
     .eq("status", "waiting");
 
   const { data, error } = await admin
     .from("matchmaking_queue")
-    .insert({ user_id: userId, kink_tags, mode, status: "waiting" })
+    .insert({ user_id: user.id, kink_tags, mode, status: "waiting" })
     .select("id")
     .single();
 
@@ -42,14 +30,5 @@ export async function POST(req: NextRequest) {
 
   await findAndCreateMatches();
 
-  const res = NextResponse.json({ id: data.id, user_id: userId });
-  if (!user) {
-    res.cookies.set("sweetscene-anon-id", userId, {
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24,
-      path: "/",
-    });
-  }
-  return res;
+  return NextResponse.json({ id: data.id });
 }

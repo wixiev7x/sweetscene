@@ -2,6 +2,7 @@
 
 import { useReducer, useEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { SearchingUI } from "@/components/matchmake/SearchingUI";
 import { SuggestedBots } from "@/components/matchmake/SuggestedBots";
@@ -70,13 +71,17 @@ interface FriendUser {
   anonymous_username: string;
 }
 
+const SOLO_GUEST_LIMIT = 5;
+
 export default function MatchmakePage() {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [mode, setMode] = useState<MatchMode | "friend">("quick");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [searching, setSearching] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const router = useRouter();
 
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [friendUsername, setFriendUsername] = useState("");
   const [friendResults, setFriendResults] = useState<FriendUser[]>([]);
   const [selectedFriend, setSelectedFriend] = useState<FriendUser | null>(null);
@@ -94,14 +99,26 @@ export default function MatchmakePage() {
     (async () => {
       try {
         const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        setIsLoggedIn(!!user);
         const { data } = await supabase.from("bots").select("id, name, tagline, is_nsfw").limit(20);
         if (data) setBots(data as BotCard[]);
       } catch {
+        setIsLoggedIn(false);
       }
     })();
   }, []);
 
+  const requireAuth = () => {
+    if (isLoggedIn === false) {
+      router.push("/signup?next=/matchmake");
+      return false;
+    }
+    return true;
+  };
+
   const startSearch = useCallback(async () => {
+    if (!requireAuth()) return;
     setSearching(true);
     try {
       const res = await fetch("/api/matchmake/join", {
@@ -109,6 +126,10 @@ export default function MatchmakePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kink_tags: selectedTags, mode }),
       });
+      if (res.status === 401) {
+        router.push("/signup?next=/matchmake");
+        return;
+      }
       const data = await res.json();
       if (data.id) {
         dispatch({ type: "START_SEARCH", queueId: data.id });
@@ -137,7 +158,7 @@ export default function MatchmakePage() {
     } finally {
       setSearching(false);
     }
-  }, [selectedTags, mode]);
+  }, [selectedTags, mode, isLoggedIn, router]);
 
   const cancelSearch = useCallback(async () => {
     if (pollRef.current) clearInterval(pollRef.current);
@@ -161,6 +182,7 @@ export default function MatchmakePage() {
   }, []);
 
   const searchFriends = async () => {
+    if (!requireAuth()) return;
     setFriendLoading(true);
     setFriendError("");
     setFriendResults([]);
@@ -171,6 +193,10 @@ export default function MatchmakePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ friendUsername }),
       });
+      if (res.status === 401) {
+        router.push("/signup?next=/matchmake");
+        return;
+      }
       const data = await res.json();
       if (data.users) {
         setFriendResults(data.users);
@@ -217,7 +243,7 @@ export default function MatchmakePage() {
 
         {state.phase === "idle" || state.phase === "cancelled" ? (
           <div className="flex flex-col items-center">
-            <div className="inline-flex rounded-full bg-ios-secondary p-1 mb-6 w-full max-w-md">
+            <div className="inline-flex rounded-full bg-ios-secondary p-1 mb-6 w-full max-w-2xl overflow-x-auto scrollbar-none">
               {([
                 { key: "quick", label: "Quick Match" },
                 { key: "kink", label: "By Tag" },
@@ -227,7 +253,7 @@ export default function MatchmakePage() {
                 <button
                   key={m.key}
                   onClick={() => { setMode(m.key); setCreatedRoom(null); setFriendResults([]); setSelectedFriend(null); }}
-                  className={`flex-1 py-2 text-xs sm:text-sm rounded-full transition-all whitespace-nowrap ${
+                  className={`flex-1 py-2 text-xs sm:text-sm rounded-full transition-all whitespace-nowrap px-3 ${
                     mode === m.key ? "bg-white text-black font-medium" : "text-muted"
                   }`}
                 >
@@ -235,6 +261,28 @@ export default function MatchmakePage() {
                 </button>
               ))}
             </div>
+
+            {isLoggedIn === false && mode !== "friend" && (
+              <div className="w-full max-w-md mb-4 px-4 py-3 rounded-xl bg-brand/10 border border-brand/20 text-center">
+                <p className="text-sm text-foreground">
+                  Sign up to start matchmaking with real people
+                </p>
+                <Link href="/signup?next=/matchmake" className="text-sm text-brand font-medium hover:text-brand-light">
+                  Create your identity →
+                </Link>
+              </div>
+            )}
+
+            {isLoggedIn === false && mode === "friend" && (
+              <div className="w-full max-w-md mb-4 px-4 py-3 rounded-xl bg-brand/10 border border-brand/20 text-center">
+                <p className="text-sm text-foreground">
+                  Sign up to play with friends
+                </p>
+                <Link href="/signup?next=/matchmake" className="text-sm text-brand font-medium hover:text-brand-light">
+                  Create your identity →
+                </Link>
+              </div>
+            )}
 
             {mode === "kink" && (
               <div className="w-full mb-6">
@@ -265,7 +313,23 @@ export default function MatchmakePage() {
                 >
                   {searching ? "Starting..." : "Find My Match"}
                 </button>
-                <p className="text-xs text-muted text-center mt-4 max-w-xs leading-relaxed">
+
+                <div className="w-full max-w-md mt-8 pt-6 border-t border-white/5">
+                  <p className="text-sm font-medium text-foreground mb-1">Just want to chat solo?</p>
+                  <p className="text-xs text-muted mb-3">
+                    {isLoggedIn === false
+                      ? `Try chatting with an AI character — first ${SOLO_GUEST_LIMIT} messages free, no signup needed.`
+                      : "Browse and chat with AI characters created by the community."}
+                  </p>
+                  <Link
+                    href="/explore"
+                    className="inline-flex items-center gap-2 text-sm text-brand font-medium hover:text-brand-light ios-press"
+                  >
+                    Browse Characters →
+                  </Link>
+                </div>
+
+                <p className="text-xs text-muted text-center mt-6 max-w-xs leading-relaxed">
                   Anonymous matchmaking. No names, no faces.<br />
                   Reveal only when both sides agree.
                 </p>
@@ -277,86 +341,100 @@ export default function MatchmakePage() {
 
             {mode === "friend" && !createdRoom && (
               <div className="w-full max-w-md space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-1.5 block">Search by username</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={friendUsername}
-                      onChange={(e) => setFriendUsername(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && searchFriends()}
-                      placeholder="Enter friend's username..."
-                      className="flex-1 px-4 py-2.5 rounded-xl bg-ios-secondary text-white text-sm border border-white/10 focus:border-brand/50 focus:outline-none transition-colors"
-                    />
-                    <button
-                      onClick={searchFriends}
-                      disabled={friendLoading || friendUsername.trim().length < 2}
-                      className="px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-medium ios-press disabled:opacity-50"
+                {isLoggedIn === false ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted mb-4">You need an account to play with friends.</p>
+                    <Link
+                      href="/signup?next=/matchmake"
+                      className="inline-block px-6 py-3 rounded-full bg-gradient-to-r from-brand to-brand-dark text-white text-sm font-semibold ios-press"
                     >
-                      {friendLoading ? "..." : "Search"}
-                    </button>
+                      Sign Up Free
+                    </Link>
                   </div>
-                </div>
-
-                {friendError && <p className="text-sm text-danger">{friendError}</p>}
-
-                {friendResults.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-xs text-muted">Found {friendResults.length} user(s):</p>
-                    {friendResults.map((f) => (
-                      <button
-                        key={f.id}
-                        onClick={() => setSelectedFriend(f)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ios-press ${
-                          selectedFriend?.id === f.id
-                            ? "border-brand bg-brand/10"
-                            : "border-white/10 bg-ios-secondary hover:border-white/20"
-                        }`}
-                      >
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand/30 to-brand-dark/30 flex items-center justify-center text-sm font-bold text-brand">
-                          {f.anonymous_username.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="text-sm font-medium text-foreground">{f.anonymous_username}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {selectedFriend && (
-                  <div className="space-y-3 pt-2">
+                ) : (
+                  <>
                     <div>
-                      <label className="text-sm font-medium text-foreground mb-1.5 block">Pick a character for the scene</label>
-                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto scrollbar-none">
-                        {bots.map((bot) => (
+                      <label className="text-sm font-medium text-foreground mb-1.5 block">Search by username</label>
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={friendUsername}
+                          onChange={(e) => setFriendUsername(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && searchFriends()}
+                          placeholder="Enter friend's username..."
+                          className="flex-1 px-4 py-2.5 rounded-xl bg-ios-secondary text-white text-sm border border-white/10 focus:border-brand/50 focus:outline-none transition-colors"
+                        />
+                        <button
+                          onClick={searchFriends}
+                          disabled={friendLoading || friendUsername.trim().length < 2}
+                          className="px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-medium ios-press disabled:opacity-50"
+                        >
+                          {friendLoading ? "..." : "Search"}
+                        </button>
+                      </div>
+                    </div>
+
+                    {friendError && <p className="text-sm text-danger">{friendError}</p>}
+
+                    {friendResults.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted">Found {friendResults.length} user(s):</p>
+                        {friendResults.map((f) => (
                           <button
-                            key={bot.id}
-                            onClick={() => setSelectedBot(bot.id)}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ios-press text-left ${
-                              selectedBot === bot.id
+                            key={f.id}
+                            onClick={() => setSelectedFriend(f)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ios-press ${
+                              selectedFriend?.id === f.id
                                 ? "border-brand bg-brand/10"
                                 : "border-white/10 bg-ios-secondary hover:border-white/20"
                             }`}
                           >
-                            <div className="w-7 h-7 rounded bg-gradient-to-br from-foreground/10 to-foreground/5 flex items-center justify-center text-xs font-bold text-foreground/30 flex-shrink-0">
-                              {bot.name.charAt(0).toUpperCase()}
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand/30 to-brand-dark/30 flex items-center justify-center text-sm font-bold text-brand">
+                              {f.anonymous_username.charAt(0).toUpperCase()}
                             </div>
-                            <span className="text-xs text-foreground truncate">{bot.name}</span>
+                            <span className="text-sm font-medium text-foreground">{f.anonymous_username}</span>
                           </button>
                         ))}
                       </div>
-                      <Link href="/create" className="text-xs text-brand/60 hover:text-brand mt-1.5 inline-block">
-                        Or create a new character →
-                      </Link>
-                    </div>
+                    )}
 
-                    <button
-                      onClick={createRoom}
-                      disabled={friendLoading}
-                      className="w-full h-[48px] rounded-full bg-gradient-to-r from-brand to-brand-dark text-white text-sm font-semibold ios-press shadow-lg shadow-brand/20 disabled:opacity-50"
-                    >
-                      {friendLoading ? "Creating..." : `Create Room with ${selectedFriend.anonymous_username}`}
-                    </button>
-                  </div>
+                    {selectedFriend && (
+                      <div className="space-y-3 pt-2">
+                        <div>
+                          <label className="text-sm font-medium text-foreground mb-1.5 block">Pick a character for the scene</label>
+                          <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto scrollbar-none">
+                            {bots.map((bot) => (
+                              <button
+                                key={bot.id}
+                                onClick={() => setSelectedBot(bot.id)}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all ios-press text-left ${
+                                  selectedBot === bot.id
+                                    ? "border-brand bg-brand/10"
+                                    : "border-white/10 bg-ios-secondary hover:border-white/20"
+                                }`}
+                              >
+                                <div className="w-7 h-7 rounded bg-gradient-to-br from-foreground/10 to-foreground/5 flex items-center justify-center text-xs font-bold text-foreground/30 flex-shrink-0">
+                                  {bot.name.charAt(0).toUpperCase()}
+                                </div>
+                                <span className="text-xs text-foreground truncate">{bot.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                          <Link href="/create" className="text-xs text-brand/60 hover:text-brand mt-1.5 inline-block">
+                            Or create a new character →
+                          </Link>
+                        </div>
+
+                        <button
+                          onClick={createRoom}
+                          disabled={friendLoading}
+                          className="w-full h-[48px] rounded-full bg-gradient-to-r from-brand to-brand-dark text-white text-sm font-semibold ios-press shadow-lg shadow-brand/20 disabled:opacity-50"
+                        >
+                          {friendLoading ? "Creating..." : `Create Room with ${selectedFriend.anonymous_username}`}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
