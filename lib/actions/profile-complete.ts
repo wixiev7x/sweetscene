@@ -42,3 +42,46 @@ export async function saveProfile(
 
   redirect("/lobby");
 }
+
+export async function resetPassword(newPassword: string): Promise<{ error?: string }> {
+  if (newPassword.length < 6) return { error: "Password must be at least 6 characters" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.updateUserById(user.id, {
+      password: newPassword,
+    });
+    if (error) return { error: "Failed to set new password" };
+  } catch {
+    return { error: "Failed to set new password" };
+  }
+
+  redirect("/lobby");
+}
+
+export async function confirmAge(): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from("profiles")
+      .update({ age_confirmed_at: new Date().toISOString() })
+      .eq("id", user.id);
+    if (error) return { error: "Failed to confirm age" };
+  } catch {
+    return { error: "Failed to confirm age" };
+  }
+
+  redirect("/lobby");
+}

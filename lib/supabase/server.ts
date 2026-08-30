@@ -16,11 +16,14 @@ export async function createClient() {
           return cookieStore.get(name)?.value;
         },
         set(name: string, value: string, options: Record<string, unknown>) {
-          /* C2: spread caller options first so security defaults
-             always win — prevents accidental httpOnly:false override. */
+          /* Auth cookies must be readable by the browser Supabase client
+             (@supabase/ssr reads the session from document.cookie), so
+             httpOnly stays false — the standard @supabase/ssr pattern.
+             XSS exposure of the JWT is mitigated by CSP, sameSite lax,
+             and secure:true. */
           cookieStore.set(name, value, {
             ...options,
-            httpOnly: true,
+            httpOnly: false,
             sameSite: "lax",
             secure: true,
             path: "/",
@@ -28,13 +31,11 @@ export async function createClient() {
           });
         },
         remove(name: string, options: Record<string, unknown>) {
-          /* C1: mirror the same security defaults as set() so the
-             deletion cookie matches the original's attributes. Without
-             path:"/" and secure:true the browser won't delete a
-             secure cookie set on path "/". */
+          /* Mirror the same attributes as set() so the browser actually
+             deletes the cookie — mismatched path/scope leaves it alive. */
           cookieStore.set(name, "", {
             ...options,
-            httpOnly: true,
+            httpOnly: false,
             sameSite: "lax",
             secure: true,
             path: "/",

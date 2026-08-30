@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { signInWithProvider, signUpWithEmail } from "@/lib/actions/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
+import OAuthButtons from "@/components/auth/OAuthButtons";
 import { playSound } from "@/lib/utils/sound";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
@@ -29,7 +30,7 @@ export default function SignupPage() {
   const [avatarIdx, setAvatarIdx] = useState(0);
   const [showEmailForm, setShowEmailForm] = useState(false);
 
-  function handleSignIn(provider: "google" | "discord") {
+  async function handleSignIn(provider: "google" | "discord") {
     setError("");
     if (!tosAccepted) {
       setError("Please accept the Terms of Service to continue.");
@@ -40,10 +41,7 @@ export default function SignupPage() {
       return;
     }
     playSound("matchFound");
-    startTransition(async () => {
-      const result = await signInWithProvider(provider, turnstileToken ?? "");
-      if (result?.error) setError(result.error);
-    });
+    await signInWithProvider(provider, turnstileToken ?? "");
   }
 
   function handleEmailSignUp(e: React.FormEvent) {
@@ -86,22 +84,7 @@ export default function SignupPage() {
         <p className="text-sm text-muted mt-2">No faces. No names. Just vibes.</p>
 
         <div className="flex flex-col gap-3 w-full mt-6">
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => handleSignIn("google")}
-            className="w-full px-5 py-3 rounded-xl font-medium text-white bg-white/10 border border-white/10 hover:bg-white/15 active:scale-95 transform transition-all disabled:opacity-50"
-          >
-            Continue with Google
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => handleSignIn("discord")}
-            className="w-full px-5 py-3 rounded-xl font-medium text-white bg-[#5865F2]/20 border border-[#5865F2]/40 hover:bg-[#5865F2]/30 active:scale-95 transform transition-all disabled:opacity-50"
-          >
-            Continue with Discord
-          </button>
+          <OAuthButtons onSignIn={handleSignIn} />
         </div>
 
         {!showEmailForm ? (

@@ -31,6 +31,8 @@ const PROTECTED_PREFIXES = [
   "/create-character",
   "/profile",
   "/complete-profile",
+  "/age-verify",
+  "/reset-password",
   "/admin",
 ];
 

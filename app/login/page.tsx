@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { signInWithProvider, signInWithEmail } from "@/lib/actions/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
+import OAuthButtons from "@/components/auth/OAuthButtons";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
@@ -16,7 +17,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showEmailForm, setShowEmailForm] = useState(false);
 
-  function handleSignIn(provider: "google" | "discord") {
+  async function handleSignIn(provider: "google" | "discord") {
     setError("");
     if (!tosAccepted) {
       setError("Please accept the Terms of Service to continue.");
@@ -26,10 +27,7 @@ export default function LoginPage() {
       setError("Please complete the captcha first.");
       return;
     }
-    startTransition(async () => {
-      const result = await signInWithProvider(provider, turnstileToken ?? "");
-      if (result?.error) setError(result.error);
-    });
+    await signInWithProvider(provider, turnstileToken ?? "");
   }
 
   function handleEmailSignIn(e: React.FormEvent) {
@@ -65,22 +63,7 @@ export default function LoginPage() {
         <p className="text-sm text-muted mt-2">Sign in to continue the scene.</p>
 
         <div className="flex flex-col gap-3 w-full mt-6">
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => handleSignIn("google")}
-            className="w-full px-5 py-3 rounded-xl font-medium text-white bg-white/10 border border-white/10 hover:bg-white/15 active:scale-95 transform transition-all disabled:opacity-50"
-          >
-            Continue with Google
-          </button>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => handleSignIn("discord")}
-            className="w-full px-5 py-3 rounded-xl font-medium text-white bg-[#5865F2]/20 border border-[#5865F2]/40 hover:bg-[#5865F2]/30 active:scale-95 transform transition-all disabled:opacity-50"
-          >
-            Continue with Discord
-          </button>
+          <OAuthButtons onSignIn={handleSignIn} />
         </div>
 
         {!showEmailForm ? (
@@ -125,6 +108,12 @@ export default function LoginPage() {
               >
                 {pending ? "Signing in…" : "Sign In"}
               </button>
+              <Link
+                href="/forgot-password"
+                className="text-xs text-muted hover:text-brand-light underline transition-colors text-center"
+              >
+                Forgot password?
+              </Link>
             </form>
           </>
         )}

@@ -153,15 +153,15 @@ CREATE POLICY "Participants can update matches"
 CREATE OR REPLACE FUNCTION claim_match(p_match_id UUID)
 RETURNS TABLE(id UUID) AS $$
 BEGIN
-  UPDATE matches
+  UPDATE matches m
   SET user_b = auth.uid(),
-      shared_pool = shared_pool * 2,
+      shared_pool = m.shared_pool * 2,
       last_activity = now()
-  WHERE id = p_match_id
-    AND user_b IS NULL
-    AND status = 'active'
-    AND user_a <> auth.uid()
-  RETURNING matches.id;
+  WHERE m.id = p_match_id
+    AND m.user_b IS NULL
+    AND m.status = 'active'
+    AND m.user_a <> auth.uid()
+  RETURNING m.id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -1686,12 +1686,12 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
   -- Auto-revoke expired VIP for the calling user.
-  UPDATE profiles
+  UPDATE profiles p
   SET is_vip = false
-  WHERE id = auth.uid()
-    AND is_vip = true
-    AND vip_expires_at IS NOT NULL
-    AND vip_expires_at < now();
+  WHERE p.id = auth.uid()
+    AND p.is_vip = true
+    AND p.vip_expires_at IS NOT NULL
+    AND p.vip_expires_at < now();
 
   RETURN QUERY
   SELECT p.id, p.anonymous_username, p.anonymous_pfp_url,
@@ -1913,12 +1913,12 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
   -- Auto-revoke expired VIP for the calling user.
-  UPDATE profiles
+  UPDATE profiles p
   SET is_vip = false
-  WHERE id = auth.uid()
-    AND is_vip = true
-    AND vip_expires_at IS NOT NULL
-    AND vip_expires_at < now();
+  WHERE p.id = auth.uid()
+    AND p.is_vip = true
+    AND p.vip_expires_at IS NOT NULL
+    AND p.vip_expires_at < now();
 
   RETURN QUERY
   SELECT p.id, p.anonymous_username, p.anonymous_pfp_url,

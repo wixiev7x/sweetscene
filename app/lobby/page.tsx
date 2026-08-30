@@ -189,27 +189,31 @@ export default function LobbyPage() {
   /* ── fetch profile ── */
   useEffect(() => {
     async function fetchProfile() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+        /* B2: read profile via getMyProfile action — tokens_balance/is_vip
+           are REVOKED from authenticated direct SELECT. */
+        const profileResult = await getMyProfile();
+        if ("profile" in profileResult) {
+          setProfile({
+            anonymous_username: profileResult.profile.anonymous_username,
+            anonymous_pfp_url: profileResult.profile.anonymous_pfp_url,
+            reputation_score: profileResult.profile.reputation_score,
+            tokens_balance: profileResult.profile.tokens_balance,
+            is_vip: profileResult.profile.is_vip,
+          });
+        }
+      } catch {
+      } finally {
+        setLoading(false);
       }
-      /* B2: read profile via getMyProfile action — tokens_balance/is_vip
-         are REVOKED from authenticated direct SELECT. */
-      const profileResult = await getMyProfile();
-      if ("profile" in profileResult) {
-        setProfile({
-          anonymous_username: profileResult.profile.anonymous_username,
-          anonymous_pfp_url: profileResult.profile.anonymous_pfp_url,
-          reputation_score: profileResult.profile.reputation_score,
-          tokens_balance: profileResult.profile.tokens_balance,
-          is_vip: profileResult.profile.is_vip,
-        });
-      }
-      setLoading(false);
     }
     fetchProfile();
   }, [router]);

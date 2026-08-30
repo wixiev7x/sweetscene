@@ -28,7 +28,9 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/login?error=1`);
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.redirect(`${origin}/login?error=1`);
   }
@@ -37,9 +39,13 @@ export async function GET(request: Request) {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("profiles")
-      .select("anonymous_username")
+      .select("anonymous_username, age_confirmed_at")
       .eq("id", user.id)
       .single();
+
+    if (!profile?.age_confirmed_at) {
+      return NextResponse.redirect(`${origin}/age-verify`);
+    }
 
     if (!profile?.anonymous_username) {
       return NextResponse.redirect(`${origin}/complete-profile`);
