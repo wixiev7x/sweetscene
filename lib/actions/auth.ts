@@ -76,8 +76,11 @@ export async function signUpWithEmail(
     return { error: "Too many signup attempts. Please try again later." };
   }
 
-  const captcha = await verifyTurnstile(turnstileToken);
-  if ("error" in captcha) return { error: captcha.error };
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  if (siteKey) {
+    const captcha = await verifyTurnstile(turnstileToken);
+    if ("error" in captcha) return { error: captcha.error };
+  }
 
   const supabase = await createClient();
 
@@ -134,8 +137,11 @@ export async function signInWithEmail(
     return { error: "Too many login attempts. Please try again later." };
   }
 
-  const captcha = await verifyTurnstile(turnstileToken);
-  if ("error" in captcha) return { error: captcha.error };
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  if (siteKey) {
+    const captcha = await verifyTurnstile(turnstileToken);
+    if ("error" in captcha) return { error: captcha.error };
+  }
 
   const supabase = await createClient();
 
@@ -179,8 +185,11 @@ export async function signInAsAdmin(
     return { error: "Too many login attempts. Please try again later." };
   }
 
-  const captcha = await verifyTurnstile(turnstileToken);
-  if ("error" in captcha) return { error: captcha.error };
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  if (siteKey) {
+    const captcha = await verifyTurnstile(turnstileToken);
+    if ("error" in captcha) return { error: captcha.error };
+  }
 
   const supabase = await createClient();
 
