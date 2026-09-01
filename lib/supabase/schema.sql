@@ -487,6 +487,16 @@ BEGIN
       'SELECT kick_idle_matches();'
     );
   END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM cron.job WHERE jobname = 'sweetscene_expire_bans'
+  ) THEN
+    PERFORM cron.schedule(
+      'sweetscene_expire_bans',
+      '0 * * * *',
+      'SELECT public.expire_bans();'
+    );
+  END IF;
 END
 $do$;
 
@@ -1030,6 +1040,7 @@ CREATE POLICY "Participants can insert human messages into active matches"
     )
     AND sender_type = 'human'
     AND sender_id = auth.uid()
+    AND NOT public.is_current_user_banned()
   );
 
 -- Note: AI messages (sender_type='ai') are inserted via the
