@@ -9,6 +9,13 @@ export default function ServiceWorkerRegister() {
       "serviceWorker" in navigator &&
       process.env.NODE_ENV === "production"
     ) {
+      let reloaded = false;
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        if (!reloaded) {
+          reloaded = true;
+          window.location.reload();
+        }
+      });
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
   }, []);
