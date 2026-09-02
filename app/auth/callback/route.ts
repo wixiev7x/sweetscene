@@ -39,13 +39,9 @@ export async function GET(request: Request) {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("profiles")
-      .select("anonymous_username, age_confirmed_at")
+      .select("anonymous_username")
       .eq("id", user.id)
       .single();
-
-    if (!profile?.age_confirmed_at) {
-      return NextResponse.redirect(`${origin}/age-verify`);
-    }
 
     if (!profile?.anonymous_username) {
       return NextResponse.redirect(`${origin}/complete-profile`);

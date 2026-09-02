@@ -20,14 +20,17 @@ export async function createClient() {
              (@supabase/ssr reads the session from document.cookie), so
              httpOnly stays false — the standard @supabase/ssr pattern.
              XSS exposure of the JWT is mitigated by CSP, sameSite lax,
-             and secure:true. */
+             and secure:true. When the user ticked "Remember me" the
+             login page set the sweetscene-remember cookie, and the
+             session cookie lives 30 days instead of 7. */
+          const remember = cookieStore.get("sweetscene-remember")?.value === "1";
           cookieStore.set(name, value, {
             ...options,
             httpOnly: false,
             sameSite: "lax",
             secure: true,
             path: "/",
-            maxAge: 60 * 60 * 24 * 7,
+            maxAge: remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7,
           });
         },
         remove(name: string, options: Record<string, unknown>) {

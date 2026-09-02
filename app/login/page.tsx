@@ -13,9 +13,18 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const [tosAccepted, setTosAccepted] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showEmailForm, setShowEmailForm] = useState(false);
+
+  function applyRemember() {
+    if (rememberMe) {
+      document.cookie = "sweetscene-remember=1; path=/; max-age=2592000; samesite=lax";
+    } else {
+      document.cookie = "sweetscene-remember=; path=/; max-age=0; samesite=lax";
+    }
+  }
 
   async function handleSignIn(provider: "google" | "discord") {
     setError("");
@@ -27,6 +36,7 @@ export default function LoginPage() {
       setError("Please complete the captcha first.");
       return;
     }
+    applyRemember();
     await signInWithProvider(provider, turnstileToken ?? "");
   }
 
@@ -45,6 +55,7 @@ export default function LoginPage() {
       setError("Please enter your email and password.");
       return;
     }
+    applyRemember();
     startTransition(async () => {
       const result = await signInWithEmail(email, password, turnstileToken ?? "");
       if (result?.error) setError(result.error);
@@ -142,6 +153,16 @@ export default function LoginPage() {
             </a>
             . I confirm I am 16 or older.
           </span>
+        </label>
+
+        <label className="flex items-center gap-2 w-full text-left cursor-pointer mt-2">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="accent-brand"
+          />
+          <span className="text-xs text-muted">Remember me for 30 days</span>
         </label>
 
         {SITE_KEY && (

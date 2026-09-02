@@ -23,12 +23,21 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   const [tosAccepted, setTosAccepted] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const [bio, setBio] = useState("");
   const [avatarIdx, setAvatarIdx] = useState(0);
   const [showEmailForm, setShowEmailForm] = useState(false);
+
+  function applyRemember() {
+    if (rememberMe) {
+      document.cookie = "sweetscene-remember=1; path=/; max-age=2592000; samesite=lax";
+    } else {
+      document.cookie = "sweetscene-remember=; path=/; max-age=0; samesite=lax";
+    }
+  }
 
   async function handleSignIn(provider: "google" | "discord") {
     setError("");
@@ -41,6 +50,7 @@ export default function SignupPage() {
       return;
     }
     playSound("matchFound");
+    applyRemember();
     await signInWithProvider(provider, turnstileToken ?? "");
   }
 
@@ -68,6 +78,7 @@ export default function SignupPage() {
       return;
     }
     playSound("matchFound");
+    applyRemember();
     startTransition(async () => {
       const result = await signUpWithEmail(email, password, turnstileToken ?? "", username);
       if (result?.error) setError(result.error);
@@ -183,6 +194,16 @@ export default function SignupPage() {
             <a href="/legal/privacy" className="text-brand-light hover:text-brand-lighter underline">Privacy Policy</a>
             . I confirm I am 16 or older.
           </span>
+        </label>
+
+        <label className="flex items-center gap-2 w-full text-left cursor-pointer mt-2">
+          <input
+            type="checkbox"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            className="accent-brand"
+          />
+          <span className="text-xs text-muted">Remember me for 30 days</span>
         </label>
 
         {SITE_KEY && (
