@@ -41,6 +41,7 @@ function SidebarRow({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
+      prefetch={false}
       className={`ios-press ios-hairline flex items-center gap-3 px-3 last:border-b-0 transition-all ${
         active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
       }`}
@@ -108,6 +109,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
             {/* Token pill with gloss + small + icon */}
             <Link
               href="/store"
+              prefetch={false}
               className="ios-press relative flex items-center gap-1.5 rounded-full bg-white/5 border border-[var(--ios-hairline)] px-3 h-9 text-[14px] text-white transition-all hover:bg-white/10"
               style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
             >
@@ -119,6 +121,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
             {/* Go Premium — small */}
             <Link
               href="/store"
+              prefetch={false}
               className="ios-press hidden sm:flex items-center gap-1 rounded-full px-3 h-9 text-[13px] font-medium text-white transition-all hover:opacity-90"
               style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
             >
@@ -131,6 +134,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
             {/* Premium icon on mobile */}
             <Link
               href="/store"
+              prefetch={false}
               className="ios-press sm:hidden flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-[var(--ios-hairline)] text-brand transition-all hover:bg-white/10"
               aria-label="Go Premium"
             >
@@ -177,6 +181,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
         <div className="px-4 pb-3">
           <Link
             href="/matchmake"
+            prefetch={false}
             className="ios-press flex items-center justify-center gap-2 w-full rounded-full text-white font-semibold text-[17px] transition-all hover:opacity-90"
             style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
           >
@@ -222,6 +227,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
         <div className="px-4 pb-4 border-t border-[var(--ios-hairline)] pt-3">
           <Link
             href="/profile"
+            prefetch={false}
             className="ios-press flex items-center gap-3 ios-row px-3 mb-3 hover:bg-white/5"
           >
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-crimson-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
@@ -268,6 +274,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
           <Link
             key={tab.href + tab.label}
             href={tab.href}
+            prefetch={false}
             className={`ios-press flex flex-col items-center gap-0.5 flex-1 transition-colors ${
               isActive(tab.href) ? "text-brand" : "text-[var(--ios-text-secondary)]"
             }`}
