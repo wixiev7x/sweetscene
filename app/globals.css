@@ -1,105 +1,111 @@
 @import "tailwindcss";
 
 /* ════════════════════════════════════════════════════════════════════
- * SweetScene Design System — Neon Dark Aesthetic
+ * SweetScene Design System — Candlelit Noir
  *
- * Matches the Bolt preview: void-black base, neon-magenta brand,
- * crimson/gold accents, Press Start 2P for retro headers.
- * Raw values on :root, mapped to Tailwind utilities via @theme inline.
+ * Deep violet-ink base, warm candlelight amber + rose accents,
+ * neon pink reserved for primary CTAs. Fraunces for display,
+ * Sora for UI, Space Mono for stats. Raw values on :root,
+ * mapped to Tailwind utilities via @theme inline.
  * ════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Void (deepest blacks) ── */
-  --void-950: #050508;
-  --void-900: #0a0a0f;
-  --void-700: #12121a;
-  --void-500: #1a1a25;
-  --void-400: #222230;
+  /* ── Void (violet-ink depths) ── */
+  --void-950: oklch(0.12 0.02 285);
+  --void-900: oklch(0.14 0.02 285);
+  --void-700: oklch(0.18 0.025 285);
+  --void-500: oklch(0.22 0.03 285);
+  --void-400: oklch(0.27 0.03 285);
 
   /* ── Surfaces ── */
-  --background: #050508;       /* page background — void-950 */
-  --surface-sunken: #050508;
-  --surface: #0d0d14;          /* cards, panels */
-  --surface-raised: #161620;   /* hover states, chips */
-  --surface-800: #0d0d14;
-  --surface-700: #12121a;
-  --surface-600: #1a1a25;
-  --surface-500: #222230;
-  --surface-300: #2a2a38;
-  --surface-200: #383848;
-  --surface-100: #48485a;
+  --background: oklch(0.14 0.02 285);
+  --surface-sunken: oklch(0.12 0.025 285);
+  --surface: oklch(0.19 0.03 285);
+  --surface-raised: oklch(0.23 0.03 285);
+  --surface-800: oklch(0.19 0.03 285);
+  --surface-700: oklch(0.22 0.03 285);
+  --surface-600: oklch(0.25 0.032 285);
+  --surface-500: oklch(0.28 0.035 285);
+  --surface-300: oklch(0.33 0.04 285);
+  --surface-200: oklch(0.42 0.04 285);
+  --surface-100: oklch(0.55 0.03 285);
 
   /* ── Lines (borders, dividers) ── */
-  --line: #1a1a25;
-  --line-strong: #2a2a38;
-  --line-focus: #3a3a4a;
+  --line: oklch(1 0 0 / 8%);
+  --line-strong: oklch(1 0 0 / 14%);
+  --line-focus: oklch(0.62 0.22 350 / 50%);
 
-  /* ── Text, brightest to faintest ── */
-  --foreground: #ededed;
-  --foreground-dim: #d4d4d4;
-  --muted-strong: #a3a3a3;
-  --muted: #737373;
-  --muted-faint: #525252;
+  /* ── Text, brightest to faintest (warm off-white) ── */
+  --foreground: oklch(0.95 0.01 60);
+  --foreground-dim: oklch(0.88 0.012 60);
+  --muted-strong: oklch(0.75 0.02 280);
+  --muted: oklch(0.65 0.02 280);
+  --muted-faint: oklch(0.52 0.02 280);
 
-  /* ── Brand (Neon Magenta) ── */
-  --brand: #ff2d95;            /* neon magenta */
-  --brand-light: #ff5ca8;
-  --brand-lighter: #ff8ac2;
-  --brand-dark: #e6197a;
-  --brand-deep: #8b1349;
-  --brand-deepest: #4a0a27;
+  /* ── Brand (CTA pink — reserved for primary actions) ── */
+  --brand: oklch(0.62 0.22 350);
+  --brand-light: oklch(0.68 0.2 350);
+  --brand-lighter: oklch(0.74 0.18 350);
+  --brand-dark: oklch(0.56 0.21 350);
+  --brand-deep: oklch(0.48 0.2 350);
+  --brand-deepest: oklch(0.38 0.17 350);
 
-  /* ── Neon Accents ── */
-  --neon-magenta: #ff2d95;
-  --neon-crimson: #dc143c;
-  --neon-green: #00ff9f;
+  /* ── Candlelight accents ── */
+  --accent-candle: oklch(0.82 0.14 75);
+  --accent-candle-deep: oklch(0.74 0.13 70);
+  --accent-rose: oklch(0.72 0.16 10);
 
-  /* ── Crimson palette ── */
-  --crimson-600: #991b2e;
-  --crimson-500: #dc143c;
-  --crimson-400: #e83558;
+  /* ── Neon (remapped to palette) ── */
+  --neon-magenta: oklch(0.62 0.22 350);
+  --neon-crimson: oklch(0.62 0.2 15);
+  --neon-green: oklch(0.75 0.15 155);
 
-  /* ── Gold palette ── */
-  --gold-700: #8a6d1a;
-  --gold-600: #b8941f;
-  --gold-500: #d4af37;
-  --gold-400: #e8c558;
+  /* ── Crimson → rose family ── */
+  --crimson-600: oklch(0.55 0.17 12);
+  --crimson-500: oklch(0.62 0.19 12);
+  --crimson-400: oklch(0.7 0.16 12);
+
+  /* ── Gold → amber family ── */
+  --gold-700: oklch(0.68 0.12 72);
+  --gold-600: oklch(0.74 0.13 72);
+  --gold-500: oklch(0.82 0.14 75);
+  --gold-400: oklch(0.88 0.11 78);
 
   /* ── Semantic accents ── */
-  --accent: #ffffff;
-  --accent-foreground: #050508;
-  --danger: #f87171;
-  --warning: #d4af37;          /* gold for VIP */
-  --success: #00ff9f;          /* neon green */
-  --info: #60a5fa;
-  --restricted: #fb923c;
+  --accent: oklch(0.95 0.01 60);
+  --accent-foreground: oklch(0.14 0.02 285);
+  --danger: oklch(0.65 0.2 25);
+  --warning: oklch(0.82 0.14 75);
+  --success: oklch(0.75 0.15 155);
+  --info: oklch(0.72 0.11 270);
+  --restricted: oklch(0.75 0.14 45);
 
-  /* ── iOS Design Tokens ── */
-  --ios-bg: #000000;
-  --ios-elevated: #1c1c1e;
-  --ios-secondary: #2c2c2e;
-  --ios-hairline: rgba(255, 255, 255, 0.08);
-  --ios-red: #ff3b30;
-  --ios-green: #30d158;
-  --ios-blue: #0a84ff;
-  --ios-orange: #ff9f0a;
-  --ios-purple: #bf5af2;
-  --ios-yellow: #ffd60a;
-  --ios-teal: #64d2ff;
-  --ios-indigo: #5e5ce6;
-  --ios-gray: #8e8e93;
-  --ios-text-secondary: rgba(235, 235, 245, 0.6);
-  --ios-text-tertiary: rgba(235, 235, 245, 0.3);
+  /* ── iOS Design Tokens (candlelit) ── */
+  --ios-bg: oklch(0.12 0.02 285);
+  --ios-elevated: oklch(0.19 0.03 285);
+  --ios-secondary: oklch(0.23 0.03 285);
+  --ios-hairline: oklch(1 0 0 / 8%);
+  --ios-red: oklch(0.65 0.2 25);
+  --ios-green: oklch(0.75 0.15 155);
+  --ios-blue: oklch(0.72 0.11 270);
+  --ios-orange: oklch(0.82 0.14 75);
+  --ios-purple: oklch(0.62 0.22 350);
+  --ios-yellow: oklch(0.88 0.11 78);
+  --ios-teal: oklch(0.75 0.1 200);
+  --ios-indigo: oklch(0.6 0.1 290);
+  --ios-gray: oklch(0.65 0.02 280);
+  --ios-text-secondary: oklch(0.95 0.01 60 / 60%);
+  --ios-text-tertiary: oklch(0.95 0.01 60 / 30%);
   --ios-ease: cubic-bezier(0.32, 0.72, 0, 1);
   --ios-radius-card: 20px;
   --ios-radius-row: 10px;
 
   /* ── Shape ── */
-  --radius-card: 0.75rem;
-  --radius-control: 0.5rem;
+  --radius-card: 1rem;
+  --radius-control: 0.75rem;
 
   /* ── Fonts ── */
-  --font-press-start: "Press Start 2P", monospace;
+  --font-press-start: "Fraunces", Georgia, serif;
 }
 
 @theme inline {
@@ -139,6 +145,10 @@
   --color-brand-deep: var(--brand-deep);
   --color-brand-deepest: var(--brand-deepest);
 
+  --color-accent-candle: var(--accent-candle);
+  --color-accent-candle-deep: var(--accent-candle-deep);
+  --color-accent-rose: var(--accent-rose);
+
   --color-neon-magenta: var(--neon-magenta);
   --color-neon-crimson: var(--neon-crimson);
   --color-neon-green: var(--neon-green);
@@ -160,9 +170,10 @@
   --color-info: var(--info);
   --color-restricted: var(--restricted);
 
-  --font-sans: var(--font-inter), var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), "Sora", system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), "Space Mono", monospace;
   --font-retro: var(--font-press-start);
+  --font-display: var(--font-press-start);
 
   --color-ios-bg: var(--ios-bg);
   --color-ios-elevated: var(--ios-elevated);
@@ -185,7 +196,7 @@ body {
 }
 
 body {
-  font-family: var(--font-inter), var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), "Sora", system-ui, sans-serif;
 }
 
 /* ── Scanline overlay effect ── */
@@ -219,10 +230,10 @@ body {
 /* ── Pulse glow animation ── */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 5px var(--brand), 0 0 10px rgba(255, 45, 149, 0.3);
+    box-shadow: 0 0 5px var(--brand), 0 0 10px color-mix(in srgb, var(--brand) 30%, transparent);
   }
   50% {
-    box-shadow: 0 0 15px var(--brand), 0 0 30px rgba(255, 45, 149, 0.5);
+    box-shadow: 0 0 15px var(--brand), 0 0 30px color-mix(in srgb, var(--brand) 50%, transparent);
   }
 }
 .pulse-glow {
@@ -234,14 +245,14 @@ body {
   text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
 }
 
-/* ── Retro font helper ── */
+/* ── Retro font helper (now Fraunces display) ── */
 .font-retro {
-  font-family: var(--font-press-start), "Press Start 2P", monospace;
+  font-family: var(--font-press-start), "Fraunces", Georgia, serif;
 }
 
-/* ── Gradient text ── */
+/* ── Gradient text (candlelight → rose) ── */
 .gradient-text {
-  background: linear-gradient(135deg, var(--neon-magenta), var(--neon-crimson));
+  background: linear-gradient(135deg, var(--accent-candle), var(--accent-rose));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -284,7 +295,7 @@ body {
 
 /* ── iOS Frosted material ── */
 .ios-frosted {
-  background-color: rgba(0, 0, 0, 0.72);
+  background-color: color-mix(in srgb, var(--ios-bg) 72%, transparent);
   backdrop-filter: blur(40px) saturate(180%);
   -webkit-backdrop-filter: blur(40px) saturate(180%);
 }
