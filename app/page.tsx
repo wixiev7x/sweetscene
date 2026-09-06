@@ -1,39 +1,103 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-
-import { playSound } from "@/lib/utils/sound";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+
+const BATCH_SIZE = 12;
 
 const FILTER_CATEGORIES = ["Hot Picks", "New", "Girlfriend", "Boyfriend", "Anime", "Gaming", "All Tags"];
 const NSFW_CATEGORIES = ["NSFW", "Dominant", "Submissive", "Taboo"];
 
+const SORT_MODES = ["Popular", "New", "Top"] as const;
+const SORT_SUBS: Record<string, string[]> = {
+  Popular: ["This Week", "This Month", "All Time"],
+  New: ["Today", "This Week", "This Month"],
+  Top: ["All Time", "This Month", "This Week"],
+};
+
 type Character = {
   id: string;
   name: string;
-  tagline: string;
+  tagline: string | null;
   is_nsfw: boolean;
-  genres: string[];
+  genres: string[] | null;
+  image_url: string | null;
 };
 
-const GRADIENTS = [
-  "from-brand to-crimson-600",
-  "from-neon-purple to-brand",
-  "from-crimson-500 to-brand-dark",
-  "from-brand-light to-neon-purple",
-  "from-crimson-600 to-gold-600",
-  "from-neon-purple to-crimson-500",
-  "from-brand-dark to-neon-purple",
-  "from-gold-500 to-brand",
+function hashStr(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = (h << 5) - h + s.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
+}
+
+const ART_PALETTES = [
+  { a: "oklch(0.32 0.06 300)", b: "oklch(0.15 0.025 285)", glow: "oklch(0.82 0.14 75)" },
+  { a: "oklch(0.34 0.07 330)", b: "oklch(0.15 0.03 290)", glow: "oklch(0.72 0.16 10)" },
+  { a: "oklch(0.28 0.05 260)", b: "oklch(0.16 0.03 280)", glow: "oklch(0.82 0.14 75)" },
+  { a: "oklch(0.36 0.08 350)", b: "oklch(0.17 0.04 300)", glow: "oklch(0.62 0.22 350)" },
 ];
 
-const BATCH_SIZE = 12;
+function CardArt({ name }: { name: string }) {
+  const seed = hashStr(name);
+  const p = ART_PALETTES[seed % ART_PALETTES.length];
+  const gid = `a${seed % 99991}`;
+  const initial = name.charAt(0).toUpperCase();
+  const cx = 210 + (seed % 60);
+  const cy = 80 + (seed % 50);
+  return (
+    <svg viewBox="0 0 300 400" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+      <defs>
+        <linearGradient id={`${gid}-bg`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor={p.a} />
+          <stop offset="100%" stopColor={p.b} />
+        </linearGradient>
+        <radialGradient id={`${gid}-glow`} cx={`${cx / 3}`} cy={`${cy / 4}`} r="0.9">
+          <stop offset="0%" stopColor={p.glow} stopOpacity="0.4" />
+          <stop offset="60%" stopColor={p.glow} stopOpacity="0.08" />
+          <stop offset="100%" stopColor={p.glow} stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id={`${gid}-rim`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="oklch(0.95 0.01 60)" stopOpacity="0.14" />
+          <stop offset="45%" stopColor="oklch(0.95 0.01 60)" stopOpacity="0" />
+          <stop offset="100%" stopColor="oklch(0.12 0.02 285)" stopOpacity="0.55" />
+        </linearGradient>
+      </defs>
+      <rect width="300" height="400" fill={`url(#${gid}-bg)`} />
+      <rect width="300" height="400" fill={`url(#${gid}-glow)`} />
+      <circle cx={cx} cy={cy} r="5" fill={p.glow} opacity="0.9" />
+      <circle cx={cx} cy={cy} r="11" fill="none" stroke={p.glow} strokeWidth="1" opacity="0.35" />
+      <path d="M 20 340 Q 150 300 280 350" fill="none" stroke="oklch(0.72 0.16 10)" strokeWidth="1.2" opacity="0.3" />
+      <text
+        x="150"
+        y="205"
+        textAnchor="middle"
+        fontSize="150"
+        fontFamily="var(--font-press-start), Fraunces, Georgia, serif"
+        fontWeight="600"
+        fill="oklch(0.95 0.01 60)"
+        opacity="0.22"
+      >
+        {initial}
+      </text>
+      <rect width="300" height="400" fill={`url(#${gid}-rim)`} />
+    </svg>
+  );
+}
 
-function hashStr(s: string): number {
-  let h = 0;
-  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
-  return Math.abs(h);
+function CardSkeleton() {
+  return (
+    <div className="ios-card ios-row overflow-hidden border border-line">
+      <div className="aspect-[3/4] w-full animate-pulse bg-surface-raised" />
+      <div className="space-y-2 p-3">
+        <div className="h-4 w-2/3 animate-pulse rounded-full bg-surface-raised" />
+        <div className="h-3 w-1/2 animate-pulse rounded-full bg-surface-raised" />
+      </div>
+    </div>
+  );
 }
 
 export default function Home() {
@@ -45,350 +109,363 @@ export default function Home() {
   const [showNsfwConfirm, setShowNsfwConfirm] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const [sortOpen, setSortOpen] = useState(false);
-  const [sortMode, setSortMode] = useState("Popular");
-  const [sortSub, setSortSub] = useState("This Week");
-  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [sortMode, setSortMode] = useState<string>("Popular");
+  const [sortSub, setSortSub] = useState<string>("This Week");
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    async function load() {
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("bots")
-          .select("id, name, tagline, is_nsfw, genres")
+          .select("id, name, tagline, is_nsfw, genres, image_url")
           .order("created_at", { ascending: false })
           .limit(50);
-
-        if (error) throw error;
-        if (!cancelled && data && data.length > 0) {
-          setCharacters(data.map((b: Record<string, unknown>) => ({
-            id: b.id as string,
-            name: b.name as string,
-            tagline: (b.tagline as string) || "",
-            is_nsfw: (b.is_nsfw as boolean) ?? false,
-            genres: (b.genres as string[]) ?? [],
-          })));
-        }
+        if (!cancelled && data) setCharacters(data as Character[]);
       } catch {
-        // empty state
       } finally {
         if (!cancelled) setLoading(false);
       }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    function handleScroll() {
-      const scrollTop = window.scrollY;
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      setScrollProgress(docHeight > 0 ? Math.min(1, scrollTop / docHeight) : 0);
     }
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
+    load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const filtered = characters.filter((c) => {
-    if (c.is_nsfw && !nsfwMode) return false;
-    if (filter === "SFW Only" && c.is_nsfw) return false;
-    if (filter === "NSFW Only" && !c.is_nsfw) return false;
-    return true;
-  });
-
-  const visible = filtered.slice(0, visibleCount);
+  useEffect(() => {
+    const onScroll = () => {
+      const total = document.documentElement.scrollHeight - window.innerHeight;
+      setScrollProgress(total > 0 ? Math.min(100, (window.scrollY / total) * 100) : 0);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && visibleCount < filtered.length) {
-          setVisibleCount((c) => Math.min(c + BATCH_SIZE, filtered.length));
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((v) => v + BATCH_SIZE);
         }
       },
       { rootMargin: "300px" }
     );
-    if (sentinelRef.current) observer.observe(sentinelRef.current);
+    observer.observe(node);
     return () => observer.disconnect();
-  }, [visibleCount, filtered.length]);
+  }, []);
 
-  function handleNsfwToggle() {
-    if (!nsfwMode) {
-      setShowNsfwConfirm(true);
-    } else {
-      setNsfwMode(false);
+  const filtered = characters.filter((c) => {
+    if (!nsfwMode && c.is_nsfw) return false;
+    if (filter === "All") return true;
+    if (filter === "SFW Only") return !c.is_nsfw;
+    if (filter === "NSFW Only") return c.is_nsfw;
+    const f = filter.toLowerCase();
+    if (FILTER_CATEGORIES.includes(filter) || NSFW_CATEGORIES.includes(filter)) {
+      return (c.genres ?? []).some((g) => g.toLowerCase().includes(f));
     }
-  }
+    return c.name.toLowerCase().includes(f) || (c.tagline ?? "").toLowerCase().includes(f);
+  });
 
-  function confirmNsfw() {
+  const visible = filtered.slice(0, visibleCount);
+
+  const handleFilter = (f: string) => {
+    if (f === "NSFW Only" && !nsfwMode) {
+      setShowNsfwConfirm(true);
+      return;
+    }
+    setFilter(f);
+  };
+
+  const enableNsfw = () => {
     setNsfwMode(true);
+    setFilter("NSFW Only");
     setShowNsfwConfirm(false);
-    playSound("click");
-  }
+  };
+
+  const pills = ["All", "SFW Only", "NSFW Only"];
+  const categories = nsfwMode ? [...FILTER_CATEGORIES, ...NSFW_CATEGORIES] : FILTER_CATEGORIES;
 
   return (
-    <div className="pb-14 md:pb-0">
-      {/* Scroll progress — subtle iOS-style */}
-      <div className="fixed top-14 left-0 right-0 h-[2px] z-50 bg-transparent">
-        <div
-          className="h-full bg-brand transition-[width] duration-150"
-          style={{ width: `${scrollProgress * 100}%` }}
-        />
-      </div>
+    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 pt-20 md:pt-24 pb-14 md:pb-0">
+      <div
+        className="fixed top-14 left-0 right-0 z-40 h-0.5 bg-gradient-to-r from-accent-candle to-accent-rose transition-[width] duration-150"
+        style={{ width: `${scrollProgress}%` }}
+      />
 
-      {/* Search bar */}
-      <section className="px-4 sm:px-6 pt-5 pb-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="relative">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--ios-text-tertiary)] pointer-events-none">
-              <path d="M11 4a7 7 0 100 14 7 7 0 000-14zM21 21l-4.35-4.35" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search characters..."
-              onChange={(e) => {
-                const q = e.target.value.toLowerCase();
-                setFilter(q ? q : "All");
-              }}
-              className="w-full bg-white/5 border border-[var(--ios-hairline)] rounded-full pl-11 pr-4 text-[15px] text-white placeholder-[var(--ios-text-tertiary)] focus:outline-none focus:border-brand/30 transition-all"
-              style={{ height: "44px" }}
-            />
-          </div>
+      <section className="mx-auto max-w-6xl pb-8">
+        <p className="text-[11px] uppercase tracking-[0.35em] text-accent-candle font-semibold">
+          Anonymous AI matchmaking
+        </p>
+        <h1 className="mt-3 font-retro text-4xl md:text-6xl leading-[1.04] text-foreground max-w-3xl">
+          Meet your scene <span className="gradient-text">tonight.</span>
+        </h1>
+        <p className="mt-4 text-sm md:text-base text-muted max-w-xl">
+          Real chemistry, no faces required. Pick a character, step into a scene, reveal only when you both want to.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <Link
+            href="/create"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-brand to-brand-dark px-6 text-sm font-semibold text-accent-foreground shadow-[0_8px_30px_-12px_var(--brand)] transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ios-press"
+          >
+            <span aria-hidden="true">+</span> Create a character
+          </Link>
+          <Link
+            href="/matchmake"
+            className="inline-flex h-11 items-center rounded-full border border-line-strong px-6 text-sm font-medium text-foreground transition-colors duration-200 hover:border-accent-candle hover:text-accent-candle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ios-press"
+          >
+            Find a match
+          </Link>
         </div>
       </section>
 
-      {/* Sort dropdown — Popular / New / Top with sub-options */}
-      <section className="px-4 sm:px-6 pb-3">
-        <div className="max-w-7xl mx-auto relative inline-block">
-          <button
-            onClick={() => setSortOpen(!sortOpen)}
-            className="ios-press flex items-center gap-2 rounded-full bg-white/10 px-5 text-[15px] font-medium text-white transition-all hover:bg-white/15"
-            style={{ height: "40px" }}
-          >
-            <span>{sortMode}</span>
-            <span className="text-[var(--ios-text-tertiary)] text-[13px]">· {sortSub}</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${sortOpen ? "rotate-180" : ""}`}>
-              <path d="M6 9l6 6 6-6" />
+      <section className="mx-auto max-w-6xl">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <svg
+              className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-faint"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
             </svg>
-          </button>
+            <input
+              type="search"
+              placeholder="Search characters..."
+              onChange={(e) => setFilter(e.target.value.trim() === "" ? "All" : e.target.value)}
+              className="h-11 w-full rounded-full border border-line bg-surface pl-11 pr-4 text-sm text-foreground placeholder:text-muted-faint focus:border-line-focus focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+            />
+          </div>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setSortOpen((o) => !o)}
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm text-muted transition-colors hover:border-line-strong hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ios-press"
+              aria-expanded={sortOpen}
+              aria-haspopup="listbox"
+            >
+              <span className="font-mono text-xs uppercase tracking-wider text-accent-candle">{sortSub}</span>
+              <span>{sortMode}</span>
+              <svg
+                className={`h-3.5 w-3.5 transition-transform ${sortOpen ? "rotate-180" : ""}`}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {sortOpen && (
+              <div className="ios-dropdown ios-frosted absolute right-0 top-13 z-30 w-56 rounded-2xl border border-line p-2">
+                {SORT_MODES.map((mode) => (
+                  <div key={mode} className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-widest text-muted-faint">
+                    {mode}
+                  </div>
+                ))}
+                {Object.entries(SORT_SUBS).map(([mode, subs]) => (
+                  <div key={mode}>
+                    {subs.map((sub) => (
+                      <button
+                        key={`${mode}-${sub}`}
+                        type="button"
+                        onClick={() => {
+                          setSortMode(mode);
+                          setSortSub(sub);
+                          setSortOpen(false);
+                        }}
+                        className={`ios-row flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                          sortMode === mode && sortSub === sub ? "text-accent-candle" : "text-foreground"
+                        }`}
+                      >
+                        <span>{sub}</span>
+                        {sortMode === mode && sortSub === sub && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-accent-candle" aria-hidden="true" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
-          {sortOpen && (
-            <div className="ios-dropdown absolute left-0 top-11 w-56 ios-card ios-frosted border border-[var(--ios-hairline)] p-2 z-50">
-              {["Popular", "New", "Top"].map((mode) => {
-                const subs = mode === "Popular" ? ["This Week", "This Month", "All Time"] : mode === "New" ? ["Today", "This Week", "This Month"] : ["This Month", "This Year", "All Time"];
-                return (
-                  <div key={mode} className="mb-1">
-                    <button
-                      onClick={() => { setSortMode(mode); setSortSub(subs[0]); playSound("click"); }}
-                      className={`ios-press w-full text-left px-3 py-2 rounded-[10px] text-[15px] transition-all ${
-                        sortMode === mode ? "bg-white/10 text-white font-medium" : "text-[var(--ios-text-secondary)] hover:bg-white/5"
-                      }`}
-                    >
-                      {mode}
-                    </button>
-                    {sortMode === mode && (
-                      <div className="pl-3">
-                        {subs.map((sub) => (
-                          <button
-                            key={sub}
-                            onClick={() => { setSortSub(sub); setSortOpen(false); playSound("click"); }}
-                            className={`ios-press w-full text-left px-3 py-1.5 rounded-[8px] text-[13px] transition-all ${
-                              sortSub === sub ? "text-brand font-medium" : "text-[var(--ios-text-tertiary)] hover:text-white"
-                            }`}
+        <div className="scrollbar-none mt-4 flex items-center gap-2 overflow-x-auto pb-1">
+          {pills.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => handleFilter(p)}
+              className={`h-9 shrink-0 rounded-full border px-4 text-xs font-semibold transition-all duration-200 ios-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                filter === p
+                  ? p === "NSFW Only"
+                    ? "border-accent-rose bg-accent-rose text-accent-foreground"
+                    : "border-accent bg-accent text-accent-foreground"
+                  : "border-line bg-surface text-muted hover:border-line-strong hover:text-foreground"
+              }`}
+            >
+              {p}
+            </button>
+          ))}
+          <div className="mx-1 h-6 w-px shrink-0 bg-line-strong" aria-hidden="true" />
+          {categories.map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => handleFilter(c)}
+              className={`h-9 shrink-0 rounded-full border px-4 text-xs font-medium transition-all duration-200 ios-press focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                filter === c
+                  ? "border-accent-candle bg-accent-candle/15 text-accent-candle"
+                  : NSFW_CATEGORIES.includes(c)
+                    ? "border-line bg-surface text-accent-rose/80 hover:border-accent-rose/50 hover:text-accent-rose"
+                    : "border-line bg-surface text-muted hover:border-line-strong hover:text-foreground"
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto mt-8 max-w-6xl">
+        {loading ? (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="ios-card mx-auto max-w-md border border-line p-10 text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-accent-candle/15">
+              <span className="text-xl text-accent-candle" aria-hidden="true">
+                ♥
+              </span>
+            </div>
+            <h2 className="font-retro text-xl text-foreground">No characters yet</h2>
+            <p className="mt-2 text-sm text-muted">
+              The scene is quiet. Be the first to light it up with a character people can meet tonight.
+            </p>
+            <Link
+              href="/create"
+              className="mt-6 inline-flex h-11 items-center rounded-full bg-gradient-to-r from-brand to-brand-dark px-6 text-sm font-semibold text-accent-foreground transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ios-press"
+            >
+              Create the first one
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {visible.map((c, i) => {
+              const featured = i === 0;
+              return (
+                <Link
+                  key={c.id}
+                  href={`/chat/${c.id}`}
+                  className={`group relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface transition-all duration-200 ios-press hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_16px_40px_-16px_oklch(0.12_0.02_285_/_0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                    featured ? "col-span-2" : ""
+                  }`}
+                >
+                  <div className="relative aspect-[3/4] w-full overflow-hidden">
+                    {c.image_url ? (
+                      <img
+                        src={c.image_url}
+                        alt={c.name}
+                        loading="lazy"
+                        className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                      />
+                    ) : (
+                      <CardArt name={c.name} />
+                    )}
+                    {featured && (
+                      <span className="absolute left-3 top-3 rounded-full bg-accent-candle px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-foreground">
+                        Tonight&rsquo;s pick
+                      </span>
+                    )}
+                    {c.is_nsfw && (
+                      <span className="absolute right-3 top-3 rounded-full bg-accent-rose/90 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-accent-foreground">
+                        18+
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col gap-1 p-3">
+                    <p className="truncate text-base font-semibold text-foreground transition-colors group-hover:text-accent-candle">
+                      {c.name}
+                    </p>
+                    {c.tagline && <p className="truncate text-xs text-muted">{c.tagline}</p>}
+                    {(c.genres ?? []).length > 0 && (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {(c.genres ?? []).slice(0, 2).map((g) => (
+                          <span
+                            key={g}
+                            className="rounded-full border border-line px-2 py-0.5 font-mono text-[10px] text-muted"
                           >
-                            {sub}
-                          </button>
+                            {g}
+                          </span>
                         ))}
                       </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+        <div ref={sentinelRef} className="h-10" />
+        {!loading && visible.length < filtered.length && (
+          <div className="flex justify-center py-4">
+            <div className="h-6 w-6 animate-spin rounded-full border-2 border-line border-t-accent-candle" aria-hidden="true" />
+          </div>
+        )}
       </section>
 
-      {/* iOS Tag pills — horizontal scroll */}
-      <section className="px-4 sm:px-6 pb-4">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-7xl mx-auto scrollbar-none">
-          {/* SFW / NSFW toggle pills */}
-          <button
-            onClick={() => { setFilter("All"); playSound("click"); }}
-            className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
-              filter === "All" ? "bg-white text-black" : "bg-white/10 text-white hover:bg-white/15"
-            }`}
-            style={{ height: "40px" }}
+      <footer className="mx-auto mt-16 max-w-6xl border-t border-line pt-6 pb-4">
+        <p className="font-mono text-[11px] uppercase tracking-widest text-muted-faint">
+          16+ to join · 18+ for NSFW
+        </p>
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs text-muted">© 2026 SweetScene</p>
+          <Link
+            href="/safety"
+            className="text-xs text-muted underline-offset-4 transition-colors hover:text-accent-candle hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
           >
-            All
-          </button>
-          <button
-            onClick={() => { setFilter("SFW Only"); playSound("click"); }}
-            className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
-              filter === "SFW Only" ? "bg-white text-black" : "bg-white/10 text-white hover:bg-white/15"
-            }`}
-            style={{ height: "40px" }}
-          >
-            SFW
-          </button>
-          <button
-            onClick={handleNsfwToggle}
-            className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
-              nsfwMode ? "bg-ios-red text-white" : "bg-white/10 text-white hover:bg-white/15"
-            }`}
-            style={{ height: "40px" }}
-          >
-            NSFW
-          </button>
-
-          {/* Divider */}
-          <div className="w-px h-6 bg-[var(--ios-hairline)] flex-shrink-0" />
-
-          {/* Category pills */}
-          {FILTER_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => { setFilter(cat); playSound("click"); }}
-              className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
-                filter === cat ? "bg-white text-black" : "bg-white/10 text-white hover:bg-white/15"
-              }`}
-              style={{ height: "40px" }}
-            >
-              {cat}
-            </button>
-          ))}
-          {nsfwMode && NSFW_CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => { setFilter(cat); playSound("click"); }}
-              className={`ios-press rounded-full px-4 text-[15px] font-medium whitespace-nowrap transition-all ${
-                filter === cat ? "bg-ios-red text-white" : "bg-ios-red/15 text-ios-red hover:bg-ios-red/25"
-              }`}
-              style={{ height: "40px" }}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Character grid */}
-      <section className="px-4 sm:px-6 pb-8">
-        <div className="max-w-7xl mx-auto">
-          {loading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-              {[...Array(BATCH_SIZE)].map((_, i) => (
-                <div key={i} className="ios-card overflow-hidden animate-pulse">
-                  <div className="aspect-[3/4] bg-ios-secondary" />
-                  <div className="p-3">
-                    <div className="h-4 bg-ios-secondary rounded w-24 mb-2" />
-                    <div className="h-3 bg-ios-secondary rounded w-full" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : visible.length === 0 ? (
-            <div className="text-center py-16">
-              <p className="text-white text-[19px] font-semibold mb-2">No characters yet</p>
-              <p className="text-[var(--ios-text-secondary)] text-[15px] mb-6">Be the first to create one.</p>
-              <Link
-                href="/create"
-                className="ios-press inline-flex items-center gap-2 text-[17px] font-semibold px-6 rounded-full text-white transition-all hover:opacity-90"
-                style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                Create the first one
-              </Link>
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                {visible.map((c) => {
-                  const grad = GRADIENTS[hashStr(c.name) % GRADIENTS.length];
-                  const tags = (c.genres || []).slice(0, 2);
-                  return (
-                    <Link
-                      key={c.id}
-                      href={`/chat/${c.id}`}
-                      onClick={() => playSound("click")}
-                      className="ios-press group ios-card overflow-hidden hover:opacity-95 transition-all"
-                    >
-                      <div className="aspect-[3/4] relative overflow-hidden">
-                        <div className={`absolute inset-0 bg-gradient-to-br ${grad} flex items-center justify-center`}>
-                          <span className="text-5xl font-bold text-white/30">{c.name[0] || "?"}</span>
-                        </div>
-                        {c.is_nsfw && (
-                          <span className="absolute top-2 right-2 text-[11px] px-2 py-0.5 rounded-full bg-ios-red text-white font-bold">
-                            18+
-                          </span>
-                        )}
-                      </div>
-                      <div className="p-3">
-                        <h3 className="text-[17px] text-white group-hover:text-brand transition-colors truncate font-medium">
-                          {c.name}
-                        </h3>
-                        {c.tagline && (
-                          <p className="text-[13px] text-[var(--ios-text-secondary)] truncate mt-1">{c.tagline}</p>
-                        )}
-                        {tags.length > 0 && (
-                          <div className="flex items-center gap-1.5 mt-2">
-                            {tags.map((t) => (
-                              <span key={t} className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white">
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                  );
-                })}
-              </div>
-              {/* Infinite scroll sentinel */}
-              {visibleCount < filtered.length && (
-                <div ref={sentinelRef} className="flex items-center justify-center py-8">
-                  <div className="w-7 h-7 border-2 border-white/10 border-t-brand rounded-full animate-spin" />
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Safety link — footer */}
-      <footer className="px-4 sm:px-6 py-6 border-t border-[var(--ios-hairline)]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <span className="text-[13px] text-[var(--ios-text-tertiary)]">&copy; 2025 SweetScene</span>
-          <Link href="/safety" className="text-[13px] text-[var(--ios-text-secondary)] hover:text-white transition-colors">
             Safety
           </Link>
         </div>
       </footer>
 
-      {/* Inline 18+ confirmation — iOS sheet */}
       {showNsfwConfirm && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowNsfwConfirm(false)}>
-          <div
-            className="ios-sheet w-full max-w-md rounded-t-[24px] ios-frosted border-t border-[var(--ios-hairline)] p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-10 h-1 bg-[var(--ios-hairline)] rounded-full mx-auto mb-5" />
-            <h2 className="text-[19px] font-semibold text-white mb-2">This section is 18+</h2>
-            <p className="text-[15px] text-[var(--ios-text-secondary)] mb-6">You are about to view NSFW content. Confirm you are 18 or older.</p>
-            <div className="flex flex-col gap-3">
+        <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-4">
+          <div className="ios-sheet ios-frosted mx-auto max-w-md rounded-[calc(var(--radius-card)*1.25)] border border-line p-6">
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line-strong" aria-hidden="true" />
+            <p className="font-retro text-lg text-foreground">This section is 18+</p>
+            <p className="mt-2 text-sm text-muted">
+              Adult content is gated to verified adults. 16+ to join, 18+ for NSFW.
+            </p>
+            <div className="mt-5 flex gap-3">
               <button
-                onClick={confirmNsfw}
-                className="ios-press w-full rounded-full text-white font-semibold text-[17px] transition-all hover:opacity-90"
-                style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
+                type="button"
+                onClick={enableNsfw}
+                className="h-11 flex-1 rounded-full bg-accent-rose px-4 text-sm font-semibold text-accent-foreground transition-transform duration-200 ios-press hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
               >
-                Confirm
+                I&rsquo;m 18 or older
               </button>
               <button
+                type="button"
                 onClick={() => setShowNsfwConfirm(false)}
-                className="ios-press w-full rounded-full text-white text-[17px] bg-white/10 hover:bg-white/15 transition-all"
-                style={{ height: "52px" }}
+                className="h-11 flex-1 rounded-full border border-line-strong px-4 text-sm font-medium text-foreground transition-colors hover:bg-surface-raised focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ios-press"
               >
                 Cancel
               </button>
@@ -396,6 +473,6 @@ export default function Home() {
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
