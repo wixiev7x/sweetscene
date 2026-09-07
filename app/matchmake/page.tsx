@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { SuggestedBots } from "@/components/matchmake/SuggestedBots";
+import HeartBurst from "@/components/ui/HeartBurst";
 import { playSound } from "@/lib/utils/sound";
 import { MATCHMAKING_POLL_INTERVAL_MS, type MatchMode } from "@/lib/matchmaking";
 
@@ -84,7 +85,7 @@ const MODE_CARDS: {
   {
     key: "blind_date",
     name: "Blind Date",
-    promise: "Nothing revealed — not even vibes — until you both unmask.",
+    promise: "Pure roleplay. No names, no profiles — when the scene ends, you walk away.",
     note: "full anonymity",
     icon: "M12 3a9 9 0 100 18 9 9 0 000-18zM4.5 12c3.6-3 9.4-3 13 0-3.6 3-9.4 3-13 0z",
   },
@@ -363,7 +364,7 @@ export default function MatchmakePage() {
     mode === "blind_date"
       ? [
           "Full blind — no vibes, no info, nothing",
-          "The reveal only happens if you both choose it",
+          "No reveals, no follows — the scene is all there is",
           "One scene, thirty minutes, zero expectations",
         ]
       : overlap.length > 0
@@ -371,7 +372,7 @@ export default function MatchmakePage() {
         : [
             "Both of you were looking for a scene right now",
             "Matched by the moment, not a checklist",
-            "Identities stay hidden until you both unmask",
+            "Identities stay hidden — period",
           ];
 
   const inputClass =
@@ -588,7 +589,7 @@ export default function MatchmakePage() {
                   </p>
                   <p className="text-xs text-muted mb-3">
                     {mode === "blind_date"
-                      ? "Tags stay private on a blind date — pick them for the scene, not the reveal."
+                      ? "Tags stay private on a blind date — pick them for the scene, not for anyone."
                       : "The matchmaker looks for someone who chose the same vibes."}
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -611,13 +612,15 @@ export default function MatchmakePage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={startSearch}
-                  disabled={searching}
-                  className="w-full h-[52px] rounded-full bg-gradient-to-r from-brand to-brand-dark text-accent-foreground text-base font-semibold ios-press shadow-lg shadow-brand/20 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
-                >
-                  {searching ? "Starting…" : "Find My Match"}
-                </button>
+                <HeartBurst>
+                  <button
+                    onClick={startSearch}
+                    disabled={searching}
+                    className="w-full h-[52px] rounded-full bg-gradient-to-r from-brand to-brand-dark text-accent-foreground text-base font-semibold ios-press shadow-lg shadow-brand/20 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
+                  >
+                    {searching ? "Starting…" : "Find My Match"}
+                  </button>
+                </HeartBurst>
 
                 <div className="pt-6 border-t border-line">
                   <p className="text-sm font-medium text-foreground mb-1">Just want to chat solo?</p>
@@ -729,7 +732,7 @@ export default function MatchmakePage() {
             {mode === "blind_date" && (
               <p className="text-sm text-muted text-center mb-4 max-w-xs leading-relaxed">
                 Nothing is revealed on a blind date — not vibes, not names.
-                The unmask only happens if you both choose it.
+                When the scene ends, it ends. Nobody has to know.
               </p>
             )}
 

@@ -302,6 +302,125 @@ body {
   100% { background-position: 200% 0; }
 }
 
+/* ── Heart burst (primary CTAs) ── */
+.hb-host {
+  position: relative;
+}
+.hb-heart {
+  position: absolute;
+  z-index: 30;
+  pointer-events: none;
+  color: var(--accent-rose);
+  font-size: 11px;
+  line-height: 1;
+  transform: translate3d(-50%, -50%, 0);
+  animation: hbFly 600ms ease-out forwards;
+}
+@keyframes hbFly {
+  0% {
+    opacity: 0;
+    transform: translate3d(-50%, -50%, 0) scale(0.4);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px)), 0) scale(1) rotate(var(--rot, 0deg));
+  }
+}
+.hb-pop {
+  animation: hbPop 250ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes hbPop {
+  0% { transform: scale(1); }
+  35% { transform: scale(0.92); }
+  70% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* ── Rose glow cursor ── */
+.cursor-glow {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 10000;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+body.cursor-glow-on {
+  cursor: none;
+}
+.cursor-glow-on a,
+.cursor-glow-on button,
+.cursor-glow-on label,
+.cursor-glow-on input,
+.cursor-glow-on textarea,
+.cursor-glow-on select,
+.cursor-glow-on [contenteditable] {
+  cursor: auto;
+}
+.cursor-trail {
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--accent-rose) 0%, transparent 70%);
+  filter: blur(10px);
+  opacity: 0.35;
+  will-change: transform;
+}
+.cursor-dot {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--accent-rose);
+  border: 1.5px solid transparent;
+  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent-rose) 60%, transparent);
+  transition: background 180ms ease, border-color 180ms ease;
+  will-change: transform;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cursor-dot .cursor-heart {
+  font-size: 7px;
+  line-height: 1;
+  color: var(--accent-rose);
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+.cursor-dot.cursor-ring {
+  background: transparent;
+  border-color: var(--accent-rose);
+}
+.cursor-dot.cursor-ring .cursor-heart {
+  opacity: 1;
+}
+@media (pointer: coarse) {
+  .cursor-glow {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cursor-glow {
+    display: none;
+  }
+  body.cursor-glow-on {
+    cursor: auto;
+  }
+  .hb-heart {
+    display: none;
+  }
+}
+
 /* ── iOS Frosted material ── */
 .ios-frosted {
   background-color: color-mix(in srgb, var(--ios-bg) 72%, transparent);

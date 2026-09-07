@@ -7,6 +7,7 @@ import {
 } from "@/lib/utils/safety";
 import { MESSAGE_MAX_LENGTH } from "@/lib/config/constants";
 import { TypingDots } from "@/components/ui";
+import HeartBurst from "@/components/ui/HeartBurst";
 
 type ChatBoxProps = {
   isLocked: boolean;
@@ -159,14 +160,16 @@ export default function ChatBox({
                     placeholder="Type your message..."
                     className="flex-1 bg-surface-sunken border border-line rounded-xl px-4 py-3 text-foreground placeholder-muted transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-line-focus focus:border-accent-candle/50 resize-none min-h-[48px] max-h-[160px] overflow-y-auto"
                   />
-                  <button
-                    type="button"
-                    onClick={handleSend}
-                    disabled={isSendDisabled()}
-                    className="px-5 py-3 rounded-xl font-medium text-sm text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light active:scale-95 transform transition-all duration-200 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-30 disabled:cursor-not-allowed disabled:from-surface-raised disabled:to-surface-raised"
-                  >
-                    Send
-                  </button>
+                  <HeartBurst>
+                    <button
+                      type="button"
+                      onClick={handleSend}
+                      disabled={isSendDisabled()}
+                      className="px-5 py-3 rounded-xl font-medium text-sm text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light active:scale-95 transform transition-all duration-200 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-30 disabled:cursor-not-allowed disabled:from-surface-raised disabled:to-surface-raised"
+                    >
+                      Send
+                    </button>
+                  </HeartBurst>
                 </div>
 
                 {/* ── HELPER TEXT + CHARACTER COUNTER ── */}

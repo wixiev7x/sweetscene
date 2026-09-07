@@ -119,7 +119,34 @@ export function SiteNav({ className = "" }: { className?: string }) {
         className={`sticky top-0 z-50 ios-frosted border-b border-[var(--ios-hairline)] ${className}`}
         style={{ height: "56px" }}
       >
-        <div className="flex items-center justify-end h-full px-4">
+        <div className="flex items-center justify-end md:justify-between h-full px-4">
+          {/* Left cluster — wordmark, presence, daily reward */}
+          <div className="hidden md:flex items-center gap-2.5">
+            <Link
+              href="/"
+              prefetch={false}
+              className="ios-press flex items-center gap-1.5 rounded-lg px-1 focus-visible:ring-2 ring-line-focus"
+              aria-label="SweetScene home"
+            >
+              <span className="text-accent-candle text-sm" aria-hidden="true">♥</span>
+              <span className="font-retro text-[10px] tracking-wider text-foreground">SWEETSCENE</span>
+            </Link>
+            <div className="flex items-center gap-2 rounded-full border border-line bg-surface-raised h-9 px-3 text-[13px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" aria-hidden="true" />
+              <span className="text-accent-rose" aria-hidden="true">♥</span>
+              <span className="font-mono text-foreground">127</span>
+              <span className="hidden lg:inline text-muted">in the scene now</span>
+            </div>
+            <Link
+              href="/store"
+              prefetch={false}
+              className="ios-press flex items-center gap-1.5 rounded-full border border-accent-candle/30 bg-accent-candle/10 h-9 px-3 text-[13px] font-medium text-accent-candle transition-all hover:bg-accent-candle/20 focus-visible:ring-2 ring-line-focus"
+            >
+              <CoinIcon className="w-3.5 h-3.5" />
+              <span>+10 coins today</span>
+            </Link>
+          </div>
+
           {/* Right cluster */}
           <div className="flex items-center gap-2.5">
             {/* Token pill — coin glyph */}
@@ -277,7 +304,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
             <p className="text-[11px] text-[var(--ios-text-tertiary)] leading-relaxed">
               SweetScene &copy; 2026<br />
               Anonymous AI Matchmaking<br />
-              <span className="font-mono">16+ to join · 18+ for NSFW</span>
+              <span className="font-mono">16+ platform to join</span>
             </p>
           </div>
         </div>

@@ -7,7 +7,7 @@ const SAFETY_POINTS = [
   { title: "Encrypted Messages", desc: "Your scenes stay in the dark. Messages are encrypted at rest." },
   { title: "Anonymous by Default", desc: "No pictures. No names. No real identities. You stay anonymous until you choose otherwise." },
   { title: "Report & Block", desc: "Report any conversation or block any user at any time from the chat menu." },
-  { title: "Age Verification", desc: "All users must verify their age. This is a strictly 18+ platform." },
+  { title: "Age Verification", desc: "All users must verify their age. This is a 16+ platform. Adult content is restricted to verified adults." },
 ];
 
 export default function SafetyPage() {

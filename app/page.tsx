@@ -3,8 +3,15 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import HeartBurst from "@/components/ui/HeartBurst";
 
 const BATCH_SIZE = 12;
+
+const HEADLINES: { pre: string; accent: string }[] = [
+  { pre: "Nobody has to ", accent: "know." },
+  { pre: "Say it without saying your ", accent: "name." },
+  { pre: "Someone is already thinking about ", accent: "you." },
+];
 
 const FILTER_CATEGORIES = ["Hot Picks", "New", "Girlfriend", "Boyfriend", "Anime", "Gaming", "All Tags"];
 const NSFW_CATEGORIES = ["NSFW", "Dominant", "Submissive", "Taboo"];
@@ -112,6 +119,7 @@ export default function Home() {
   const [sortMode, setSortMode] = useState<string>("Popular");
   const [sortSub, setSortSub] = useState<string>("This Week");
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const [headline] = useState(() => HEADLINES[Math.floor(Math.random() * HEADLINES.length)]);
 
   useEffect(() => {
     let cancelled = false;
@@ -191,7 +199,7 @@ export default function Home() {
   const categories = nsfwMode ? [...FILTER_CATEGORIES, ...NSFW_CATEGORIES] : FILTER_CATEGORIES;
 
   return (
-    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 pt-20 md:pt-24 pb-14 md:pb-0">
+    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 pt-12 md:pt-14 pb-14 md:pb-0">
       <div
         className="fixed top-14 left-0 right-0 z-40 h-0.5 bg-gradient-to-r from-accent-candle to-accent-rose transition-[width] duration-150"
         style={{ width: `${scrollProgress}%` }}
@@ -201,25 +209,30 @@ export default function Home() {
         <p className="text-[11px] uppercase tracking-[0.35em] text-accent-candle font-semibold">
           Anonymous AI matchmaking
         </p>
-        <h1 className="mt-3 font-retro text-4xl md:text-6xl leading-[1.04] text-foreground max-w-3xl">
-          Meet your scene <span className="gradient-text">tonight.</span>
+        <h1 className="mt-4 font-retro text-4xl md:text-6xl leading-[1.04] text-foreground max-w-3xl">
+          {headline.pre}
+          <span className="gradient-text italic">{headline.accent}</span>
         </h1>
-        <p className="mt-4 text-sm md:text-base text-muted max-w-xl">
-          Real chemistry, no faces required. Pick a character, step into a scene, reveal only when you both want to.
+        <p className="mt-6 text-sm md:text-base text-muted max-w-xl">
+          Anonymous AI matchmaking — real chemistry, no faces required. Reveal only when you both want to.
         </p>
         <div className="mt-6 flex flex-wrap items-center gap-3">
-          <Link
-            href="/create"
-            className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-brand to-brand-dark px-6 text-sm font-semibold text-accent-foreground shadow-[0_8px_30px_-12px_var(--brand)] transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ios-press"
-          >
-            <span aria-hidden="true">+</span> Create a character
-          </Link>
-          <Link
-            href="/matchmake"
-            className="inline-flex h-11 items-center rounded-full border border-line-strong px-6 text-sm font-medium text-foreground transition-colors duration-200 hover:border-accent-candle hover:text-accent-candle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ios-press"
-          >
-            Find a match
-          </Link>
+          <HeartBurst>
+            <Link
+              href="/create"
+              className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-to-r from-brand to-brand-dark px-6 text-sm font-semibold text-accent-foreground shadow-[0_8px_30px_-12px_var(--brand)] transition-transform duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ios-press"
+            >
+              <span aria-hidden="true">+</span> Create a character
+            </Link>
+          </HeartBurst>
+          <HeartBurst>
+            <Link
+              href="/matchmake"
+              className="inline-flex h-11 items-center rounded-full border border-line-strong px-6 text-sm font-medium text-foreground transition-colors duration-200 hover:border-accent-candle hover:text-accent-candle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ios-press"
+            >
+              Find a match
+            </Link>
+          </HeartBurst>
         </div>
       </section>
 
@@ -433,7 +446,7 @@ export default function Home() {
 
       <footer className="mx-auto mt-16 max-w-6xl border-t border-line pt-6 pb-4">
         <p className="font-mono text-[11px] uppercase tracking-widest text-muted-faint">
-          16+ to join · 18+ for NSFW
+          16+ platform to join
         </p>
         <div className="mt-2 flex items-center justify-between">
           <p className="text-xs text-muted">© 2026 SweetScene</p>
@@ -452,7 +465,7 @@ export default function Home() {
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-line-strong" aria-hidden="true" />
             <p className="font-retro text-lg text-foreground">This section is 18+</p>
             <p className="mt-2 text-sm text-muted">
-              Adult content is gated to verified adults. 16+ to join, 18+ for NSFW.
+              Adult content is gated to verified adults.
             </p>
             <div className="mt-5 flex gap-3">
               <button

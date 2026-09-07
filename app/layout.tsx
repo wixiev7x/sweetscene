@@ -4,6 +4,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SiteNav from "@/components/SiteNav";
+import CursorGlow from "@/components/CursorGlow";
 
 const fraunces = Fraunces({
   variable: "--font-press-start",
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
   ),
   title: "SweetScene — Anonymous AI Matchmaking",
   description:
-    "Anonymous matchmaking. Match first. Build connection. Reveal only when both sides agree. 16+ to join, 18+ for NSFW.",
+    "Anonymous matchmaking. Match first. Build connection. Reveal only when both sides agree. 16+ platform to join.",
   icons: {
     icon: [
       { url: "/favicon.ico", type: "image/x-icon" },
@@ -67,6 +68,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <SiteNav />
+        <CursorGlow />
         <div className="flex-1 md:pl-56">{children}</div>
         <ServiceWorkerRegister />
         <Toaster

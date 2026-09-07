@@ -224,7 +224,7 @@ export default function StorePage() {
           Tokens power AI responses in your scenes. Each match has a shared pool.
         </p>
         <p className="font-mono text-[10px] uppercase tracking-widest text-muted-faint text-center">
-          16+ to join &middot; 18+ for NSFW
+          16+ platform to join
         </p>
       </div>
     </main>

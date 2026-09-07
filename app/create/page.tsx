@@ -218,7 +218,7 @@ export default function CreatePage() {
 
           <label className="flex items-center gap-3 cursor-pointer">
             <input type="checkbox" checked={isNsfw} onChange={(e) => setIsNsfw(e.target.checked)} className="accent-accent-rose w-4 h-4" />
-            <span className="text-sm text-muted">This character contains adult content (18+ for NSFW)</span>
+            <span className="text-sm text-muted">This character contains adult content (18+)</span>
           </label>
 
           <button type="submit" disabled={!name || !tagline || !personality || !openingLine || submitting}
