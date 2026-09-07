@@ -287,6 +287,15 @@ body {
   animation: slideUp 0.4s ease-out forwards;
 }
 
+/* ── Jar shake (scenarios page) ── */
+@keyframes jarShake {
+  0%, 100% { transform: rotate(0deg); }
+  20% { transform: rotate(-10deg); }
+  40% { transform: rotate(9deg); }
+  60% { transform: rotate(-7deg); }
+  80% { transform: rotate(5deg); }
+}
+
 /* ── Shimmer ── */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
