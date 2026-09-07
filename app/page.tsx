@@ -90,7 +90,7 @@ function CardArt({ name }: { name: string }) {
 
 function CardSkeleton() {
   return (
-    <div className="ios-card ios-row overflow-hidden border border-line">
+    <div className="ios-card ios-row min-w-[45%] shrink-0 snap-start overflow-hidden border border-line md:min-w-0">
       <div className="aspect-[3/4] w-full animate-pulse bg-surface-raised" />
       <div className="space-y-2 p-3">
         <div className="h-4 w-2/3 animate-pulse rounded-full bg-surface-raised" />
@@ -343,7 +343,7 @@ export default function Home() {
 
       <section className="mx-auto mt-8 max-w-6xl">
         {loading ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible lg:grid-cols-4 xl:grid-cols-5">
             {Array.from({ length: 10 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))}
@@ -367,15 +367,15 @@ export default function Home() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="scrollbar-none flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 md:grid md:grid-cols-3 md:gap-4 md:overflow-visible lg:grid-cols-4 xl:grid-cols-5">
             {visible.map((c, i) => {
               const featured = i === 0;
               return (
                 <Link
                   key={c.id}
                   href={`/chat/${c.id}`}
-                  className={`group relative flex flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface transition-all duration-200 ios-press hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_16px_40px_-16px_oklch(0.12_0.02_285_/_0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-                    featured ? "col-span-2" : ""
+                  className={`group relative flex min-w-[45%] shrink-0 snap-start flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface transition-all duration-200 ios-press hover:-translate-y-0.5 hover:border-line-strong hover:shadow-[0_16px_40px_-16px_oklch(0.12_0.02_285_/_0.9)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus md:min-w-0 ${
+                    featured ? "min-w-[70%] md:col-span-2" : ""
                   }`}
                 >
                   <div className="relative aspect-[3/4] w-full overflow-hidden">

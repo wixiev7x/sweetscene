@@ -37,22 +37,38 @@ const MOBILE_TABS: NavItem[] = [
   { href: "/profile", label: "Profile", icon: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" },
 ];
 
+function CoinIcon({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 20 20" className={`${className} inline-block`} aria-hidden="true">
+      <defs>
+        <radialGradient id="navCoinFace" cx="0.38" cy="0.32" r="0.9">
+          <stop offset="0%" stopColor="oklch(0.9 0.1 80)" />
+          <stop offset="55%" stopColor="oklch(0.82 0.14 75)" />
+          <stop offset="100%" stopColor="oklch(0.74 0.13 70)" />
+        </radialGradient>
+      </defs>
+      <circle cx="10" cy="10" r="8.6" fill="url(#navCoinFace)" stroke="oklch(0.72 0.16 10 / 0.55)" strokeWidth="1.4" />
+      <path d="M10 13.6c-1.9 0-3.2-1.5-3.2-3.6S8.1 6.4 10 6.4s3.2 1.5 3.2 3.6-1.3 3.6-3.2 3.6zm0-1.7c.8 0 1.3-.8 1.3-1.9s-.5-1.9-1.3-1.9-1.3.8-1.3 1.9.5 1.9 1.3 1.9z" fill="oklch(0.62 0.19 12 / 0.85)" />
+    </svg>
+  );
+}
+
 function SidebarRow({ item, active }: { item: NavItem; active: boolean }) {
   return (
     <Link
       href={item.href}
       prefetch={false}
-      className={`ios-press ios-hairline flex items-center gap-3 px-3 last:border-b-0 transition-all ${
-        active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
+      className={`ios-press ios-hairline flex items-center gap-3 px-3 last:border-b-0 transition-all focus-visible:ring-2 ring-line-focus ${
+        active ? "bg-accent-candle/10" : "hover:bg-surface-raised/60"
       }`}
       style={{ minHeight: "50px" }}
     >
-      <div className="flex items-center justify-center w-7 h-7 rounded-[8px] flex-shrink-0 bg-white/[0.06]">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-brand" : "text-[var(--ios-text-secondary)]"}>
+      <div className="flex items-center justify-center w-7 h-7 rounded-[8px] flex-shrink-0 bg-surface-raised/60">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-accent-candle" : "text-[var(--ios-text-secondary)]"}>
           <path d={item.icon} />
         </svg>
       </div>
-      <span className={`text-[15px] flex-1 ${active ? "text-white font-medium" : "text-[var(--ios-text-secondary)]"}`}>
+      <span className={`text-[15px] flex-1 ${active ? "text-foreground font-medium" : "text-[var(--ios-text-secondary)]"}`}>
         {item.label}
       </span>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ios-text-tertiary)] flex-shrink-0">
@@ -98,7 +114,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
 
   return (
     <>
-      {/* Top bar — iOS frosted */}
+      {/* Top bar — candlelit frosted */}
       <header
         className={`sticky top-0 z-50 ios-frosted border-b border-[var(--ios-hairline)] ${className}`}
         style={{ height: "56px" }}
@@ -106,23 +122,22 @@ export function SiteNav({ className = "" }: { className?: string }) {
         <div className="flex items-center justify-end h-full px-4">
           {/* Right cluster */}
           <div className="flex items-center gap-2.5">
-            {/* Token pill with gloss + small + icon */}
+            {/* Token pill — coin glyph */}
             <Link
               href="/store"
               prefetch={false}
-              className="ios-press relative flex items-center gap-1.5 rounded-full bg-white/5 border border-[var(--ios-hairline)] px-3 h-9 text-[14px] text-white transition-all hover:bg-white/10"
-              style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)" }}
+              className="ios-press relative flex items-center gap-1.5 rounded-full bg-surface-raised border border-line px-3 h-9 text-[14px] text-foreground transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"
             >
-              <span className="text-brand text-[15px]">&#x25C8;</span>
-              <span className="font-medium">{tokens != null ? tokens : 0}</span>
-              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-brand/20 text-brand text-[10px] font-bold -ml-0.5">+</span>
+              <CoinIcon className="w-4 h-4" />
+              <span className="font-medium font-mono">{tokens != null ? tokens : 0}</span>
+              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-accent-candle/20 text-accent-candle text-[10px] font-bold -ml-0.5">+</span>
             </Link>
 
-            {/* Go Premium — small */}
+            {/* Go Premium — small, primary CTA keeps brand pink */}
             <Link
               href="/store"
               prefetch={false}
-              className="ios-press hidden sm:flex items-center gap-1 rounded-full px-3 h-9 text-[13px] font-medium text-white transition-all hover:opacity-90"
+              className="ios-press hidden sm:flex items-center gap-1 rounded-full px-3 h-9 text-[13px] font-medium text-accent-foreground transition-all hover:opacity-90 focus-visible:ring-2 ring-line-focus"
               style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -135,7 +150,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
             <Link
               href="/store"
               prefetch={false}
-              className="ios-press sm:hidden flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-[var(--ios-hairline)] text-brand transition-all hover:bg-white/10"
+              className="ios-press sm:hidden flex items-center justify-center w-9 h-9 rounded-full bg-surface-raised border border-line text-accent-candle transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"
               aria-label="Go Premium"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -146,14 +161,14 @@ export function SiteNav({ className = "" }: { className?: string }) {
             {/* Notifications bell — on right */}
             <button
               onClick={() => setNotifOpen(!notifOpen)}
-              className="ios-press relative flex items-center justify-center w-9 h-9 rounded-full bg-white/5 border border-[var(--ios-hairline)] text-white transition-all hover:bg-white/10"
+              className="ios-press relative flex items-center justify-center w-9 h-9 rounded-full bg-surface-raised border border-line text-foreground transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"
               aria-label="Notifications"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
-              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-ios-red text-white text-[8px] font-bold flex items-center justify-center">
+              <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 rounded-full bg-danger text-accent-foreground text-[8px] font-bold flex items-center justify-center">
                 0
               </span>
             </button>
@@ -162,9 +177,9 @@ export function SiteNav({ className = "" }: { className?: string }) {
 
         {/* Notifications dropdown sheet */}
         {notifOpen && (
-          <div className="ios-dropdown absolute right-4 top-14 w-80 ios-card ios-frosted border border-[var(--ios-hairline)] p-4 z-50">
-            <h3 className="text-[17px] font-semibold text-white mb-3">Notifications</h3>
-            <p className="text-[15px] text-[var(--ios-text-secondary)] text-center py-8">No notifications yet</p>
+          <div className="ios-dropdown absolute right-4 top-14 w-80 ios-card ios-frosted border border-line p-4 z-50">
+            <h3 className="text-[17px] font-semibold text-foreground mb-3">Notifications</h3>
+            <p className="text-[15px] text-muted text-center py-8">No notifications yet</p>
           </div>
         )}
       </header>
@@ -173,8 +188,8 @@ export function SiteNav({ className = "" }: { className?: string }) {
       <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-56 flex-col ios-frosted border-r border-[var(--ios-hairline)] z-40 overflow-y-auto scrollbar-none">
         {/* Logo */}
         <div className="flex items-center gap-2 px-4 py-3">
-          <span className="text-brand text-lg">&#x2665;</span>
-          <span className="font-retro text-[10px] tracking-wider text-brand neon-text">SWEETSCENE</span>
+          <span className="text-accent-candle text-lg">&#x2665;</span>
+          <span className="font-retro text-[10px] tracking-wider text-accent-candle">SWEETSCENE</span>
         </div>
 
         {/* Primary CTA — Matchmake button */}
@@ -182,7 +197,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
           <Link
             href="/matchmake"
             prefetch={false}
-            className="ios-press flex items-center justify-center gap-2 w-full rounded-full text-white font-semibold text-[17px] transition-all hover:opacity-90"
+            className="ios-press flex items-center justify-center gap-2 w-full rounded-full text-accent-foreground font-semibold text-[17px] transition-all hover:opacity-90 focus-visible:ring-2 ring-line-focus"
             style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -204,10 +219,10 @@ export function SiteNav({ className = "" }: { className?: string }) {
           <div className="ios-card overflow-hidden mb-3">
             <button
               onClick={() => setMoreOpen(!moreOpen)}
-              className="ios-press flex items-center gap-3 px-3 w-full transition-all hover:bg-white/[0.04]"
+              className="ios-press flex items-center gap-3 px-3 w-full transition-all hover:bg-surface-raised/60 focus-visible:ring-2 ring-line-focus"
               style={{ minHeight: "50px" }}
             >
-              <div className="flex items-center justify-center w-7 h-7 rounded-[8px] flex-shrink-0 bg-white/[0.06]">
+              <div className="flex items-center justify-center w-7 h-7 rounded-[8px] flex-shrink-0 bg-surface-raised/60">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ios-text-secondary)]">
                   <path d="M3 12h18M3 6h18M3 18h18" />
                 </svg>
@@ -228,14 +243,14 @@ export function SiteNav({ className = "" }: { className?: string }) {
           <Link
             href="/profile"
             prefetch={false}
-            className="ios-press flex items-center gap-3 ios-row px-3 mb-3 hover:bg-white/5"
+            className="ios-press flex items-center gap-3 ios-row px-3 mb-3 hover:bg-surface-raised/60 focus-visible:ring-2 ring-line-focus"
           >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-brand to-crimson-600 flex items-center justify-center text-white text-sm font-semibold flex-shrink-0">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent-candle to-accent-rose flex items-center justify-center text-foreground text-sm font-semibold flex-shrink-0">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" />
               </svg>
             </div>
-            <span className="text-[15px] text-white flex-1">Profile</span>
+            <span className="text-[15px] text-foreground flex-1">Profile</span>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-[var(--ios-text-tertiary)]">
               <path d="M9 18l6-6-6-6" />
             </svg>
@@ -244,39 +259,39 @@ export function SiteNav({ className = "" }: { className?: string }) {
           {user && (
             <button
               onClick={handleLogout}
-              className="ios-press flex items-center gap-3 w-full text-left px-3 mb-3 rounded-[10px] hover:bg-white/5 transition-all"
+              className="ios-press flex items-center gap-3 w-full text-left px-3 mb-3 rounded-[10px] hover:bg-danger/10 transition-all focus-visible:ring-2 ring-line-focus"
             >
-              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-ios-red/15 flex-shrink-0">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ios-red">
+              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-danger/15 flex-shrink-0">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-danger">
                   <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
                   <path d="M16 17l5-5-5-5" />
                   <path d="M21 12H9" />
                 </svg>
               </div>
-              <span className="text-[15px] text-ios-red flex-1">Log Out</span>
+              <span className="text-[15px] text-danger flex-1">Log Out</span>
             </button>
           )}
 
           {/* SweetScene info footer */}
           <div className="px-3 pt-2 pb-1">
             <p className="text-[11px] text-[var(--ios-text-tertiary)] leading-relaxed">
-              SweetScene &copy; 2025<br />
-              Registered 2025<br />
-              Anonymous AI Matchmaking
+              SweetScene &copy; 2026<br />
+              Anonymous AI Matchmaking<br />
+              <span className="font-mono">16+ to join · 18+ for NSFW</span>
             </p>
           </div>
         </div>
       </aside>
 
-      {/* Mobile bottom tab bar — iOS style */}
+      {/* Mobile bottom tab bar — ourdream-style 5 tabs */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 ios-frosted border-t border-[var(--ios-hairline)] flex items-center justify-around" style={{ height: "52px" }}>
         {MOBILE_TABS.map((tab) => (
           <Link
             key={tab.href + tab.label}
             href={tab.href}
             prefetch={false}
-            className={`ios-press flex flex-col items-center gap-0.5 flex-1 transition-colors ${
-              isActive(tab.href) ? "text-brand" : "text-[var(--ios-text-secondary)]"
+            className={`ios-press flex flex-col items-center gap-0.5 flex-1 transition-colors focus-visible:ring-2 ring-line-focus rounded-lg ${
+              isActive(tab.href) ? "text-accent-candle" : "text-[var(--ios-text-secondary)]"
             }`}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
