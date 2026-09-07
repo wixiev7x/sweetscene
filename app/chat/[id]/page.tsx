@@ -94,6 +94,7 @@ export default function ChatPage() {
   const [profile, setProfile] = useState<ProfileRow | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [partnerUsername, setPartnerUsername] = useState<string | null>(null);
+  const [headerAvatarUrl, setHeaderAvatarUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
@@ -215,10 +216,13 @@ export default function ChatPage() {
         for (const cid of m.character_ids) {
           const { data: dbChar } = await supabase
             .from("characters")
-            .select("name")
+            .select("name, avatar_url")
             .eq("id", cid)
             .single();
           nextMap.set(cid, dbChar?.name ?? "Director");
+          if (dbChar?.avatar_url) {
+            setHeaderAvatarUrl((prev) => prev ?? dbChar.avatar_url);
+          }
         }
         setCharacterNameMap(nextMap);
         characterNameMapRef.current = nextMap;
@@ -726,7 +730,7 @@ export default function ChatPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-void-950 flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
         <Spinner />
         <p className="text-muted text-sm">Loading scene...</p>
       </div>
@@ -735,7 +739,7 @@ export default function ChatPage() {
 
   if (!match) {
     return (
-      <div className="min-h-screen bg-void-950 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <p className="text-muted text-sm">Match not found.</p>
       </div>
     );
@@ -746,11 +750,11 @@ export default function ChatPage() {
   const isLocked = match.ai_turn_due || sending || showEnded;
 
   return (
-    <div className="h-screen flex flex-col bg-void-950 text-white overflow-hidden">
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,45,149,0.08)_0%,transparent_50%)]" />
+    <div className="h-screen flex flex-col bg-background text-foreground overflow-hidden">
+      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,190,120,0.07)_0%,transparent_50%)]" />
 
       {/* ── HEADER ── */}
-      <header className="relative z-10 border-b border-white/5 backdrop-blur-md bg-void-950/60 px-6 py-3">
+      <header className="relative z-10 border-b border-line backdrop-blur-md bg-background/70 px-6 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* left */}
           <div className="flex items-center gap-3 min-w-0">
@@ -761,10 +765,27 @@ export default function ChatPage() {
               &larr;
             </Link>
 
+            {match.is_ai_match && headerAvatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={headerAvatarUrl}
+                alt=""
+                className="w-9 h-9 rounded-full object-cover border border-accent-candle/50 shrink-0"
+              />
+            ) : (
+              <span className="w-9 h-9 rounded-full bg-accent-candle/15 border border-accent-candle/30 flex items-center justify-center text-accent-candle text-sm font-semibold shrink-0">
+                {(
+                  match.is_ai_match
+                    ? characterList().charAt(0)
+                    : (partnerUsername ?? "?").charAt(0)
+                ).toUpperCase() || "?"}
+              </span>
+            )}
+
             <div className="min-w-0">
               {match.is_ai_match ? (
                 <>
-                  <p className="text-sm text-brand-light font-medium">
+                  <p className="text-sm text-accent-candle font-medium">
                     AI Match
                   </p>
                   <p className="text-xs text-muted truncate">
@@ -773,7 +794,7 @@ export default function ChatPage() {
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-white font-medium truncate">
+                  <p className="text-sm text-foreground font-medium truncate">
                     {partnerUsername ?? "Anonymous Stranger"}
                   </p>
                   <p className="text-xs text-muted">
@@ -790,8 +811,8 @@ export default function ChatPage() {
               className={[
                 "text-xs px-2 py-1 rounded-full border",
                 match.tier === "deep"
-                  ? "border-pink-500/30 text-pink-400"
-                  : "border-brand/30 text-brand-light",
+                  ? "border-accent-rose/30 text-accent-rose"
+                  : "border-accent-candle/30 text-accent-candle",
               ].join(" ")}
             >
               {match.tier === "deep" ? "Deep Dive" : "Quick Chat"}
@@ -807,12 +828,12 @@ export default function ChatPage() {
           <div className="flex items-center gap-4 shrink-0">
             {/* pool */}
             <div className="hidden sm:flex flex-col items-end">
-              <span className="text-sm text-brand-light font-medium">
+              <span className="text-sm text-accent-candle font-medium font-mono">
                 &#9670; {match.shared_pool.toLocaleString()} tokens
               </span>
-              <div className="w-24 h-1 rounded-full bg-white/10 mt-1">
+              <div className="w-24 h-1 rounded-full bg-surface-raised mt-1">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-brand to-crimson-500 transition-all duration-500"
+                  className="h-full rounded-full bg-gradient-to-r from-accent-candle to-accent-rose transition-all duration-500"
                   style={{ width: `${poolPercent()}%` }}
                 />
               </div>
@@ -824,7 +845,7 @@ export default function ChatPage() {
                 type="button"
                 onClick={handleGenerateImage}
                 disabled={imageLoading}
-                className="text-xs bg-white/5 border border-white/10 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-foreground-dim transition-all"
+                className="text-xs bg-surface-raised border border-line text-muted px-3 py-1.5 rounded-lg hover:bg-accent-candle/10 hover:text-accent-candle hover:border-accent-candle/30 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
               >
                 &#x1F5BC;&#xFE0F; Generate
               </button>
@@ -841,7 +862,7 @@ export default function ChatPage() {
                 setReportMsg("");
                 setShowReport(true);
               }}
-              className="text-xs bg-white/5 border border-white/10 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-white/10 hover:text-foreground-dim transition-all"
+              className="text-xs bg-surface-raised border border-line text-muted px-3 py-1.5 rounded-lg hover:bg-accent-candle/10 hover:text-accent-candle hover:border-accent-candle/30 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
               title="Report this conversation"
             >
               Report
@@ -852,7 +873,7 @@ export default function ChatPage() {
               <button
                 type="button"
                 onClick={() => setShowLeaveConfirm(true)}
-                className="text-xs bg-white/5 border border-red-500/20 text-muted-strong px-3 py-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-all"
+                className="text-xs bg-surface-raised border border-danger/20 text-muted px-3 py-1.5 rounded-lg hover:bg-danger/10 hover:text-danger hover:border-danger/30 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
               >
                 Leave
               </button>
@@ -892,14 +913,14 @@ export default function ChatPage() {
       {/* ── IMAGE MODAL ── */}
       {showImageModal && (
         <div
-          className="fixed inset-0 z-40 bg-void-950/80 backdrop-blur-sm flex items-center justify-center p-6"
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-center justify-center p-6"
           onClick={() => {
             setShowImageModal(false);
             setGeneratedImageUrl(null);
           }}
         >
           <div
-            className="max-w-lg w-full bg-white/5 border border-white/10 rounded-2xl p-6 text-center"
+            className="max-w-lg w-full bg-surface border border-line rounded-2xl p-6 text-center"
             onClick={(e) => e.stopPropagation()}
           >
             {imageLoading ? (
@@ -907,7 +928,7 @@ export default function ChatPage() {
                 <p className="text-muted-strong text-sm">Generating scene...</p>
                 <div className="flex items-center gap-1.5">
                   <span
-                    className="block w-2 h-2 rounded-full bg-brand-light"
+                    className="block w-2 h-2 rounded-full bg-accent-candle"
                     style={{
                       animation:
                         "typingBounce 1.4s infinite ease-in-out",
@@ -915,7 +936,7 @@ export default function ChatPage() {
                     }}
                   />
                   <span
-                    className="block w-2 h-2 rounded-full bg-brand-light"
+                    className="block w-2 h-2 rounded-full bg-accent-candle"
                     style={{
                       animation:
                         "typingBounce 1.4s infinite ease-in-out",
@@ -923,7 +944,7 @@ export default function ChatPage() {
                     }}
                   />
                   <span
-                    className="block w-2 h-2 rounded-full bg-brand-light"
+                    className="block w-2 h-2 rounded-full bg-accent-candle"
                     style={{
                       animation:
                         "typingBounce 1.4s infinite ease-in-out",
@@ -946,7 +967,7 @@ export default function ChatPage() {
                     setShowImageModal(false);
                     setGeneratedImageUrl(null);
                   }}
-                  className="px-4 py-2 rounded-lg bg-white/10 text-muted-strong text-sm hover:bg-white/20 transition-all"
+                  className="px-4 py-2 rounded-lg bg-surface-raised text-muted text-sm hover:bg-accent-candle/10 hover:text-accent-candle transition-all"
                 >
                   Close
                 </button>
@@ -962,9 +983,9 @@ export default function ChatPage() {
 
       {/* ── LEAVE SCENE CONFIRMATION ── */}
       {showLeaveConfirm && (
-        <div className="fixed inset-0 z-40 bg-void-950/80 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
-            <h2 className="text-xl font-light text-white mb-2">
+        <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-surface border border-line rounded-2xl p-8 text-center">
+            <h2 className="text-xl font-light text-foreground mb-2">
               Leave this scene?
             </h2>
             <p className="text-sm text-muted mt-2 mb-6">
@@ -982,7 +1003,7 @@ export default function ChatPage() {
                   checked={blocked}
                   disabled={blocking || blocked}
                   onChange={handleBlock}
-                  className="mt-0.5 accent-red-500"
+                  className="mt-0.5 accent-danger"
                 />
                 <span className="text-sm text-muted-strong">
                   {blocked
@@ -997,7 +1018,7 @@ export default function ChatPage() {
                 type="button"
                 onClick={handleLeaveScene}
                 disabled={leaveLoading}
-                className="w-full bg-gradient-to-r from-red-600 to-crimson-600 text-white font-medium py-3 rounded-xl hover:from-red-500 hover:to-crimson-500 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full bg-danger text-accent-foreground font-medium py-3 rounded-xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
               >
                 {leaveLoading ? "Leaving..." : "Yes, leave scene"}
               </button>
@@ -1015,11 +1036,11 @@ export default function ChatPage() {
 
       {/* ── REPORT THIS SCENE ── */}
       {showReport && (
-        <div className="fixed inset-0 z-40 bg-void-950/80 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8">
+        <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm flex items-center justify-center p-6">
+          <div className="max-w-md w-full bg-surface border border-line rounded-2xl p-8">
             {reportDone ? (
               <div className="text-center">
-                <h2 className="text-xl font-light text-white mb-2">
+                <h2 className="text-xl font-light text-foreground mb-2">
                   Report submitted
                 </h2>
                 <p className="text-sm text-muted mb-6">
@@ -1033,7 +1054,7 @@ export default function ChatPage() {
                       type="button"
                       onClick={handleBlock}
                       disabled={blocking || blocked}
-                      className="w-full bg-red-500/10 border border-red-500/20 text-danger font-medium py-3 rounded-xl hover:bg-red-500/15 disabled:opacity-60 disabled:hover:bg-red-500/10 transition-all"
+                      className="w-full bg-danger/10 border border-danger/20 text-danger font-medium py-3 rounded-xl hover:bg-danger/15 disabled:opacity-60 disabled:hover:bg-danger/10 transition-all"
                     >
                       {blocked
                         ? "Blocked — you won't be matched again"
@@ -1048,7 +1069,7 @@ export default function ChatPage() {
                       setShowReport(false);
                       setShowLeaveConfirm(true);
                     }}
-                    className="w-full bg-white/10 border border-white/10 text-white font-medium py-3 rounded-xl hover:bg-white/15 transition-all"
+                    className="w-full bg-surface-raised border border-line text-foreground font-medium py-3 rounded-xl hover:border-line-strong transition-all"
                   >
                     Leave this scene
                   </button>
@@ -1067,7 +1088,7 @@ export default function ChatPage() {
               </div>
             ) : (
               <>
-                <h2 className="text-xl font-light text-white mb-2">
+                <h2 className="text-xl font-light text-foreground mb-2">
                   Report this scene
                 </h2>
                 <p className="text-sm text-muted mb-5">
@@ -1093,8 +1114,8 @@ export default function ChatPage() {
                       className={[
                         "px-3 py-1.5 rounded-full text-xs border transition-all",
                         reportCategory === cat
-                          ? "bg-red-500/20 border-red-500/40 text-danger"
-                          : "bg-white/5 border-white/10 text-muted-strong hover:border-white/20",
+                          ? "bg-danger/20 border-danger/40 text-danger"
+                          : "bg-surface-sunken border-line text-muted-strong hover:border-line-strong",
                       ].join(" ")}
                     >
                       {cat}
@@ -1112,7 +1133,7 @@ export default function ChatPage() {
                   maxLength={1000}
                   rows={4}
                   placeholder="What happened? (optional if you picked a reason above)"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-red-500/40 focus:border-red-500/40 transition-all resize-none"
+                  className="w-full bg-surface-sunken border border-line rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted focus:outline-none focus:ring-2 focus:ring-danger/40 focus:border-danger/40 transition-all resize-none"
                 />
 
                 {reportMsg && (
@@ -1124,7 +1145,7 @@ export default function ChatPage() {
                     type="button"
                     onClick={handleReport}
                     disabled={reporting}
-                className="w-full bg-gradient-to-r from-red-600 to-crimson-600 text-white font-medium py-3 rounded-xl hover:from-red-500 hover:to-crimson-500 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full bg-danger text-accent-foreground font-medium py-3 rounded-xl hover:brightness-110 active:scale-95 transition-all disabled:opacity-50"
                   >
                     {reporting ? "Submitting..." : "Submit report"}
                   </button>

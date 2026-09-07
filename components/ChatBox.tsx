@@ -59,8 +59,8 @@ export default function ChatBox({
    */
   function getCharCountClass(): string {
     const len = input.length;
-    if (len >= MESSAGE_MAX_LENGTH) return "text-red-400";
-    if (len > 450) return "text-amber-400";
+    if (len >= MESSAGE_MAX_LENGTH) return "text-danger";
+    if (len > 450) return "text-warning";
     return "text-muted";
   }
 
@@ -77,18 +77,18 @@ export default function ChatBox({
   const displayError = localError || errorMessage;
 
   return (
-    <div className="sticky bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-void-950/80 via-void-950/60 to-transparent backdrop-blur-md">
+    <div className="sticky bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-background/80 via-background/60 to-transparent backdrop-blur-md">
       <div
         className={[
           "max-w-3xl mx-auto transition-all duration-300",
           showEnded
-            ? "rounded-2xl border border-white/10 bg-white/5"
-            : "rounded-2xl border border-white/10 bg-white/5 p-3",
+            ? "rounded-2xl border border-line bg-surface"
+            : "rounded-2xl border border-line bg-surface p-3",
         ].join(" ")}
       >
         {/* ── ERROR BANNER ── */}
         {showError && !showEnded && (
-          <div className="mb-3 flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-xs px-3 py-2 rounded-lg">
+          <div className="mb-3 flex items-center gap-2 bg-danger/10 border border-danger/30 text-danger text-xs px-3 py-2 rounded-lg">
             <span className="shrink-0">&#9888;</span>
             <span>{displayError}</span>
           </div>
@@ -96,8 +96,8 @@ export default function ChatBox({
 
         {/* ── ENDED / REVEALED STATE ── */}
         {showEnded ? (
-          <div className="flex flex-col items-center gap-3 py-8 border-t border-white/10">
-            <div className="w-full h-px bg-gradient-to-r from-transparent via-brand/50 to-transparent" />
+          <div className="flex flex-col items-center gap-3 py-8 border-t border-line">
+            <div className="w-full h-px bg-gradient-to-r from-transparent via-accent-candle/50 to-transparent" />
             <p className="text-muted-strong font-light italic tracking-wide text-sm">
               {isRevealed
                 ? "You have revealed your identities."
@@ -117,11 +117,11 @@ export default function ChatBox({
                     placeholder="AI is typing..."
                     value=""
                     readOnly
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted transition-all duration-200 resize-none min-h-[48px] max-h-[160px] overflow-y-auto opacity-60 cursor-not-allowed"
+                    className="flex-1 bg-surface-sunken border border-line rounded-xl px-4 py-3 text-foreground placeholder-muted transition-all duration-200 resize-none min-h-[48px] max-h-[160px] overflow-y-auto opacity-60 cursor-not-allowed"
                   />
                   <button
                     disabled
-                    className="px-5 py-3 rounded-xl font-medium text-sm text-white transition-all duration-200 select-none opacity-30 cursor-not-allowed bg-surface-raised"
+                    className="px-5 py-3 rounded-xl font-medium text-sm text-foreground transition-all duration-200 select-none opacity-30 cursor-not-allowed bg-surface-raised"
                   >
                     Send
                   </button>
@@ -131,7 +131,7 @@ export default function ChatBox({
                     Was three hand-rolled spans identical to TypingDots,
                     minus its aria-label/role="status". */}
                 <div className="mt-3 flex items-center justify-center">
-                  <div className="px-4 py-2 rounded-lg shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                  <div className="px-4 py-2 rounded-lg bg-accent-candle/10 border border-accent-candle/25">
                     <TypingDots />
                   </div>
                 </div>
@@ -157,13 +157,13 @@ export default function ChatBox({
                     rows={1}
                     maxLength={MESSAGE_MAX_LENGTH}
                     placeholder="Type your message..."
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 resize-none min-h-[48px] max-h-[160px] overflow-y-auto"
+                    className="flex-1 bg-surface-sunken border border-line rounded-xl px-4 py-3 text-foreground placeholder-muted transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-line-focus focus:border-accent-candle/50 resize-none min-h-[48px] max-h-[160px] overflow-y-auto"
                   />
                   <button
                     type="button"
                     onClick={handleSend}
                     disabled={isSendDisabled()}
-                    className="px-5 py-3 rounded-xl font-medium text-sm text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 active:scale-95 transform transition-all duration-200 select-none disabled:opacity-30 disabled:cursor-not-allowed disabled:from-line-strong disabled:to-surface-raised"
+                    className="px-5 py-3 rounded-xl font-medium text-sm text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light active:scale-95 transform transition-all duration-200 select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-30 disabled:cursor-not-allowed disabled:from-surface-raised disabled:to-surface-raised"
                   >
                     Send
                   </button>
