@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
-import { createClient } from "@/lib/supabase/client";
 
 type Mood = "Heartwarming" | "Funny" | "Awkward" | "Spicy" | "Melancholic";
 
@@ -11,28 +11,48 @@ type Confession = {
   id: string;
   text: string;
   mood: Mood;
-  time: string;
   likes: number;
+  created_at: string;
 };
 
-const moods: Mood[] = ["Heartwarming", "Funny", "Awkward", "Spicy", "Melancholic"];
+const MOODS: Mood[] = ["Heartwarming", "Funny", "Awkward", "Spicy", "Melancholic"];
 
 const moodStyles: Record<Mood, string> = {
-  Heartwarming: "bg-neon-green/10 text-neon-green border-neon-green/30",
-  Funny: "bg-gold-500/10 text-gold-400 border-gold-500/30",
-  Awkward: "bg-brand/10 text-brand-light border-brand/30",
-  Spicy: "bg-crimson-500/10 text-crimson-500 border-crimson-500/30",
-  Melancholic: "bg-brand/10 text-brand-lighter border-brand/30",
+  Heartwarming: "bg-accent-candle/10 text-accent-candle border-accent-candle/30",
+  Funny: "bg-gold-400/10 text-gold-400 border-gold-400/30",
+  Awkward: "bg-accent-rose/10 text-accent-rose border-accent-rose/30",
+  Spicy: "bg-crimson-500/10 text-crimson-400 border-crimson-500/30",
+  Melancholic: "bg-info/10 text-info border-info/30",
 };
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
+const MAX_CHARS = 500;
+
+function timeAgo(iso: string): string {
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
+
+function CandleMark() {
+  return (
+    <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true" className="opacity-70">
+      <defs>
+        <radialGradient id="candleGlow" cx="0.5" cy="0.3" r="0.7">
+          <stop offset="0%" stopColor="oklch(0.82 0.14 75 / 0.5)" />
+          <stop offset="100%" stopColor="oklch(0.82 0.14 75 / 0)" />
+        </radialGradient>
+      </defs>
+      <circle cx="18" cy="12" r="10" fill="url(#candleGlow)" />
+      <path d="M18 8 C16 11 16 13 18 14.5 C20 13 20 11 18 8 Z" fill="oklch(0.82 0.14 75)" />
+      <rect x="15.5" y="15" width="5" height="14" rx="1.5" fill="oklch(0.33 0.04 285)" />
+      <line x1="18" y1="13" x2="18" y2="15" stroke="oklch(0.95 0.01 60 / 0.6)" strokeWidth="0.8" />
+    </svg>
+  );
 }
 
 export default function ConfessionsPage() {
@@ -44,212 +64,179 @@ export default function ConfessionsPage() {
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
 
-  const charCount = text.length;
-  const maxChars = 500;
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from("confessions")
           .select("id, text, mood, likes, created_at")
           .order("created_at", { ascending: false })
           .limit(50);
-
-        if (error) throw error;
-
-        if (!cancelled && data) {
-          setConfessions(
-            data.map((c: Record<string, unknown>) => ({
-              id: c.id as string,
-              text: c.text as string,
-              mood: (c.mood as Mood) || "Heartwarming",
-              likes: (c.likes as number) ?? 0,
-              time: timeAgo(c.created_at as string),
-            }))
-          );
-        }
+        if (!cancelled && data) setConfessions(data as Confession[]);
       } catch {
-        // show empty state on error
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!text.trim() || !selectedMood || submitting) return;
-    setSubmitting(true);
+  const toggleLike = (id: string) => {
+    playSound("message");
+    setLikedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
+  const getLikes = (c: Confession) => c.likes + (likedIds.has(c.id) ? 1 : 0);
+
+  const handleSubmit = async () => {
+    const trimmed = text.trim();
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
     try {
       const supabase = createClient();
       const { data, error } = await supabase
         .from("confessions")
-        .insert({
-          text: text.trim(),
-          mood: selectedMood,
-          likes: 0,
-        })
+        .insert({ text: trimmed, mood: selectedMood ?? "Heartwarming", likes: 0 })
         .select("id, text, mood, likes, created_at")
         .single();
-
-      if (error) throw error;
-
+      if (error || !data) {
+        toast.error("Could not post your story — try again");
+        return;
+      }
       playSound("matchFound");
-      toast.success("Story posted anonymously!");
-
-      const newConfession: Confession = {
-        id: (data as Record<string, unknown>).id as string,
-        text: (data as Record<string, unknown>).text as string,
-        mood: ((data as Record<string, unknown>).mood as Mood) || selectedMood,
-        likes: 0,
-        time: "just now",
-      };
-      setConfessions([newConfession, ...confessions]);
+      toast.success("Posted anonymously");
+      setConfessions((prev) => [data as Confession, ...prev]);
       setText("");
       setSelectedMood(null);
       setShowForm(false);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to post story";
-      toast.error(message);
-      playSound("error");
+    } catch {
+      toast.error("Could not post your story — try again");
     } finally {
       setSubmitting(false);
     }
-  }
-
-  function toggleLike(id: string) {
-    playSound("message");
-    setLikedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }
-
-  function getLikes(confession: Confession) {
-    const liked = likedIds.has(confession.id);
-    return liked ? confession.likes + 1 : confession.likes;
-  }
+  };
 
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold gradient-text mb-2">Anonymous Stories</h1>
-          <p className="text-muted-strong">Confess. Share. Anonymize.</p>
-        </div>
+    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8 pb-14 md:pb-0">
+      <div className="max-w-2xl mx-auto">
+        <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-accent-candle mb-2">
+          After hours
+        </p>
+        <h1 className="font-retro text-3xl sm:text-4xl leading-tight mb-3">
+          Confessions from the <span className="gradient-text">dark.</span>
+        </h1>
+        <p className="text-sm text-muted mb-8">
+          Anonymous stories from the scene. No names, no faces.
+        </p>
 
         <button
           onClick={() => {
             playSound("click");
-            setShowForm(!showForm);
+            setShowForm((v) => !v);
           }}
-          className="mb-6 px-6 py-3 rounded-xl bg-brand text-white font-semibold hover:bg-brand-dark transition-colors border border-brand/30"
+          className="mb-6 px-6 h-11 rounded-full bg-surface-sunken border border-line text-foreground text-sm font-medium hover:border-accent-candle/40 hover:text-accent-candle active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
         >
-          {showForm ? "Cancel" : "Submit Anonymous Story"}
+          {showForm ? "Close" : "Share a story"}
         </button>
 
         {showForm && (
-          <form onSubmit={handleSubmit} className="mb-8 p-6 bg-surface-raised rounded-2xl border border-white/10 animate-slide-up">
+          <div className="mb-8 bg-surface border border-line rounded-[var(--radius-card)] p-6 animate-slide-up">
             <textarea
               value={text}
-              onChange={(e) => setText(e.target.value.slice(0, maxChars))}
-              placeholder="Share your story anonymously..."
-              className="w-full p-4 bg-surface rounded-xl border border-white/10 text-white placeholder:text-muted-faint focus:outline-none focus:border-brand/40 resize-none mb-2"
+              onChange={(e) => setText(e.target.value)}
+              maxLength={MAX_CHARS}
               rows={4}
-              required
+              placeholder="What happened in the scene stays in the scene — until now..."
+              className="w-full bg-surface-sunken border border-line rounded-[var(--radius-control)] px-4 py-3 text-sm text-foreground placeholder:text-muted-faint focus:outline-none focus:ring-2 focus:ring-line-focus focus:border-accent-candle/40 resize-none transition-all"
             />
-            <div className="text-right text-xs text-muted-faint mb-4">
-              {charCount} / {maxChars}
+            <div className="mt-2 flex items-center justify-between">
+              <p className="font-mono text-[11px] text-muted-faint uppercase tracking-wider">Mood</p>
+              <span className={`font-mono text-[11px] ${text.length >= MAX_CHARS ? "text-danger" : "text-muted-faint"}`}>
+                {text.length}/{MAX_CHARS}
+              </span>
             </div>
-            <label className="block text-sm text-muted-strong mb-2">Mood</label>
-            <div className="flex flex-wrap gap-2 mb-4">
-              {moods.map((mood) => (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {MOODS.map((m) => (
                 <button
-                  key={mood}
-                  type="button"
-                  onClick={() => {
-                    playSound("click");
-                    setSelectedMood(selectedMood === mood ? null : mood);
-                  }}
-                  className={`px-4 py-2 rounded-full text-xs font-medium border transition-all ${
-                    selectedMood === mood
-                      ? moodStyles[mood]
-                      : "bg-surface border-white/10 text-muted hover:border-white/20"
+                  key={m}
+                  onClick={() => setSelectedMood(selectedMood === m ? null : m)}
+                  className={`px-3 py-1.5 rounded-full text-xs border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                    selectedMood === m
+                      ? moodStyles[m]
+                      : "bg-surface-sunken border-line text-muted hover:border-line-strong hover:text-foreground"
                   }`}
                 >
-                  {mood}
+                  {m}
                 </button>
               ))}
             </div>
             <button
-              type="submit"
-              disabled={!text.trim() || !selectedMood || submitting}
-              className="px-6 py-3 rounded-xl bg-brand text-white font-semibold hover:bg-brand-dark transition-colors border border-brand/30 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              onClick={handleSubmit}
+              disabled={submitting || text.trim().length === 0}
+              className="mt-4 w-full h-11 rounded-full bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light text-accent-foreground text-sm font-semibold active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-40 disabled:hover:from-brand-dark disabled:hover:to-brand flex items-center justify-center gap-2"
             >
-              {submitting ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Posting...
-                </>
-              ) : (
-                "Post Anonymously"
+              {submitting && (
+                <span className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" />
               )}
+              {submitting ? "Posting..." : "Post Anonymously"}
             </button>
-          </form>
+          </div>
         )}
 
         {loading ? (
           <div className="space-y-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-surface/30 border border-white/5 rounded-2xl p-6 animate-pulse">
-                <div className="h-4 bg-surface-raised rounded w-full mb-2" />
-                <div className="h-4 bg-surface-raised rounded w-3/4 mb-4" />
-                <div className="h-6 bg-surface-raised rounded-full w-24" />
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="bg-surface-raised/40 border border-line rounded-[var(--radius-card)] p-5 animate-pulse">
+                <div className="h-3 w-20 rounded bg-surface-raised mb-3" />
+                <div className="h-4 w-full rounded bg-surface-raised mb-2" />
+                <div className="h-4 w-2/3 rounded bg-surface-raised" />
               </div>
             ))}
           </div>
         ) : confessions.length === 0 ? (
-          <div className="text-center py-20">
-            <p className="text-muted text-lg mb-2">No stories yet</p>
-            <p className="text-muted-faint text-sm">Be the first to share one!</p>
+          <div className="flex flex-col items-center py-16 text-center">
+            <CandleMark />
+            <p className="font-retro text-lg mt-4 mb-1">No stories yet</p>
+            <p className="text-sm text-muted">Be the first to share one.</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {confessions.map((confession) => {
-              const liked = likedIds.has(confession.id);
+            {confessions.map((c) => {
+              const liked = likedIds.has(c.id);
               return (
-                <div key={confession.id} className="bg-surface/30 border border-white/5 rounded-2xl p-6 hover:border-white/10 transition-colors">
-                  <p className="text-foreground-dim leading-relaxed mb-4">{confession.text}</p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium border ${moodStyles[confession.mood]}`}>
-                        {confession.mood}
-                      </span>
-                      <span className="text-xs text-muted-faint">{confession.time}</span>
-                    </div>
-                    <button
-                      onClick={() => toggleLike(confession.id)}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${
-                        liked
-                          ? "bg-crimson-500/10 border-crimson-500/30 text-crimson-500"
-                          : "bg-surface-raised border-white/10 text-muted hover:border-white/20"
-                      }`}
-                    >
-                      <span className={liked ? "scale-110" : ""}>♥</span>
-                      <span className="text-sm font-medium">{getLikes(confession)}</span>
-                    </button>
+                <article
+                  key={c.id}
+                  className="bg-surface border border-line rounded-[var(--radius-card)] p-5 hover:border-line-strong transition-colors"
+                >
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] border font-mono ${moodStyles[c.mood] ?? moodStyles.Heartwarming}`}>
+                      {c.mood}
+                    </span>
+                    <span className="font-mono text-[11px] text-muted-faint">{timeAgo(c.created_at)}</span>
                   </div>
-                </div>
+                  <p className="text-sm leading-relaxed text-foreground">{c.text}</p>
+                  <button
+                    onClick={() => toggleLike(c.id)}
+                    aria-pressed={liked}
+                    className={`mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                      liked
+                        ? "bg-accent-rose/10 border-accent-rose/30 text-accent-rose"
+                        : "bg-surface-raised border-line text-muted hover:border-accent-rose/30 hover:text-accent-rose"
+                    }`}
+                  >
+                    <span className={liked ? "scale-110" : ""}>&hearts;</span>
+                    <span className="font-mono">{getLikes(c)}</span>
+                  </button>
+                </article>
               );
             })}
           </div>
