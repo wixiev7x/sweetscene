@@ -1,17 +1,156 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { playSound } from "@/lib/utils/sound";
+import { createClient } from "@/lib/supabase/client";
+
+interface RecBot {
+  id: string;
+  name: string;
+  tagline: string | null;
+  is_nsfw: boolean | null;
+  gender: string | null;
+  genres: string[] | null;
+}
 
 const SCENARIOS = [
-  { kind: "diner", name: "Late-Night Diner", desc: "3am, greasy fries, a jukebox that only plays one song on repeat. The AI keeps throwing curveball questions at you both until sunrise." },
-  { kind: "rooftop", name: "Rooftop Stargazing", desc: "Ten minutes until the show starts. No names, just a shared blanket and a skyline." },
-  { kind: "train", name: "Train Compartment", desc: "You both swiped Anonymous. The AI seals the compartment doors. Six hours to the next stop." },
-  { kind: "airport", name: "Airport Lounge", desc: "Delayed flight. Shared charger. The AI narrates your layover like a rom-com trailer." },
-  { kind: "foodtruck", name: "Food Truck Festival", desc: "Last two in line. Rain starts. The AI makes you share an umbrella and opinions." },
-  { kind: "masquerade", name: "Masquerade Ball", desc: "Masks on. The AI assigns secret identities. Dance with a stranger who might be anyone." },
-] as const;
+  {
+    kind: "diner",
+    name: "Late-Night Diner",
+    desc: "3am, greasy fries, a jukebox that only plays one song on repeat. The AI keeps throwing curveball questions at you both until sunrise.",
+    mood: "Nostalgic",
+    setting: "A 24-hour diner, 3am",
+    hook: "\u201CPlay me something that isn\u2019t that song.\u201D",
+    tags: ["Romance", "Slice of Life"],
+  },
+  {
+    kind: "rooftop",
+    name: "Rooftop Stargazing",
+    desc: "Ten minutes until the show starts. No names, just a shared blanket and a skyline.",
+    mood: "Quiet wonder",
+    setting: "Rooftop, city skyline",
+    hook: "\u201CTen minutes until the meteor shower \u2014 make them count.\u201D",
+    tags: ["Romance", "Slice of Life"],
+  },
+  {
+    kind: "train",
+    name: "Train Compartment",
+    desc: "You both swiped Anonymous. The AI seals the compartment doors. Six hours to the next stop.",
+    mood: "Confined tension",
+    setting: "Night train, sealed compartment",
+    hook: "\u201CSix hours to the next stop. I don\u2019t sleep on trains.\u201D",
+    tags: ["Mystery", "Thriller"],
+  },
+  {
+    kind: "airport",
+    name: "Airport Lounge",
+    desc: "Delayed flight. Shared charger. The AI narrates your layover like a rom-com trailer.",
+    mood: "Layover limbo",
+    setting: "Gate 47, delayed flight",
+    hook: "\u201CYou have the charger. I have the outlet. Let\u2019s negotiate.\u201D",
+    tags: ["Comedy", "Romance"],
+  },
+  {
+    kind: "foodtruck",
+    name: "Food Truck Festival",
+    desc: "Last two in line. Rain starts. The AI makes you share an umbrella and opinions.",
+    mood: "Rainy & warm",
+    setting: "Food truck line, sudden rain",
+    hook: "\u201CThere\u2019s room under the umbrella. Barely.\u201D",
+    tags: ["Romance", "Comedy"],
+  },
+  {
+    kind: "masquerade",
+    name: "Masquerade Ball",
+    desc: "Masks on. The AI assigns secret identities. Dance with a stranger who might be anyone.",
+    mood: "Glamour & secrets",
+    setting: "Masquerade ball, midnight",
+    hook: "\u201CDance with me before the clocks matter again.\u201D",
+    tags: ["Fantasy", "Historical"],
+  },
+];
+
+const SUGGESTIONS = [
+  {
+    title: "The Last Seat",
+    category: "Unexpected meeting",
+    premise: "Both of you grabbed the same table at a packed midnight caf\u00E9 \u2014 and neither of you is leaving.",
+    mood: "Spark",
+    setting: "Midnight caf\u00E9",
+    hook: "\u201CYou order first. I\u2019ll pretend I didn\u2019t want your table anyway.\u201D",
+    tags: ["Romance", "Slice of Life"],
+  },
+  {
+    title: "First Chair",
+    category: "Rivalry",
+    premise: "Two leads. One spotlight. The recital is in a week and the teacher is watching.",
+    mood: "Charged",
+    setting: "Rehearsal hall, after hours",
+    hook: "\u201CRun it again. I dare you to be better than me.\u201D",
+    tags: ["Drama"],
+  },
+  {
+    title: "The Unsent Letter",
+    category: "Mystery",
+    premise: "A letter arrives at your door addressed to someone who never lived there. The handwriting is familiar.",
+    mood: "Eerie",
+    setting: "Old apartment building",
+    hook: "\u201CRead it out loud. I want to hear which parts make you pause.\u201D",
+    tags: ["Mystery", "Thriller"],
+  },
+  {
+    title: "Kitchen at 2AM",
+    category: "Quiet night",
+    premise: "Neither of you could sleep. The kitchen light found you both.",
+    mood: "Tender",
+    setting: "Shared kitchen, 2am",
+    hook: "\u201CSit. The tea\u2019s already made \u2014 I guessed your sugar.\u201D",
+    tags: ["Romance", "Slice of Life"],
+  },
+  {
+    title: "The Wrong Platform",
+    category: "Travel encounter",
+    premise: "You both got off at the wrong stop in a city where neither of you speaks the language.",
+    mood: "Adrift, together",
+    setting: "Foreign train platform",
+    hook: "\u201CWe\u2019re lost. But we\u2019re lost in the same direction.\u201D",
+    tags: ["Adventure", "Romance"],
+  },
+  {
+    title: "The Keeper",
+    category: "Shared secret",
+    premise: "You both know something about tonight that no one else can ever find out.",
+    mood: "Conspiratorial",
+    setting: "Rooftop stairwell",
+    hook: "\u201CIf anyone asks, we\u2019ve been here the whole time.\u201D",
+    tags: ["Mystery", "Drama"],
+  },
+  {
+    title: "The Night Court",
+    category: "Fantasy court",
+    premise: "A masked court convenes at midnight; you\u2019ve both been summoned by a name you didn\u2019t recognize.",
+    mood: "Regal, dangerous",
+    setting: "Candlelit throne room",
+    hook: "\u201CBow or don\u2019t. But decide before the Regent notices.\u201D",
+    tags: ["Fantasy", "Historical"],
+  },
+  {
+    title: "One More Take",
+    category: "Creative collaboration",
+    premise: "The demo is due at dawn. The booth is booked till then. The song isn\u2019t finished.",
+    mood: "Electric focus",
+    setting: "Recording studio, 1am",
+    hook: "\u201CSing it wrong again. That was almost the one.\u201D",
+    tags: ["Drama", "Slice of Life"],
+  },
+];
+
+function genderChip(g: string | null) {
+  if (g === "female") return "F";
+  if (g === "male") return "M";
+  return null;
+}
 
 function SceneArt({ kind }: { kind: string }) {
   return (
@@ -171,6 +310,45 @@ function JarArt() {
 export default function ScenariosPage() {
   const [mashup, setMashup] = useState<string | null>(null);
   const [shaking, setShaking] = useState(false);
+  const [botsResult, setBotsResult] = useState<{ key: number; bots: RecBot[]; error: boolean } | null>(null);
+  const [sugIdx, setSugIdx] = useState(() => Math.floor(Math.random() * SUGGESTIONS.length));
+  const [recOffsets, setRecOffsets] = useState<Record<string, number>>({});
+  const [reloadKey, setReloadKey] = useState(0);
+  const bots = botsResult?.key === reloadKey ? botsResult.bots : [];
+  const botsLoading = !botsResult || botsResult.key !== reloadKey;
+  const botsError = botsResult?.key === reloadKey && botsResult.error;
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data } = await supabase
+          .from("bots")
+          .select("id, name, tagline, is_nsfw, gender, genres")
+          .limit(20);
+        if (!cancelled) setBotsResult({ key: reloadKey, bots: (data as RecBot[]) ?? [], error: false });
+      } catch {
+        if (!cancelled) setBotsResult({ key: reloadKey, bots: [], error: true });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [reloadKey]);
+
+  function pickRec(tags: string[], offsetKey: string): RecBot | null {
+    if (bots.length === 0) return null;
+    const offset = recOffsets[offsetKey] ?? 0;
+    const matching = bots.filter((b) => b.genres?.some((g) => tags.includes(g)));
+    const pool = matching.length > 0 ? matching : bots;
+    return pool[offset % pool.length];
+  }
+
+  function rotateRec(key: string) {
+    playSound("click");
+    setRecOffsets((prev) => ({ ...prev, [key]: (prev[key] ?? 0) + 1 }));
+  }
 
   function shakeJar() {
     playSound("matchSearch");
@@ -182,6 +360,10 @@ export default function ScenariosPage() {
     setTimeout(() => setShaking(false), 600);
   }
 
+  const suggestion = SUGGESTIONS[sugIdx];
+  const sugRec = pickRec(suggestion.tags, `sug-${sugIdx}`);
+  const chip = genderChip(sugRec?.gender ?? null);
+
   return (
     <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
       <div className="max-w-5xl mx-auto">
@@ -192,9 +374,7 @@ export default function ScenariosPage() {
         <p className="text-sm text-muted mb-8">Cinematic openers, hosted by an AI that keeps the night moving.</p>
 
         <div className="bg-surface border border-line rounded-[var(--radius-card)] p-6 sm:p-8 mb-10 flex flex-col sm:flex-row items-center gap-6">
-          <div
-            style={shaking ? { animation: "jarShake 0.6s ease-in-out" } : undefined}
-          >
+          <div style={shaking ? { animation: "jarShake 0.6s ease-in-out" } : undefined}>
             <JarArt />
           </div>
           <div className="flex-1 text-center sm:text-left">
@@ -216,29 +396,192 @@ export default function ScenariosPage() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {SCENARIOS.map((s, i) => (
-            <div
-              key={s.kind}
-              className="group bg-surface border border-line rounded-[var(--radius-card)] overflow-hidden hover:border-line-strong hover:-translate-y-0.5 transition-all focus-within:border-line-strong"
-              style={{ animation: `slideUp 0.4s ease-out ${i * 0.1}s both` }}
+        <section className="mb-10" aria-labelledby="solo-suggestion">
+          <div className="flex items-center justify-between mb-3">
+            <h2 id="solo-suggestion" className="font-retro text-xl text-foreground">
+              Scene for <span className="gradient-text">one.</span>
+            </h2>
+            <button
+              onClick={() => {
+                playSound("click");
+                setSugIdx((i) => (i + 1) % SUGGESTIONS.length);
+              }}
+              className="text-xs font-mono uppercase tracking-wider text-muted hover:text-accent-candle border border-line rounded-full px-4 py-2 ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none transition-colors"
             >
-              <div className="aspect-[16/10] overflow-hidden">
-                <SceneArt kind={s.kind} />
-              </div>
-              <div className="p-5">
-                <h3 className="font-retro text-base text-foreground mb-2">{s.name}</h3>
-                <p className="text-sm text-muted leading-relaxed mb-4">{s.desc}</p>
-                <Link
-                  href="/login"
-                  onClick={() => playSound("click")}
-                  className="block w-full text-center px-4 py-2.5 rounded-full font-medium text-sm text-foreground bg-surface-sunken border border-line hover:border-accent-candle/40 hover:text-accent-candle active:scale-95 transform transition-all focus-visible:ring-2 ring-line-focus"
-                >
-                  Join Scene
-                </Link>
-              </div>
+              Another scene →
+            </button>
+          </div>
+
+          {botsError ? (
+            <div className="bg-surface border border-line rounded-[var(--radius-card)] p-8 text-center">
+              <p className="text-sm text-muted mb-4">Couldn&rsquo;t load the scene shelf — the candles flickered.</p>
+              <button
+                onClick={() => setReloadKey((k) => k + 1)}
+                className="px-5 py-2.5 rounded-full border border-line text-sm text-foreground hover:border-accent-candle/40 hover:text-accent-candle ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
+              >
+                Try again
+              </button>
             </div>
-          ))}
+          ) : (
+            <div className="bg-surface border border-line rounded-[var(--radius-card)] p-6 sm:p-8">
+              <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent-candle mb-2">
+                {suggestion.category}
+              </p>
+              <h3 className="font-retro text-2xl text-foreground mb-2">{suggestion.title}</h3>
+              <p className="text-sm text-muted leading-relaxed mb-4 max-w-xl">{suggestion.premise}</p>
+
+              <div className="flex flex-wrap gap-2 mb-4">
+                <span className="text-[11px] px-2.5 py-1 rounded-full border border-accent-rose/30 bg-accent-rose/10 text-accent-rose font-mono">
+                  {suggestion.mood}
+                </span>
+                <span className="text-[11px] px-2.5 py-1 rounded-full border border-line bg-surface-sunken text-muted font-mono">
+                  {suggestion.setting}
+                </span>
+              </div>
+
+              <p className="text-sm text-foreground/80 italic leading-relaxed mb-6 border-l-2 border-accent-candle/40 pl-4 max-w-lg">
+                {suggestion.hook}
+              </p>
+
+              {botsLoading ? (
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-11 h-11 rounded-full bg-foreground/5 animate-pulse" />
+                  <div className="flex-1 max-w-[180px]">
+                    <div className="h-3.5 bg-foreground/5 rounded animate-pulse mb-2" />
+                    <div className="h-2.5 bg-foreground/5 rounded animate-pulse w-2/3" />
+                  </div>
+                </div>
+              ) : bots.length === 0 ? (
+                <div className="mb-6 py-4 border border-dashed border-line rounded-[var(--radius-control)] text-center">
+                  <p className="text-sm text-muted-faint">No characters to host this scene yet.</p>
+                  <Link
+                    href="/create"
+                    className="text-xs text-accent-candle hover:text-accent-candle-deep focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none rounded"
+                  >
+                    Create the first one →
+                  </Link>
+                </div>
+              ) : sugRec ? (
+                <div className="flex items-center gap-3 mb-6 bg-surface-sunken border border-line rounded-[var(--radius-control)] px-4 py-3 max-w-md">
+                  <div className="relative w-11 h-11 rounded-full bg-accent-candle/15 flex items-center justify-center text-base font-bold text-accent-candle font-retro flex-shrink-0">
+                    {sugRec.name.charAt(0).toUpperCase()}
+                    {chip && (
+                      <span className="absolute -top-1 -right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-background text-muted border border-line">
+                        {chip}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-foreground truncate">{sugRec.name}</p>
+                    <p className="text-xs text-muted truncate">
+                      {sugRec.gender === "female"
+                        ? "She hosts this scene"
+                        : sugRec.gender === "male"
+                          ? "He hosts this scene"
+                          : "Your host for this scene"}
+                      {sugRec.tagline ? ` — ${sugRec.tagline}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => rotateRec(`sug-${sugIdx}`)}
+                    aria-label="Different character"
+                    className="text-xs font-mono uppercase tracking-wider text-muted hover:text-accent-candle px-2 py-1 rounded ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none transition-colors"
+                  >
+                    Swap
+                  </button>
+                </div>
+              ) : null}
+
+              {sugRec && (
+                <Link
+                  href={`/play/${sugRec.id}`}
+                  onClick={() => playSound("matchSearch")}
+                  className="inline-flex h-[48px] items-center rounded-full bg-gradient-to-r from-brand to-brand-dark px-7 text-sm font-semibold text-accent-foreground ios-press shadow-lg shadow-brand/20 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
+                >
+                  Start solo roleplay
+                </Link>
+              )}
+            </div>
+          )}
+        </section>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {SCENARIOS.map((s, i) => {
+            const rec = pickRec(s.tags, s.kind);
+            const recChip = genderChip(rec?.gender ?? null);
+            return (
+              <div
+                key={s.kind}
+                className="group bg-surface border border-line rounded-[var(--radius-card)] overflow-hidden hover:border-line-strong hover:-translate-y-0.5 transition-all focus-within:border-line-strong"
+                style={{ animation: `slideUp 0.4s ease-out ${i * 0.1}s both` }}
+              >
+                <div className="aspect-[16/10] overflow-hidden">
+                  <SceneArt kind={s.kind} />
+                </div>
+                <div className="p-5">
+                  <h3 className="font-retro text-base text-foreground mb-2">{s.name}</h3>
+                  <p className="text-sm text-muted leading-relaxed mb-3">{s.desc}</p>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-accent-rose/30 bg-accent-rose/10 text-accent-rose font-mono">
+                      {s.mood}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full border border-line bg-surface-sunken text-muted font-mono">
+                      {s.setting}
+                    </span>
+                  </div>
+                  <p className="text-xs text-foreground/70 italic mb-4 leading-relaxed">{s.hook}</p>
+
+                  {botsLoading ? (
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-foreground/5 animate-pulse" />
+                      <div className="h-2.5 bg-foreground/5 rounded animate-pulse w-24" />
+                    </div>
+                  ) : rec ? (
+                    <div className="flex items-center gap-2.5 mb-4">
+                      <div className="relative w-8 h-8 rounded-full bg-accent-candle/15 flex items-center justify-center text-xs font-bold text-accent-candle font-retro flex-shrink-0">
+                        {rec.name.charAt(0).toUpperCase()}
+                        {recChip && (
+                          <span className="absolute -top-1 -right-1 text-[8px] font-mono px-1 py-0.5 rounded bg-background text-muted border border-line">
+                            {recChip}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted truncate flex-1">
+                        Hosted by <span className="text-foreground font-medium">{rec.name}</span>
+                      </p>
+                      <button
+                        onClick={() => rotateRec(s.kind)}
+                        aria-label={`Different character for ${s.name}`}
+                        className="text-[10px] font-mono uppercase tracking-wider text-muted-faint hover:text-accent-candle px-1.5 py-0.5 rounded ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none transition-colors"
+                      >
+                        Swap
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-faint mb-4">No host yet — the scene plays fine with just you and the AI.</p>
+                  )}
+
+                  {rec ? (
+                    <Link
+                      href={`/play/${rec.id}`}
+                      onClick={() => playSound("click")}
+                      className="block w-full text-center px-4 py-2.5 rounded-full font-medium text-sm text-foreground bg-surface-sunken border border-line hover:border-accent-candle/40 hover:text-accent-candle active:scale-95 transform transition-all focus-visible:ring-2 ring-line-focus"
+                    >
+                      Start solo roleplay
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/explore"
+                      onClick={() => playSound("click")}
+                      className="block w-full text-center px-4 py-2.5 rounded-full font-medium text-sm text-foreground bg-surface-sunken border border-line hover:border-accent-candle/40 hover:text-accent-candle active:scale-95 transform transition-all focus-visible:ring-2 ring-line-focus"
+                    >
+                      Browse characters
+                    </Link>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className="text-center mt-12">

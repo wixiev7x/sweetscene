@@ -2,6 +2,14 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { MATCHMAKING_TIMEOUT_MS, type QueueRow } from "@/lib/matchmaking";
 
+function genderCompatible(a: QueueRow, b: QueueRow): boolean {
+  const pa = a.preferred_gender ?? null;
+  const pb = b.preferred_gender ?? null;
+  if (!pa || !pb) return true;
+  if (pa === "other" || pb === "other") return true;
+  return (pa === "male" && pb === "female") || (pa === "female" && pb === "male");
+}
+
 export async function findAndCreateMatches(): Promise<number> {
   const admin = createAdminClient();
   const { data: waiting } = await admin
@@ -22,6 +30,9 @@ export async function findAndCreateMatches(): Promise<number> {
       if (matchedIds.has(waiting[j].id)) continue;
       const a = waiting[i] as QueueRow;
       const b = waiting[j] as QueueRow;
+      if (a.mode === "quick" || b.mode === "quick") {
+        if (!genderCompatible(a, b)) continue;
+      }
       const tagsOverlap =
         a.mode === "blind_date" ||
         b.mode === "blind_date" ||

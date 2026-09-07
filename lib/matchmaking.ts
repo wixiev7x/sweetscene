@@ -3,6 +3,7 @@ export const MATCHMAKING_POLL_INTERVAL_MS = 3000;
 
 export type MatchMode = "quick" | "kink" | "blind_date";
 export type MatchStatus = "idle" | "searching" | "matched" | "timeout" | "cancelled";
+export type GenderPref = "male" | "female" | "other";
 
 export interface QueueRow {
   id: string;
@@ -14,4 +15,5 @@ export interface QueueRow {
   matched_at: string | null;
   created_at: string;
   match_id: string | null;
+  preferred_gender?: GenderPref | null;
 }

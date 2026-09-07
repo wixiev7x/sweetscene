@@ -10,6 +10,11 @@ type BurstChildProps = {
 export default function HeartBurst({ children }: { children: React.ReactElement<BurstChildProps> }) {
   const burst = useCallback((e: React.MouseEvent<HTMLElement>) => {
     const host = e.currentTarget;
+    const last = Number(host.dataset.hbLast ?? 0);
+    const now = Date.now();
+    host.dataset.hbLast = String(now);
+    if (now - last < 600) return;
+
     host.classList.remove("hb-pop");
     void host.offsetWidth;
     host.classList.add("hb-pop");

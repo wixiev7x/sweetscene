@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
+import HeartBurst from "@/components/ui/HeartBurst";
 
 type Mood = "Heartwarming" | "Funny" | "Awkward" | "Spicy" | "Melancholic";
 
@@ -62,6 +63,7 @@ export default function ConfessionsPage() {
   const [text, setText] = useState("");
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const likeLock = useRef<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -86,6 +88,9 @@ export default function ConfessionsPage() {
   }, []);
 
   const toggleLike = (id: string) => {
+    if (likeLock.current.has(id)) return;
+    likeLock.current.add(id);
+    window.setTimeout(() => likeLock.current.delete(id), 500);
     playSound("message");
     setLikedIds((prev) => {
       const next = new Set(prev);
@@ -224,18 +229,21 @@ export default function ConfessionsPage() {
                     <span className="font-mono text-[11px] text-muted-faint">{timeAgo(c.created_at)}</span>
                   </div>
                   <p className="text-sm leading-relaxed text-foreground">{c.text}</p>
-                  <button
-                    onClick={() => toggleLike(c.id)}
-                    aria-pressed={liked}
-                    className={`mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-                      liked
-                        ? "bg-accent-rose/10 border-accent-rose/30 text-accent-rose"
-                        : "bg-surface-raised border-line text-muted hover:border-accent-rose/30 hover:text-accent-rose"
-                    }`}
-                  >
-                    <span className={liked ? "scale-110" : ""}>&hearts;</span>
-                    <span className="font-mono">{getLikes(c)}</span>
-                  </button>
+                  <HeartBurst>
+                    <button
+                      onClick={() => toggleLike(c.id)}
+                      aria-pressed={liked}
+                      aria-label={liked ? "Unlike this story" : "Like this story"}
+                      className={`mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
+                        liked
+                          ? "bg-accent-rose/10 border-accent-rose/30 text-accent-rose"
+                          : "bg-surface-raised border-line text-muted hover:border-accent-rose/30 hover:text-accent-rose"
+                      }`}
+                    >
+                      <span className={liked ? "scale-110" : ""}>&hearts;</span>
+                      <span className="font-mono">{getLikes(c)}</span>
+                    </button>
+                  </HeartBurst>
                 </article>
               );
             })}

@@ -11,7 +11,16 @@ export async function POST(req: NextRequest) {
   await expireOldEntries();
 
   const body = await req.json();
-  const { kink_tags = [], mode = "quick" } = body as { kink_tags?: string[]; mode?: string };
+  const { kink_tags = [], mode = "quick", preferred_gender } = body as {
+    kink_tags?: string[];
+    mode?: string;
+    preferred_gender?: string | null;
+  };
+
+  const genderPref =
+    preferred_gender === "male" || preferred_gender === "female" || preferred_gender === "other"
+      ? preferred_gender
+      : null;
 
   const admin = createAdminClient();
   await admin
@@ -22,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const { data, error } = await admin
     .from("matchmaking_queue")
-    .insert({ user_id: user.id, kink_tags, mode, status: "waiting" })
+    .insert({ user_id: user.id, kink_tags, mode, status: "waiting", preferred_gender: genderPref })
     .select("id")
     .single();
 

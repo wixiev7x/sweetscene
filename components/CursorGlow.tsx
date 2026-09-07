@@ -4,42 +4,27 @@ import { useEffect, useRef } from "react";
 
 export default function CursorGlow() {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const dotRef = useRef<HTMLDivElement | null>(null);
-  const trailRef = useRef<HTMLDivElement | null>(null);
+  const innerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (window.matchMedia("(pointer: coarse)").matches) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const root = rootRef.current;
-    const dot = dotRef.current;
-    const trail = trailRef.current;
-    if (!root || !dot || !trail) return;
+    const inner = innerRef.current;
+    if (!root || !inner) return;
 
-    document.body.classList.add("cursor-glow-on");
-
-    let mx = window.innerWidth / 2;
-    let my = window.innerHeight / 2;
-    let dx = mx;
-    let dy = my;
-    let tx = mx;
-    let ty = my;
-    let scale = 1;
-    let targetScale = 1;
-    let raf = 0;
+    document.body.classList.add("heart-cursor-on");
 
     const onMove = (e: MouseEvent) => {
-      mx = e.clientX;
-      my = e.clientY;
+      root.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0)`;
       root.style.opacity = "1";
     };
     const onOver = (e: MouseEvent) => {
       const t = e.target as HTMLElement | null;
-      if (t && t.closest("a, button")) {
-        targetScale = 3.2;
-        dot.classList.add("cursor-ring");
+      if (t && t.closest("a, button, [role='button'], label")) {
+        inner.classList.add("cursor-hot");
       } else {
-        targetScale = 1;
-        dot.classList.remove("cursor-ring");
+        inner.classList.remove("cursor-hot");
       }
     };
     const onLeave = () => {
@@ -49,38 +34,35 @@ export default function CursorGlow() {
       root.style.opacity = "1";
     };
 
-    const loop = () => {
-      dx += (mx - dx) * 0.4;
-      dy += (my - dy) * 0.4;
-      tx += (mx - tx) * 0.15;
-      ty += (my - ty) * 0.15;
-      scale += (targetScale - scale) * 0.2;
-      dot.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
-      trail.style.transform = `translate3d(${tx}px, ${ty}px, 0)`;
-      raf = requestAnimationFrame(loop);
-    };
-
     window.addEventListener("mousemove", onMove, { passive: true });
     document.addEventListener("mouseover", onOver, { passive: true });
     document.addEventListener("mouseleave", onLeave);
     document.addEventListener("mouseenter", onEnter);
-    raf = requestAnimationFrame(loop);
 
     return () => {
-      cancelAnimationFrame(raf);
       window.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseover", onOver);
       document.removeEventListener("mouseleave", onLeave);
       document.removeEventListener("mouseenter", onEnter);
-      document.body.classList.remove("cursor-glow-on");
+      document.body.classList.remove("heart-cursor-on");
     };
   }, []);
 
   return (
-    <div ref={rootRef} className="cursor-glow" aria-hidden="true">
-      <div ref={trailRef} className="cursor-trail" />
-      <div ref={dotRef} className="cursor-dot">
-        <span className="cursor-heart">♥</span>
+    <div ref={rootRef} className="heart-cursor" aria-hidden="true">
+      <div ref={innerRef} className="heart-cursor-inner">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          shapeRendering="geometricPrecision"
+          aria-hidden="true"
+        >
+          <path
+            className="heart-cursor-path"
+            d="M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z"
+          />
+        </svg>
       </div>
     </div>
   );

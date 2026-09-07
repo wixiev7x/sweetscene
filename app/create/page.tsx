@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const GENRES = ["Romance", "Mystery", "Fantasy", "Sci-Fi", "Slice of Life", "Thriller"];
 const STYLES = ["Casual", "Formal", "Poetic", "Dark", "Playful", "Mysterious"];
+const GENDERS = ["Female", "Male", "Other"];
 
 const inputClass =
   "w-full bg-surface-sunken border border-line rounded-[var(--radius-control)] px-4 py-3 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:ring-2 focus:ring-line-focus focus:border-line-focus transition-colors";
@@ -20,6 +21,7 @@ export default function CreatePage() {
   const [genres, setGenres] = useState<string[]>([]);
   const [styles, setStyles] = useState<string[]>([]);
   const [isNsfw, setIsNsfw] = useState(false);
+  const [gender, setGender] = useState("other");
   const [published, setPublished] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -81,6 +83,7 @@ export default function CreatePage() {
         personality: personality.trim(),
         opening_line: openingLine.trim(),
         is_nsfw: isNsfw,
+        gender,
         genres,
         styles,
         image_url: imageUrl,
@@ -190,6 +193,31 @@ export default function CreatePage() {
           <div>
             <label className="text-xs text-muted uppercase tracking-wider mb-2 block">Opening line</label>
             <textarea value={openingLine} onChange={(e) => setOpeningLine(e.target.value)} placeholder="What does this character say first? Set the scene…" required rows={3} className={`${inputClass} resize-none`} />
+          </div>
+
+          <div>
+            <label className="text-xs text-muted uppercase tracking-wider mb-2 block">Gender presentation</label>
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Gender presentation">
+              {GENDERS.map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => {
+                    setGender(g.toLowerCase());
+                    playSound("click");
+                  }}
+                  aria-pressed={gender === g.toLowerCase()}
+                  className={`px-4 py-1.5 rounded-full text-sm border transition-colors focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none ${
+                    gender === g.toLowerCase()
+                      ? "bg-accent-rose/15 border-accent-rose/40 text-accent-rose"
+                      : "bg-surface-sunken border-line text-muted hover:text-foreground hover:border-line-strong"
+                  }`}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-faint mt-2">Used to tailor solo recommendations — never shown as a label.</p>
           </div>
 
           <div>

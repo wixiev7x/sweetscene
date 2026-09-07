@@ -339,81 +339,55 @@ body {
   100% { transform: scale(1); }
 }
 
-/* ── Rose glow cursor ── */
-.cursor-glow {
+/* ── Heart cursor ── */
+.heart-cursor {
   position: fixed;
   top: 0;
   left: 0;
   z-index: 10000;
   pointer-events: none;
-  mix-blend-mode: screen;
   opacity: 0;
-  transition: opacity 300ms ease;
+  transition: opacity 160ms ease;
+  will-change: transform;
 }
-body.cursor-glow-on {
+body.heart-cursor-on {
   cursor: none;
 }
-.cursor-glow-on a,
-.cursor-glow-on button,
-.cursor-glow-on label,
-.cursor-glow-on input,
-.cursor-glow-on textarea,
-.cursor-glow-on select,
-.cursor-glow-on [contenteditable] {
+.heart-cursor-on input,
+.heart-cursor-on textarea,
+.heart-cursor-on select,
+.heart-cursor-on [contenteditable] {
   cursor: auto;
 }
-.cursor-trail {
+.heart-cursor-inner {
   position: absolute;
-  top: -12px;
-  left: -12px;
-  width: 24px;
-  height: 24px;
-  border-radius: 9999px;
-  background: radial-gradient(circle, var(--accent-rose) 0%, transparent 70%);
-  filter: blur(10px);
-  opacity: 0.35;
-  will-change: transform;
+  top: -10px;
+  left: -10px;
+  width: 20px;
+  height: 20px;
+  transform: scale(1);
+  transition: transform 160ms ease;
 }
-.cursor-dot {
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 9999px;
-  background: var(--accent-rose);
-  border: 1.5px solid transparent;
-  box-shadow: 0 0 10px 2px color-mix(in srgb, var(--accent-rose) 60%, transparent);
-  transition: background 180ms ease, border-color 180ms ease;
-  will-change: transform;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.heart-cursor-inner.cursor-hot {
+  transform: scale(1.28);
 }
-.cursor-dot .cursor-heart {
-  font-size: 7px;
-  line-height: 1;
-  color: var(--accent-rose);
-  opacity: 0;
-  transition: opacity 180ms ease;
+.heart-cursor-path {
+  fill: var(--accent-rose);
+  transition: fill 160ms ease;
 }
-.cursor-dot.cursor-ring {
-  background: transparent;
-  border-color: var(--accent-rose);
-}
-.cursor-dot.cursor-ring .cursor-heart {
-  opacity: 1;
+.heart-cursor-inner.cursor-hot .heart-cursor-path {
+  fill: var(--accent-candle);
 }
 @media (pointer: coarse) {
-  .cursor-glow {
+  .heart-cursor {
     display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cursor-glow {
+  .heart-cursor {
     display: none;
   }
-  body.cursor-glow-on {
+  body.heart-cursor-on {
     cursor: auto;
   }
   .hb-heart {
