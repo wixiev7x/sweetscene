@@ -32,9 +32,9 @@ export default function AdminPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted">Loading...</p>
-      </main>
+      </div>
     );
   }
 
@@ -90,7 +90,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <main className="min-h-screen p-8">
+    <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-8">Admin Dashboard</h1>
 
@@ -146,6 +146,6 @@ export default function AdminPage() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

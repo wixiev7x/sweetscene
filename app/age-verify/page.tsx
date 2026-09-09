@@ -27,18 +27,18 @@ export default function AgeVerifyPage() {
   }
 
   return (
-    <main className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6 pb-14 md:pb-0">
+    <div className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6">
       <div className="w-full max-w-md">
         <div className="ios-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[20px] p-8 text-center">
-          <div className="w-14 h-14 rounded-full bg-neon-magenta/20 flex items-center justify-center mx-auto mb-5">
-            <span className="text-2xl text-neon-magenta">18+</span>
+          <div className="w-14 h-14 rounded-full bg-brand/20 flex items-center justify-center mx-auto mb-5">
+            <span className="text-2xl text-brand">18+</span>
           </div>
 
           <h1 className="text-2xl font-semibold mb-3">Age Verification</h1>
           <p className="text-sm text-muted mb-8 leading-relaxed">
             SweetScene is an anonymous AI matchmaking platform. You must be 18
-            or older to continue. This confirmation is recorded once and never
-            asked again.
+            or older to continue. This confirmation is recorded once on your
+            account.
           </p>
 
           <button
@@ -69,6 +69,6 @@ export default function AgeVerifyPage() {
           False confirmations violate our Terms of Service.
         </p>
       </div>
-    </main>
+    </div>
   );
 }

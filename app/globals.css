@@ -4,8 +4,8 @@
  * SweetScene Design System — Candlelit Noir
  *
  * Deep violet-ink base, warm candlelight amber + rose accents,
- * neon pink reserved for primary CTAs. Fraunces for display,
- * Sora for UI, Space Mono for stats. Raw values on :root,
+ * brand pink reserved for primary CTAs. DM Serif Display for
+ * display, Fira Sans for UI and body. Raw values on :root,
  * mapped to Tailwind utilities via @theme inline.
  * ════════════════════════════════════════════════════════════════════ */
 
@@ -55,22 +55,6 @@
   --accent-candle-deep: oklch(0.74 0.13 70);
   --accent-rose: oklch(0.72 0.16 10);
 
-  /* ── Neon (remapped to palette) ── */
-  --neon-magenta: oklch(0.62 0.22 350);
-  --neon-crimson: oklch(0.62 0.2 15);
-  --neon-green: oklch(0.75 0.15 155);
-
-  /* ── Crimson → rose family ── */
-  --crimson-600: oklch(0.55 0.17 12);
-  --crimson-500: oklch(0.62 0.19 12);
-  --crimson-400: oklch(0.7 0.16 12);
-
-  /* ── Gold → amber family ── */
-  --gold-700: oklch(0.68 0.12 72);
-  --gold-600: oklch(0.74 0.13 72);
-  --gold-500: oklch(0.82 0.14 75);
-  --gold-400: oklch(0.88 0.11 78);
-
   /* ── Semantic accents ── */
   --accent: oklch(0.95 0.01 60);
   --accent-foreground: oklch(0.14 0.02 285);
@@ -80,32 +64,40 @@
   --info: oklch(0.72 0.11 270);
   --restricted: oklch(0.75 0.14 45);
 
-  /* ── iOS Design Tokens (candlelit) ── */
-  --ios-bg: oklch(0.12 0.02 285);
-  --ios-elevated: oklch(0.19 0.03 285);
-  --ios-secondary: oklch(0.23 0.03 285);
-  --ios-hairline: oklch(1 0 0 / 8%);
-  --ios-red: oklch(0.65 0.2 25);
-  --ios-green: oklch(0.75 0.15 155);
-  --ios-blue: oklch(0.72 0.11 270);
-  --ios-orange: oklch(0.82 0.14 75);
-  --ios-purple: oklch(0.62 0.22 350);
-  --ios-yellow: oklch(0.88 0.11 78);
+  /* ── iOS tokens — aliases of the semantic set (one source of truth) ── */
+  --ios-bg: var(--void-950);
+  --ios-elevated: var(--surface);
+  --ios-secondary: var(--surface-raised);
+  --ios-hairline: var(--line);
+  --ios-red: var(--danger);
+  --ios-green: var(--success);
+  --ios-blue: var(--info);
+  --ios-orange: var(--warning);
+  --ios-purple: var(--brand);
+  --ios-yellow: var(--gold-400);
   --ios-teal: oklch(0.75 0.1 200);
   --ios-indigo: oklch(0.6 0.1 290);
-  --ios-gray: oklch(0.65 0.02 280);
-  --ios-text-secondary: oklch(0.95 0.01 60 / 60%);
-  --ios-text-tertiary: oklch(0.95 0.01 60 / 30%);
+  --ios-gray: var(--muted);
+  --ios-text-secondary: color-mix(in srgb, var(--foreground) 62%, transparent);
+  --ios-text-tertiary: color-mix(in srgb, var(--foreground) 34%, transparent);
   --ios-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --ios-radius-card: 20px;
+  --ios-radius-card: var(--radius-card);
   --ios-radius-row: 10px;
+
+  /* ── Gold → amber family ── */
+  --gold-700: oklch(0.68 0.12 72);
+  --gold-600: oklch(0.74 0.13 72);
+  --gold-500: oklch(0.82 0.14 75);
+  --gold-400: oklch(0.88 0.11 78);
+
+  /* ── Crimson → rose family ── */
+  --crimson-600: oklch(0.55 0.17 12);
+  --crimson-500: oklch(0.62 0.19 12);
+  --crimson-400: oklch(0.7 0.16 12);
 
   /* ── Shape ── */
   --radius-card: 1rem;
   --radius-control: 0.75rem;
-
-  /* ── Fonts ── */
-  --font-press-start: "Fraunces", Georgia, serif;
 }
 
 @theme inline {
@@ -149,10 +141,6 @@
   --color-accent-candle-deep: var(--accent-candle-deep);
   --color-accent-rose: var(--accent-rose);
 
-  --color-neon-magenta: var(--neon-magenta);
-  --color-neon-crimson: var(--neon-crimson);
-  --color-neon-green: var(--neon-green);
-
   --color-crimson-600: var(--crimson-600);
   --color-crimson-500: var(--crimson-500);
   --color-crimson-400: var(--crimson-400);
@@ -170,10 +158,9 @@
   --color-info: var(--info);
   --color-restricted: var(--restricted);
 
-  --font-sans: var(--font-inter), "Sora", system-ui, sans-serif;
-  --font-mono: var(--font-space-mono), "Space Mono", monospace;
-  --font-retro: var(--font-press-start);
-  --font-display: var(--font-press-start);
+  --font-sans: var(--font-fira), "Fira Sans", system-ui, sans-serif;
+  --font-mono: var(--font-fira), "Fira Sans", system-ui, sans-serif;
+  --font-display: var(--font-dm-serif), "DM Serif Display", Georgia, serif;
 
   --color-ios-bg: var(--ios-bg);
   --color-ios-elevated: var(--ios-elevated);
@@ -193,10 +180,48 @@ html,
 body {
   background: var(--background);
   color: var(--foreground);
+  overflow-x: clip;
 }
 
 body {
-  font-family: var(--font-inter), "Sora", system-ui, sans-serif;
+  font-family: var(--font-fira), "Fira Sans", system-ui, sans-serif;
+}
+
+/* ════════════════════════════════════════════════════════════════
+ * Type scale — DM Serif Display for display, Fira Sans elsewhere.
+ * No negative letter-spacing anywhere in the system.
+ * ════════════════════════════════════════════════════════════════ */
+.type-display-xl {
+  font-family: var(--font-dm-serif), Georgia, serif;
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  line-height: 1.04;
+  font-weight: 400;
+}
+.type-display {
+  font-family: var(--font-dm-serif), Georgia, serif;
+  font-size: clamp(1.875rem, 4vw, 2.75rem);
+  line-height: 1.08;
+  font-weight: 400;
+}
+.type-title {
+  font-size: 1.25rem;
+  line-height: 1.3;
+  font-weight: 600;
+}
+.type-body {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+.type-meta {
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+.type-eyebrow {
+  font-size: 0.6875rem;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 600;
 }
 
 /* ── Scanline overlay effect ── */
@@ -227,27 +252,20 @@ body {
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' /%3E%3C/svg%3E");
 }
 
-/* ── Pulse glow animation ── */
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 5px var(--brand), 0 0 10px color-mix(in srgb, var(--brand) 30%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 15px var(--brand), 0 0 30px color-mix(in srgb, var(--brand) 50%, transparent);
-  }
-}
-.pulse-glow {
-  animation: pulse-glow 2s infinite ease-in-out;
-}
-
-/* ── Neon text glow ── */
-.neon-text {
-  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor;
-}
-
-/* ── Retro font helper (now Fraunces display) ── */
-.font-retro {
-  font-family: var(--font-press-start), "Fraunces", Georgia, serif;
+/* ── Candle wash — the one sanctioned ambient page wash ── */
+.candle-wash {
+  background-image:
+    radial-gradient(
+      640px 420px at 50% -10%,
+      color-mix(in srgb, var(--accent-candle) 7%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      520px 360px at 88% 112%,
+      color-mix(in srgb, var(--brand) 6%, transparent),
+      transparent 70%
+    );
+  background-repeat: no-repeat;
 }
 
 /* ── Gradient text (candlelight → rose) ── */
@@ -256,26 +274,6 @@ body {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-}
-
-/* ── Slow fade in ── */
-@keyframes slowFade {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-/* ── Breathing scale ── */
-@keyframes breathScale {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.02); }
-}
-
-/* ── Float up particles ── */
-@keyframes floatUp {
-  0% { transform: translateY(100vh); opacity: 0; }
-  10% { opacity: 0.8; }
-  90% { opacity: 0.3; }
-  100% { transform: translateY(-10vh); opacity: 0; }
 }
 
 /* ── Slide up ── */
@@ -296,10 +294,10 @@ body {
   80% { transform: rotate(5deg); }
 }
 
-/* ── Shimmer ── */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
+/* ── Typing dots (single definition — no inline duplicates) ── */
+@keyframes typingBounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
 }
 
 /* ── Heart burst (primary CTAs) ── */
@@ -339,7 +337,10 @@ body {
   100% { transform: scale(1); }
 }
 
-/* ── Heart cursor ── */
+/* ════════════════════════════════════════════════════════════════
+ * Heart cursor — crisp silhouette, instant tracking, zero glow.
+ * Fine-pointer only; native cursor everywhere else.
+ * ════════════════════════════════════════════════════════════════ */
 .heart-cursor {
   position: fixed;
   top: 0;
@@ -347,17 +348,24 @@ body {
   z-index: 10000;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 160ms ease;
+  transition: opacity 120ms ease;
   will-change: transform;
 }
-body.heart-cursor-on {
-  cursor: none;
+.heart-cursor[data-visible="1"] {
+  opacity: 1;
 }
-.heart-cursor-on input,
-.heart-cursor-on textarea,
-.heart-cursor-on select,
-.heart-cursor-on [contenteditable] {
-  cursor: auto;
+/* Over text-entry regions the heart yields to the native text caret. */
+.heart-cursor[data-state="text"] {
+  opacity: 0;
+}
+body.heart-cursor-on,
+body.heart-cursor-on * {
+  cursor: none !important;
+}
+body.heart-cursor-on input,
+body.heart-cursor-on textarea,
+body.heart-cursor-on [contenteditable="true"] {
+  cursor: auto !important;
 }
 .heart-cursor-inner {
   position: absolute;
@@ -366,17 +374,32 @@ body.heart-cursor-on {
   width: 20px;
   height: 20px;
   transform: scale(1);
-  transition: transform 160ms ease;
-}
-.heart-cursor-inner.cursor-hot {
-  transform: scale(1.28);
+  transition: transform 90ms ease;
 }
 .heart-cursor-path {
   fill: var(--accent-rose);
-  transition: fill 160ms ease;
+  transition: fill 90ms ease;
 }
-.heart-cursor-inner.cursor-hot .heart-cursor-path {
+.heart-cursor[data-state="hot"] .heart-cursor-inner {
+  transform: scale(1.22);
+}
+.heart-cursor[data-state="hot"] .heart-cursor-path {
   fill: var(--accent-candle);
+}
+.heart-cursor[data-state="primary"] .heart-cursor-inner {
+  transform: scale(1.38);
+}
+.heart-cursor[data-state="primary"] .heart-cursor-path {
+  fill: var(--accent-candle);
+}
+.heart-cursor[data-state="destructive"] .heart-cursor-inner {
+  transform: scale(1.15);
+}
+.heart-cursor[data-state="destructive"] .heart-cursor-path {
+  fill: var(--danger);
+}
+.heart-cursor[data-pressed="1"] .heart-cursor-inner {
+  transform: scale(0.82);
 }
 @media (pointer: coarse) {
   .heart-cursor {
@@ -387,8 +410,9 @@ body.heart-cursor-on {
   .heart-cursor {
     display: none;
   }
-  body.heart-cursor-on {
-    cursor: auto;
+  body.heart-cursor-on,
+  body.heart-cursor-on * {
+    cursor: auto !important;
   }
   .hb-heart {
     display: none;
@@ -427,11 +451,6 @@ body.heart-cursor-on {
   transform: scale(0.97);
 }
 
-/* ── iOS Smooth transition ── */
-.ios-transition {
-  transition: all 0.35s var(--ios-ease);
-}
-
 /* ── Hide scrollbar ── */
 .scrollbar-none {
   scrollbar-width: none;
@@ -457,6 +476,19 @@ body.heart-cursor-on {
 }
 .ios-dropdown {
   animation: iosDropdown 0.3s var(--ios-ease) forwards;
+}
+
+/* ── Visually hidden (for skip link / SR-only text) ── */
+.sr-only-focusable:focus {
+  position: fixed;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10001;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--foreground);
 }
 
 /* Honour a reduced-motion preference globally */

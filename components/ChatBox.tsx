@@ -89,8 +89,8 @@ export default function ChatBox({
       >
         {/* ── ERROR BANNER ── */}
         {showError && !showEnded && (
-          <div className="mb-3 flex items-center gap-2 bg-danger/10 border border-danger/30 text-danger text-xs px-3 py-2 rounded-lg">
-            <span className="shrink-0">&#9888;</span>
+          <div role="alert" className="mb-3 flex items-center gap-2 bg-danger/10 border border-danger/30 text-danger text-xs px-3 py-2 rounded-lg">
+            <span className="shrink-0" aria-hidden="true">&#9888;</span>
             <span>{displayError}</span>
           </div>
         )}
@@ -190,20 +190,6 @@ export default function ChatBox({
       </div>
 
       {/* ── TYPING BOUNCE KEYFRAMES ── */}
-      <style jsx>{`
-        @keyframes typingBounce {
-          0%,
-          80%,
-          100% {
-            opacity: 0.3;
-            transform: translateY(0);
-          }
-          40% {
-            opacity: 1;
-            transform: translateY(-4px);
-          }
-        }
-      `}</style>
     </div>
   );
 }

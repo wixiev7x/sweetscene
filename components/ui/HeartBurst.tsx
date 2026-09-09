@@ -15,12 +15,15 @@ export default function HeartBurst({ children }: { children: React.ReactElement<
     host.dataset.hbLast = String(now);
     if (now - last < 600) return;
 
-    host.classList.remove("hb-pop");
-    void host.offsetWidth;
-    host.classList.add("hb-pop");
-    window.setTimeout(() => host.classList.remove("hb-pop"), 320);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reduced) {
+      host.classList.remove("hb-pop");
+      void host.offsetWidth;
+      host.classList.add("hb-pop");
+      window.setTimeout(() => host.classList.remove("hb-pop"), 320);
+    }
 
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (reduced) return;
 
     const rect = host.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -29,6 +32,7 @@ export default function HeartBurst({ children }: { children: React.ReactElement<
     for (let i = 0; i < 10; i++) {
       const span = document.createElement("span");
       span.className = "hb-heart";
+      span.setAttribute("aria-hidden", "true");
       span.textContent = "♥";
       const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.6;
       const dist = 28 + Math.random() * 34;

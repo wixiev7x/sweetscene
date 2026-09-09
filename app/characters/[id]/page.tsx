@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { SiteNav, Spinner } from "@/components/ui";
+import { Spinner } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import {
   getCharacter,
@@ -128,9 +128,7 @@ export default function CharacterDetailPage() {
     <div className="min-h-screen bg-void-950 text-white">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,45,149,0.08)_0%,transparent_50%)]" />
 
-      <SiteNav />
-
-      <main className="relative z-0 max-w-3xl mx-auto px-6 py-12">
+      <div className="relative z-0 max-w-3xl mx-auto px-6 py-12">
         {/* ── HERO ── */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 bg-white/5 border border-white/10 rounded-2xl p-8">
           {character.avatar_url ? (
@@ -248,7 +246,7 @@ export default function CharacterDetailPage() {
         {error && (
           <p className="text-xs text-red-400 text-center mt-4">{error}</p>
         )}
-      </main>
+      </div>
     </div>
   );
 }

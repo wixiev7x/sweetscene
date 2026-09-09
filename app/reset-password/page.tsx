@@ -33,10 +33,10 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6 pb-14 md:pb-0">
+    <div className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6">
       <div className="ios-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[20px] p-8 w-full max-w-md">
         <div className="flex flex-col items-center text-center gap-2 mb-6">
-          <span className="font-retro text-[10px] tracking-wider text-neon-magenta neon-text">SWEETSCENE</span>
+          <span className="font-display text-[10px] tracking-wider text-brand">SWEETSCENE</span>
           <h1 className="text-2xl font-bold">Set new password</h1>
           <p className="text-sm text-muted">Choose a new password for your account.</p>
         </div>
@@ -47,7 +47,7 @@ export default function ResetPasswordPage() {
             placeholder="New password (min 6 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="h-[52px] w-full rounded-[16px] bg-white/5 border border-white/10 px-4 text-base placeholder:text-muted-faint focus:outline-none focus:border-neon-magenta/50"
+            className="h-[52px] w-full rounded-[16px] bg-white/5 border border-white/10 px-4 text-base placeholder:text-muted-faint focus:outline-none focus:border-brand/50"
             required
           />
           <input
@@ -55,7 +55,7 @@ export default function ResetPasswordPage() {
             placeholder="Confirm new password"
             value={confirm}
             onChange={(e) => setConfirm(e.target.value)}
-            className="h-[52px] w-full rounded-[16px] bg-white/5 border border-white/10 px-4 text-base placeholder:text-muted-faint focus:outline-none focus:border-neon-magenta/50"
+            className="h-[52px] w-full rounded-[16px] bg-white/5 border border-white/10 px-4 text-base placeholder:text-muted-faint focus:outline-none focus:border-brand/50"
             required
           />
           <button

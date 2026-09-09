@@ -7,12 +7,12 @@ const SAFETY_POINTS = [
   { title: "Encrypted Messages", desc: "Your scenes stay in the dark. Messages are encrypted at rest." },
   { title: "Anonymous by Default", desc: "No pictures. No names. No real identities. You stay anonymous until you choose otherwise." },
   { title: "Report & Block", desc: "Report any conversation or block any user at any time from the chat menu." },
-  { title: "Age Verification", desc: "All users must verify their age. This is a 16+ platform. Adult content is restricted to verified adults." },
+  { title: "Age Confirmation", desc: "Everyone confirms they are 16+ when joining. Adult (18+) content is restricted to accounts confirmed as adults." },
 ];
 
 export default function SafetyPage() {
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
+    <div className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-light text-foreground-dim mb-2">Safety</h1>
         <p className="text-sm text-muted mb-8">Your scenes stay in the dark until you say otherwise.</p>
@@ -32,6 +32,6 @@ export default function SafetyPage() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

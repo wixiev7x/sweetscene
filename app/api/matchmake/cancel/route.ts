@@ -12,6 +12,16 @@ export async function POST(req: NextRequest) {
   const admin = createAdminClient();
 
   if (id) {
+    /* Ownership check — a queue entry can only be cancelled by the
+     * account that created it. */
+    const { data: row } = await admin
+      .from("matchmaking_queue")
+      .select("user_id")
+      .eq("id", id)
+      .single();
+    if (!row || !user || (row as { user_id: string }).user_id !== user.id) {
+      return NextResponse.json({ error: "Not your queue entry" }, { status: 403 });
+    }
     await admin.from("matchmaking_queue").update({ status: "cancelled" }).eq("id", id);
   } else if (user) {
     await admin

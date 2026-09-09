@@ -12,11 +12,11 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 
 const GRADIENTS: Record<Variant, string> = {
   primary:
-    "bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 text-white",
+    "bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500 text-accent-foreground",
   danger:
-    "bg-gradient-to-r from-red-600 to-crimson-600 hover:from-red-500 hover:to-crimson-500 text-white",
+    "bg-gradient-to-r from-danger to-crimson-600 hover:from-danger/90 hover:to-crimson-500 text-accent-foreground",
   accent:
-    "bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black",
+    "bg-gradient-to-r from-warning to-accent-candle hover:from-warning/90 hover:to-accent-candle-deep text-accent-foreground",
   ghost:
     "bg-white/5 border border-white/10 text-foreground-dim hover:bg-white/10 hover:text-foreground",
 };
@@ -37,14 +37,21 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const base =
-    "rounded-xl font-medium active:scale-95 transform transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 select-none";
+    "rounded-xl font-medium active:scale-95 transform transition-all duration-200 disabled:opacity-50 disabled:active:scale-100 select-none focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none inline-flex items-center justify-center gap-2";
   return (
     <button
       {...rest}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={`${base} ${GRADIENTS[variant]} ${SIZES[size]} ${className}`}
     >
-      {loading ? "Loading..." : children}
+      {loading && (
+        <span
+          className="w-4 h-4 rounded-full border-2 border-current/30 border-t-current animate-spin"
+          aria-hidden="true"
+        />
+      )}
+      {loading ? "Loading…" : children}
     </button>
   );
 }

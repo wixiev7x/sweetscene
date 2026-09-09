@@ -1,73 +1,85 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 import { playSound } from "@/lib/utils/sound";
+import { VIP_PRICE_USD, VIP_DURATION_DAYS } from "@/lib/billing/constants";
 
-const FAQS = [
-  { q: "Can I cancel anytime?", a: "Yes. Cancel from your profile anytime. No questions asked." },
-  { q: "What are tokens?", a: "Tokens power AI responses in your scenes. Each match has a shared pool that depletes as the AI contributes." },
-  { q: "Is payment secure?", a: "We use crypto payments via NOWPayments. No card required." },
+/* Everything listed here is enforced in the product: the deep tier
+ * and daily-match cap checks live in the matchmaking actions, NSFW
+ * creation and AI image generation are VIP-gated server-side. */
+const BENEFITS = [
+  {
+    title: "Unlimited matches",
+    desc: "Free accounts get 3 a day. VIP takes the cap off entirely.",
+    icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2",
+  },
+  {
+    title: "Deep Dive scenes",
+    desc: "The 10k shared token pool — scenes that run all night.",
+    icon: "M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z",
+  },
+  {
+    title: "NSFW creation",
+    desc: "Create adult characters and scenes (18+, verified accounts only).",
+    icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+  },
+  {
+    title: "AI image generation",
+    desc: "Generate scene art and character portraits right in the app.",
+    icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z",
+  },
 ];
 
 export default function PremiumPage() {
-  const [faqOpen, setFaqOpen] = useState<number | null>(0);
-
-  const plans = [
-    { name: "Free", price: "$0", period: "forever", desc: "Start anonymous", features: ["3 daily matches", "Quick tier scenes (2k tokens)", "Browse all characters", "Anonymous confessions"], cta: "Get Started", highlight: false },
-    { name: "Standard", price: "$9.99", period: "month", desc: "More scenes, more connections", features: ["Unlimited daily matches", "Quick + Deep Dive tiers (10k tokens)", "Standard AI scenes", "Basic interest tags", "3 AI images per match", "Priority matchmaking"], cta: "Become Standard", highlight: true },
-    { name: "Premium", price: "$19.99", period: "month", desc: "Everything, unlocked", features: ["Everything in Standard", "Richer AI scenes", "Advanced interest filtering", "Custom scene requests", "Priority reveal queue", "Exclusive badges"], cta: "Go Premium", highlight: false },
-  ];
-
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-10">
-          <h1 className="text-2xl font-light text-foreground-dim mb-1">Choose Your Plan</h1>
-          <p className="text-sm text-muted">Choose your access level.</p>
-        </div>
+    <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
+      <div className="max-w-3xl mx-auto">
+        <p className="type-eyebrow text-accent-candle mb-2">The VIP pass</p>
+        <h1 className="type-display text-3xl sm:text-4xl mb-3">
+          Nights that run <span className="gradient-text">long.</span>
+        </h1>
+        <p className="type-body text-muted mb-8 max-w-xl">
+          One pass, everything unlocked. ${VIP_PRICE_USD.toFixed(2)} for {VIP_DURATION_DAYS} days —
+          it expires on its own, so there&rsquo;s never a renewal to cancel.
+        </p>
 
-        <div className="grid md:grid-cols-3 gap-5 mb-12">
-          {plans.map((plan) => (
-            <div key={plan.name}
-              className={`relative rounded-2xl p-6 border transition-all ${plan.highlight ? "border-brand/40 bg-brand/5 md:scale-105" : plan.name === "Premium" ? "border-gold-500/40 bg-gold-500/5" : "border-white/10 bg-white/5"}`}>
-              {plan.highlight && (
-                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full bg-brand text-white text-[10px] font-bold uppercase tracking-wider">Popular</span>
-              )}
-              <h2 className={`text-base font-light mb-1 ${plan.name === "Premium" ? "text-gold-400" : "text-foreground"}`}>{plan.name}</h2>
-              <p className="text-xs text-muted mb-3">{plan.desc}</p>
-              <p className="text-3xl font-light text-white mb-1">{plan.price}<span className="text-sm text-muted">/{plan.period}</span></p>
-              <div className="space-y-2 my-5">
-                {plan.features.map((f) => (
-                  <p key={f} className="flex items-start gap-2 text-xs text-muted-strong">
-                    <span className="text-neon-green flex-shrink-0">&#x2713;</span> {f}
-                  </p>
-                ))}
+        <div className="grid sm:grid-cols-2 gap-4 mb-10">
+          {BENEFITS.map((b) => (
+            <div key={b.title} className="bg-surface border border-line rounded-[var(--radius-card)] p-5">
+              <div className="w-9 h-9 rounded-full bg-accent-candle/10 flex items-center justify-center text-accent-candle mb-3" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={b.icon} />
+                </svg>
               </div>
-              <Link href="/login" onClick={() => playSound("click")}
-                className={`block w-full text-center px-4 py-2.5 rounded-xl font-medium text-xs transition-all ${plan.highlight ? "text-white bg-gradient-to-r from-brand-dark to-crimson-600 hover:from-brand hover:to-crimson-500" : "text-foreground bg-white/5 border border-white/10 hover:bg-white/10"}`}>
-                {plan.cta}
-              </Link>
+              <h2 className="type-body font-semibold text-foreground mb-1">{b.title}</h2>
+              <p className="type-meta text-muted leading-relaxed">{b.desc}</p>
             </div>
           ))}
         </div>
 
-        <div className="max-w-xl mx-auto">
-          <h3 className="text-lg font-light text-foreground-dim text-center mb-6">Questions</h3>
-          <div className="space-y-2">
-            {FAQS.map((faq, i) => (
-              <div key={i} className="bg-white/5 border border-white/10 rounded-xl overflow-hidden">
-                <button onClick={() => setFaqOpen(faqOpen === i ? null : i)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-left">
-                  <span className="text-xs text-foreground-dim">{faq.q}</span>
-                  <span className="text-muted text-sm flex-shrink-0">{faqOpen === i ? "\u2212" : "+"}</span>
-                </button>
-                {faqOpen === i && <div className="px-4 pb-3 text-xs text-muted leading-relaxed">{faq.a}</div>}
-              </div>
-            ))}
-          </div>
+        <div className="bg-surface border border-accent-candle/40 bg-accent-candle/[0.04] rounded-[var(--radius-card)] p-8 text-center mb-10">
+          <p className="font-display text-4xl mb-1">
+            <span className="text-accent-candle">${VIP_PRICE_USD.toFixed(2)}</span>
+            <span className="type-body text-muted"> / {VIP_DURATION_DAYS} days</span>
+          </p>
+          <p className="type-meta text-muted mb-6">Pay in crypto via NOWPayments. No card, no renewal.</p>
+          <Link
+            href="/store"
+            onClick={() => playSound("click")}
+            data-cursor="primary"
+            className="inline-flex h-12 items-center rounded-full bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light px-8 text-sm font-semibold text-accent-foreground ios-press shadow-lg shadow-brand/20 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
+          >
+            Get the VIP pass →
+          </Link>
+          <p className="type-meta text-muted-faint mt-4">
+            Checkout lives in the Store — token packs are there too.
+          </p>
         </div>
+
+        <p className="type-meta text-muted-faint text-center">
+          Free tier stays free: 3 matches a day, Quick-tier scenes, every character.
+        </p>
       </div>
-    </main>
+    </div>
   );
 }

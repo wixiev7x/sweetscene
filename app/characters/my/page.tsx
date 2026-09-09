@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { SiteNav, Spinner } from "@/components/ui";
+import { Spinner } from "@/components/ui";
 import { getUserCharacters, deleteCharacter, type CharacterOwned } from "@/lib/actions/characters";
 
 const GRADIENTS = [
@@ -60,9 +60,7 @@ export default function MyCharactersPage() {
     <div className="min-h-screen bg-void-950 text-white">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,45,149,0.08)_0%,transparent_50%)]" />
 
-      <SiteNav />
-
-      <main className="relative z-0 max-w-6xl mx-auto px-6 pt-12">
+      <div className="relative z-0 max-w-6xl mx-auto px-6 pt-12">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-light text-foreground tracking-wide">My Characters</h1>
@@ -149,7 +147,7 @@ export default function MyCharactersPage() {
             })}
           </div>
         )}
-      </main>
+      </div>
     </div>
   );
 }

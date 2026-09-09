@@ -69,7 +69,7 @@ export default function CompleteProfilePage() {
     <div className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6 py-12">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_30%,rgba(255,45,149,0.12)_0%,transparent_60%)]" />
       <div className="relative z-10 w-full max-w-md bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 flex flex-col items-center text-center">
-        <span className="text-xs tracking-[0.4em] text-brand/60 uppercase font-retro">
+        <span className="text-xs tracking-[0.4em] text-brand/60 uppercase font-display">
           SweetScene
         </span>
         <h1 className="text-2xl font-light text-foreground mt-4">
@@ -107,7 +107,7 @@ export default function CompleteProfilePage() {
             placeholder="Username (2+ characters)"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-neon-magenta/30"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-brand/30"
             autoComplete="username"
             disabled={pending}
             maxLength={20}
@@ -117,7 +117,7 @@ export default function CompleteProfilePage() {
             placeholder="Set a password (min 6 characters)"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-neon-magenta/30"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-brand/30"
             autoComplete="new-password"
             disabled={pending}
           />
@@ -126,7 +126,7 @@ export default function CompleteProfilePage() {
             placeholder="Confirm password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-neon-magenta/30"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-brand/30"
             autoComplete="new-password"
             disabled={pending}
           />
@@ -134,7 +134,7 @@ export default function CompleteProfilePage() {
             placeholder="Bio (optional — tell people what you're into)"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-neon-magenta/30 resize-none"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-brand/30 resize-none"
             rows={2}
             disabled={pending}
             maxLength={150}

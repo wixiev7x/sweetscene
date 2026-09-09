@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
@@ -59,25 +59,29 @@ function CandleMark() {
 export default function ConfessionsPage() {
   const [confessions, setConfessions] = useState<Confession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [text, setText] = useState("");
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
-  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
-  const likeLock = useRef<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
+      setFailed(false);
       try {
         const supabase = createClient();
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("confessions")
           .select("id, text, mood, likes, created_at")
           .order("created_at", { ascending: false })
           .limit(50);
+        if (error) throw error;
         if (!cancelled && data) setConfessions(data as Confession[]);
       } catch {
+        if (!cancelled) setFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -85,22 +89,7 @@ export default function ConfessionsPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
-
-  const toggleLike = (id: string) => {
-    if (likeLock.current.has(id)) return;
-    likeLock.current.add(id);
-    window.setTimeout(() => likeLock.current.delete(id), 500);
-    playSound("message");
-    setLikedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const getLikes = (c: Confession) => c.likes + (likedIds.has(c.id) ? 1 : 0);
+  }, [reloadKey]);
 
   const handleSubmit = async () => {
     const trimmed = text.trim();
@@ -131,12 +120,12 @@ export default function ConfessionsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8 pb-14 md:pb-0">
+    <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
       <div className="max-w-2xl mx-auto">
         <p className="font-mono text-[11px] uppercase tracking-[0.25em] text-accent-candle mb-2">
           After hours
         </p>
-        <h1 className="font-retro text-3xl sm:text-4xl leading-tight mb-3">
+        <h1 className="font-display text-3xl sm:text-4xl leading-tight mb-3">
           Confessions from the <span className="gradient-text">dark.</span>
         </h1>
         <p className="text-sm text-muted mb-8">
@@ -184,16 +173,19 @@ export default function ConfessionsPage() {
                 </button>
               ))}
             </div>
-            <button
-              onClick={handleSubmit}
-              disabled={submitting || text.trim().length === 0}
-              className="mt-4 w-full h-11 rounded-full bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light text-accent-foreground text-sm font-semibold active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-40 disabled:hover:from-brand-dark disabled:hover:to-brand flex items-center justify-center gap-2"
-            >
-              {submitting && (
-                <span className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" />
-              )}
-              {submitting ? "Posting..." : "Post Anonymously"}
-            </button>
+            <HeartBurst>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || text.trim().length === 0}
+                aria-live="polite"
+                className="mt-4 w-full h-11 rounded-full bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light text-accent-foreground text-sm font-semibold active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus disabled:opacity-40 disabled:hover:from-brand-dark disabled:hover:to-brand flex items-center justify-center gap-2"
+              >
+                {submitting && (
+                  <span className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" />
+                )}
+                {submitting ? "Posting..." : "Post Anonymously"}
+              </button>
+            </HeartBurst>
           </div>
         )}
 
@@ -207,49 +199,45 @@ export default function ConfessionsPage() {
               </div>
             ))}
           </div>
+        ) : failed ? (
+          <div className="flex flex-col items-center py-16 text-center">
+            <CandleMark />
+            <p className="font-display text-lg mt-4 mb-1">The candles flickered</p>
+            <p className="text-sm text-muted mb-4">Couldn&rsquo;t load the wall right now.</p>
+            <button
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="text-sm text-accent-candle hover:text-accent-candle-deep focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus rounded px-1"
+            >
+              Try again
+            </button>
+          </div>
         ) : confessions.length === 0 ? (
           <div className="flex flex-col items-center py-16 text-center">
             <CandleMark />
-            <p className="font-retro text-lg mt-4 mb-1">No stories yet</p>
+            <p className="font-display text-lg mt-4 mb-1">No stories yet</p>
             <p className="text-sm text-muted">Be the first to share one.</p>
           </div>
         ) : (
           <div className="space-y-4">
             {confessions.map((c) => {
-              const liked = likedIds.has(c.id);
               return (
                 <article
                   key={c.id}
                   className="bg-surface border border-line rounded-[var(--radius-card)] p-5 hover:border-line-strong transition-colors"
                 >
                   <div className="flex items-center gap-3 mb-3">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] border font-mono ${moodStyles[c.mood] ?? moodStyles.Heartwarming}`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] border ${moodStyles[c.mood] ?? moodStyles.Heartwarming}`}>
                       {c.mood}
                     </span>
                     <span className="font-mono text-[11px] text-muted-faint">{timeAgo(c.created_at)}</span>
                   </div>
                   <p className="text-sm leading-relaxed text-foreground">{c.text}</p>
-                  <HeartBurst>
-                    <button
-                      onClick={() => toggleLike(c.id)}
-                      aria-pressed={liked}
-                      aria-label={liked ? "Unlike this story" : "Like this story"}
-                      className={`mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus ${
-                        liked
-                          ? "bg-accent-rose/10 border-accent-rose/30 text-accent-rose"
-                          : "bg-surface-raised border-line text-muted hover:border-accent-rose/30 hover:text-accent-rose"
-                      }`}
-                    >
-                      <span className={liked ? "scale-110" : ""}>&hearts;</span>
-                      <span className="font-mono">{getLikes(c)}</span>
-                    </button>
-                  </HeartBurst>
                 </article>
               );
             })}
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

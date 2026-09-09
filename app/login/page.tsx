@@ -1,14 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { Suspense, useState, useTransition } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signInWithProvider, signInWithEmail } from "@/lib/actions/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import OAuthButtons from "@/components/auth/OAuthButtons";
 
 const SITE_KEY = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
-export default function LoginPage() {
+function LoginPageInner() {
+  const searchParams = useSearchParams();
+  const nextRaw = searchParams.get("next");
+  /* Preserve the intended destination (?next=...) through login —
+   * site-relative paths only. */
+  const nextPath =
+    nextRaw && nextRaw.startsWith("/") && !nextRaw.startsWith("//") ? nextRaw : "";
+
   const [turnstileToken, setTurnstileToken] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
@@ -37,7 +45,7 @@ export default function LoginPage() {
     }
     setError("");
     applyRemember();
-    const result = await signInWithProvider(provider, turnstileToken ?? "");
+    const result = await signInWithProvider(provider, turnstileToken ?? "", nextPath || undefined);
     if (result?.error) setError(result.error);
   }
 
@@ -58,7 +66,7 @@ export default function LoginPage() {
     setError("");
     applyRemember();
     startTransition(async () => {
-      const result = await signInWithEmail(email, password, turnstileToken);
+      const result = await signInWithEmail(email, password, turnstileToken, nextPath || undefined);
       if (result?.error) setError(result.error);
     });
   }
@@ -67,14 +75,14 @@ export default function LoginPage() {
     "w-full rounded-[var(--radius-control)] bg-surface-sunken border border-line px-4 py-3 text-sm text-foreground placeholder:text-muted-faint focus:outline-none focus:ring-2 focus:ring-line-focus focus:border-accent-candle/40 transition-colors";
 
   return (
-    <main className="min-h-screen bg-background text-foreground flex">
+    <div className="min-h-screen bg-background text-foreground flex">
       <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/brand-art.png" alt="SweetScene brand art" className="absolute inset-0 w-full h-full object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-10">
-          <p className="font-retro text-sm text-accent-candle tracking-widest mb-3">SWEETSCENE</p>
-          <h2 className="font-retro text-4xl leading-tight text-foreground mb-3">
+          <p className="font-display text-sm text-accent-candle tracking-widest mb-3">SWEETSCENE</p>
+          <h2 className="font-display text-4xl leading-tight text-foreground mb-3">
             Your scene is <span className="gradient-text">waiting.</span>
           </h2>
           <p className="text-sm text-muted max-w-sm mb-4">
@@ -96,7 +104,7 @@ export default function LoginPage() {
             <p className="font-mono text-[10px] uppercase tracking-widest text-accent-candle mb-2">
               Welcome back
             </p>
-            <h1 className="font-retro text-3xl text-foreground mb-6">Enter the scene.</h1>
+            <h1 className="font-display text-3xl text-foreground mb-6">Enter the scene.</h1>
 
             <OAuthButtons onSignIn={handleSignIn} />
 
@@ -189,12 +197,23 @@ export default function LoginPage() {
 
           <p className="mt-6 text-center text-sm text-muted">
             New here?{" "}
-            <Link href="/signup" className="text-accent-candle hover:text-accent-candle-deep font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus rounded">
+            <Link
+              href={nextPath ? `/signup?next=${encodeURIComponent(nextPath)}` : "/signup"}
+              className="text-accent-candle hover:text-accent-candle-deep font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus rounded"
+            >
               Create one.
             </Link>
           </p>
         </div>
       </div>
-    </main>
+    </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginPageInner />
+    </Suspense>
   );
 }

@@ -13,14 +13,14 @@ const BADGES = [
 
 export default function AchievementsPage() {
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
+    <div className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-light text-foreground-dim mb-2">Achievements</h1>
         <p className="text-sm text-muted mb-8">Unlock badges as you explore.</p>
 
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {BADGES.map((badge) => (
-            <div key={badge.name} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 text-center hover:border-neon-magenta/40 transition-all">
+            <div key={badge.name} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-5 text-center hover:border-brand/40 transition-all">
               <span className="text-3xl block mb-3">{badge.icon}</span>
               <h2 className="text-sm text-foreground font-light mb-1">{badge.name}</h2>
               <p className="text-xs text-muted">{badge.desc}</p>
@@ -34,6 +34,6 @@ export default function AchievementsPage() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

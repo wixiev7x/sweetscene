@@ -52,12 +52,12 @@ const DESTINATIONS = [
 
 export default function CommunityPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-10 pb-14 md:pb-0">
+    <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-10">
       <div className="max-w-3xl mx-auto">
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-candle mb-2">
           The gathering
         </p>
-        <h1 className="font-retro text-3xl sm:text-4xl leading-tight mb-3">
+        <h1 className="font-display text-3xl sm:text-4xl leading-tight mb-3">
           The <span className="gradient-text">community.</span>
         </h1>
         <p className="text-muted text-sm sm:text-base mb-8">
@@ -76,7 +76,7 @@ export default function CommunityPage() {
                 <span className="flex items-center justify-center w-10 h-10 rounded-full bg-accent-candle/10 border border-accent-candle/25 group-hover:bg-accent-candle/15 transition-colors">
                   {d.icon}
                 </span>
-                <h2 className="font-retro text-base">{d.title}</h2>
+                <h2 className="font-display text-base">{d.title}</h2>
               </div>
               <p className="text-sm text-muted">{d.desc}</p>
             </Link>
@@ -92,6 +92,6 @@ export default function CommunityPage() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

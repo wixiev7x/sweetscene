@@ -309,6 +309,7 @@ function JarArt() {
 
 export default function ScenariosPage() {
   const [mashup, setMashup] = useState<string | null>(null);
+  const [mashupTags, setMashupTags] = useState<string[]>([]);
   const [shaking, setShaking] = useState(false);
   const [botsResult, setBotsResult] = useState<{ key: number; bots: RecBot[]; error: boolean } | null>(null);
   const [sugIdx, setSugIdx] = useState(() => Math.floor(Math.random() * SUGGESTIONS.length));
@@ -357,21 +358,29 @@ export default function ScenariosPage() {
     let b = SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)];
     while (b.name === a.name) b = SCENARIOS[Math.floor(Math.random() * SCENARIOS.length)];
     setMashup(`${a.name} \u00D7 ${b.name}`);
+    setMashupTags([...a.tags, ...b.tags]);
+    setRecOffsets((prev) => ({ ...prev, mashup: 0 }));
     setTimeout(() => setShaking(false), 600);
   }
 
   const suggestion = SUGGESTIONS[sugIdx];
   const sugRec = pickRec(suggestion.tags, `sug-${sugIdx}`);
   const chip = genderChip(sugRec?.gender ?? null);
+  const mashupRec = mashup ? pickRec(mashupTags, "mashup") : null;
 
   return (
-    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
+    <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
       <div className="max-w-5xl mx-auto">
-        <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-accent-candle mb-2">The scene book</p>
-        <h1 className="font-retro text-3xl md:text-4xl mb-2">
+        <p className="type-eyebrow text-accent-candle mb-2">The scene book</p>
+        <h1 className="type-display text-3xl md:text-4xl mb-2">
           Step into a <span className="gradient-text">scene.</span>
         </h1>
-        <p className="text-sm text-muted mb-8">Cinematic openers, hosted by an AI that keeps the night moving.</p>
+        <p className="type-body text-muted mb-2">
+          Cinematic openers, hosted by an AI that keeps the night moving.
+        </p>
+        <p className="type-meta text-muted-faint mb-8">
+          Every scene plays solo — or <Link href="/matchmake" className="text-accent-candle/80 hover:text-accent-candle focus-visible:ring-2 focus-visible:ring-line-focus rounded">bring someone in through Matchmake</Link>.
+        </p>
 
         <div className="bg-surface border border-line rounded-[var(--radius-card)] p-6 sm:p-8 mb-10 flex flex-col sm:flex-row items-center gap-6">
           <div style={shaking ? { animation: "jarShake 0.6s ease-in-out" } : undefined}>
@@ -380,9 +389,35 @@ export default function ScenariosPage() {
           <div className="flex-1 text-center sm:text-left">
             <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-muted-faint mb-2">Tonight&rsquo;s random scene</p>
             {mashup ? (
-              <div className="animate-slide-up">
-                <p className="font-retro text-xl gradient-text mb-2">{mashup}</p>
-                <p className="text-sm text-muted">A mashup unlike anything you&rsquo;ve played before.</p>
+              <div className="animate-slide-up text-left">
+                <p className="font-display text-xl gradient-text mb-1">{mashup}</p>
+                <p className="text-sm text-muted mb-3">A mashup unlike anything you&rsquo;ve played before.</p>
+                {!botsLoading && mashupRec && (
+                  <div className="flex flex-wrap items-center gap-3 mb-3">
+                    <span className="text-xs text-muted">
+                      Hosted by <span className="text-foreground font-medium">{mashupRec.name}</span>
+                    </span>
+                    <button
+                      onClick={() => rotateRec("mashup")}
+                      className="text-[10px] font-mono uppercase tracking-wider text-muted-faint hover:text-accent-candle px-1.5 py-0.5 rounded ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none transition-colors"
+                      aria-label="Different character for the mashup"
+                    >
+                      Swap host
+                    </button>
+                    <Link
+                      href={`/play/${mashupRec.id}`}
+                      onClick={() => playSound("matchSearch")}
+                      className="inline-flex h-[40px] items-center rounded-full bg-gradient-to-r from-brand to-brand-dark px-5 text-sm font-semibold text-accent-foreground ios-press shadow-lg shadow-brand/20 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
+                    >
+                      Take it from here
+                    </Link>
+                  </div>
+                )}
+                {!botsLoading && bots.length === 0 && (
+                  <p className="text-xs text-muted-faint mb-2">
+                    No host yet — <Link href="/create" className="text-accent-candle hover:text-accent-candle-deep">create one</Link> or shake again.
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-sm text-muted">Shake the jar. Get a random scene mashup.</p>
@@ -398,7 +433,7 @@ export default function ScenariosPage() {
 
         <section className="mb-10" aria-labelledby="solo-suggestion">
           <div className="flex items-center justify-between mb-3">
-            <h2 id="solo-suggestion" className="font-retro text-xl text-foreground">
+            <h2 id="solo-suggestion" className="font-display text-xl text-foreground">
               Scene for <span className="gradient-text">one.</span>
             </h2>
             <button
@@ -427,7 +462,7 @@ export default function ScenariosPage() {
               <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-accent-candle mb-2">
                 {suggestion.category}
               </p>
-              <h3 className="font-retro text-2xl text-foreground mb-2">{suggestion.title}</h3>
+              <h3 className="font-display text-2xl text-foreground mb-2">{suggestion.title}</h3>
               <p className="text-sm text-muted leading-relaxed mb-4 max-w-xl">{suggestion.premise}</p>
 
               <div className="flex flex-wrap gap-2 mb-4">
@@ -463,7 +498,7 @@ export default function ScenariosPage() {
                 </div>
               ) : sugRec ? (
                 <div className="flex items-center gap-3 mb-6 bg-surface-sunken border border-line rounded-[var(--radius-control)] px-4 py-3 max-w-md">
-                  <div className="relative w-11 h-11 rounded-full bg-accent-candle/15 flex items-center justify-center text-base font-bold text-accent-candle font-retro flex-shrink-0">
+                  <div className="relative w-11 h-11 rounded-full bg-accent-candle/15 flex items-center justify-center text-base font-bold text-accent-candle font-display flex-shrink-0">
                     {sugRec.name.charAt(0).toUpperCase()}
                     {chip && (
                       <span className="absolute -top-1 -right-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-background text-muted border border-line">
@@ -519,7 +554,7 @@ export default function ScenariosPage() {
                   <SceneArt kind={s.kind} />
                 </div>
                 <div className="p-5">
-                  <h3 className="font-retro text-base text-foreground mb-2">{s.name}</h3>
+                  <h3 className="font-display text-base text-foreground mb-2">{s.name}</h3>
                   <p className="text-sm text-muted leading-relaxed mb-3">{s.desc}</p>
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     <span className="text-[10px] px-2 py-0.5 rounded-full border border-accent-rose/30 bg-accent-rose/10 text-accent-rose font-mono">
@@ -538,7 +573,7 @@ export default function ScenariosPage() {
                     </div>
                   ) : rec ? (
                     <div className="flex items-center gap-2.5 mb-4">
-                      <div className="relative w-8 h-8 rounded-full bg-accent-candle/15 flex items-center justify-center text-xs font-bold text-accent-candle font-retro flex-shrink-0">
+                      <div className="relative w-8 h-8 rounded-full bg-accent-candle/15 flex items-center justify-center text-xs font-bold text-accent-candle font-display flex-shrink-0">
                         {rec.name.charAt(0).toUpperCase()}
                         {recChip && (
                           <span className="absolute -top-1 -right-1 text-[8px] font-mono px-1 py-0.5 rounded bg-background text-muted border border-line">
@@ -590,6 +625,6 @@ export default function ScenariosPage() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

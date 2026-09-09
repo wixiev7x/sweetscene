@@ -3967,3 +3967,86 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 GRANT EXECUTE ON FUNCTION get_admin_stats_v2() TO authenticated;
+
+-- ════════════════════════════════════════════════════════════════════
+-- Staging-era additions (homepage-redesign)
+--
+-- These tables/columns were applied directly to the staging database
+-- (project runjhpkyqcdbiijrqmfl) during the matchmake/invite/scenario
+-- work. Their shapes below are verified against the live database via
+-- PostgREST introspection — column lists are exact. RLS policies for
+-- bots/confessions/bounties were applied out-of-band on staging and
+-- MUST be reviewed before the main-database port.
+--
+-- Additive only: CREATE TABLE IF NOT EXISTS / no ALTERs on existing
+-- tables are needed (matches.cohort already existed).
+-- ════════════════════════════════════════════════════════════════════
+
+-- Community AI hosts (Explore/home cards, matchmake recommendations,
+-- invite-room character picker). /play accepts both character IDs and
+-- bot IDs (see resolveCharacter in lib/actions/solo.ts).
+CREATE TABLE IF NOT EXISTS bots (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT now(),
+  name TEXT NOT NULL,
+  tagline TEXT,
+  personality TEXT,
+  opening_line TEXT,
+  image_url TEXT,
+  is_nsfw BOOLEAN DEFAULT false,
+  styles TEXT[] DEFAULT '{}',
+  genres TEXT[] DEFAULT '{}',
+  gender TEXT CHECK (gender IS NULL OR gender IN ('female', 'male', 'other'))
+);
+
+-- New matchmaking queue (user-to-user). match_id is set when a pair is
+-- formed; preferred_gender drives Quick Match pairing only.
+CREATE TABLE IF NOT EXISTS matchmaking_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  kink_tags TEXT[] DEFAULT '{}',
+  mode TEXT NOT NULL CHECK (mode IN ('quick', 'kink', 'blind_date')),
+  status TEXT NOT NULL DEFAULT 'waiting' CHECK (status IN ('waiting', 'matched', 'timeout', 'cancelled')),
+  preferred_gender TEXT CHECK (preferred_gender IS NULL OR preferred_gender IN ('female', 'male', 'other')),
+  matched_with_user_id UUID,
+  matched_at TIMESTAMPTZ,
+  match_id UUID,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_matchmaking_queue_status ON matchmaking_queue(status);
+CREATE INDEX IF NOT EXISTS idx_matchmaking_queue_user ON matchmaking_queue(user_id);
+
+-- Private-room invite links (Invite Room). Links are revocable and
+-- optionally expire; a room match is created only when an invitee
+-- joins through the link (app/api/invite/join).
+CREATE TABLE IF NOT EXISTS invite_links (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  creator_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  bot_id UUID,
+  token TEXT NOT NULL UNIQUE,
+  expires_at TIMESTAMPTZ,
+  revoked BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Anonymous confessions wall (client inserts via RLS-gated policies).
+CREATE TABLE IF NOT EXISTS confessions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  text TEXT NOT NULL,
+  mood TEXT,
+  likes INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Bounty board (scene requests). `responses` is a counter column that
+-- nothing currently increments — the UI is display-only for responses.
+CREATE TABLE IF NOT EXISTS bounties (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  anonymous_author TEXT,
+  author_id UUID,
+  text TEXT NOT NULL,
+  tags TEXT[] DEFAULT '{}',
+  responses INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);

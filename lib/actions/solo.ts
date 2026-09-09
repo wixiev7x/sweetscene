@@ -104,7 +104,45 @@ async function resolveCharacter(
     .eq("id", characterId)
     .single();
 
-  if (!data) return null;
+  if (!data) {
+    /* Community hosts live in the bots table — /play accepts both
+     * character IDs and bot IDs, so every host card on the site can
+     * deep-link straight into a solo scene. Same visibility rules:
+     * the lookup runs on the caller's session (RLS-enforced). */
+    const { data: bot } = await supabase
+      .from("bots")
+      .select("id, name, tagline, personality, opening_line, image_url, styles, genres, is_nsfw")
+      .eq("id", characterId)
+      .single();
+    if (!bot) return null;
+    const b = bot as {
+      id: string;
+      name: string;
+      tagline: string | null;
+      personality: string | null;
+      opening_line: string | null;
+      image_url: string | null;
+      styles: string[] | null;
+      genres: string[] | null;
+      is_nsfw: boolean | null;
+    };
+    const persona = b.personality ?? b.tagline ?? `You are ${b.name}, a roleplay host.`;
+    return {
+      id: b.id,
+      name: b.name,
+      user_prompt: persona,
+      system_prompt: persona,
+      scenario_tags: [...(b.genres ?? []), ...(b.styles ?? [])],
+      is_nsfw: b.is_nsfw ?? false,
+      first_message: b.opening_line ?? null,
+      example_dialog: null,
+      alternate_greetings: [],
+      avatar_url: b.image_url ?? null,
+      short_description: b.tagline ?? null,
+      full_personality: b.personality ?? null,
+      backstory: null,
+    };
+  }
 
   /* system_prompt via the admin client (REVOKED from authenticated). */
   const admin = createAdminClient();

@@ -23,22 +23,29 @@ const FILTERS: { key: RecFilter; label: string }[] = [
 export function SuggestedBots({ kinkTags, showFilter = false }: { kinkTags: string[]; showFilter?: boolean }) {
   const [bots, setBots] = useState<BotCard[]>([]);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
   const [filter, setFilter] = useState<RecFilter>("everyone");
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
+      setFailed(false);
       try {
         const supabase = createClient();
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("bots")
           .select("id, name, tagline, is_nsfw, gender")
           .limit(20);
-        if (!cancelled && data) {
+        if (!cancelled && error) {
+          setFailed(true);
+        } else if (!cancelled && data) {
           const shuffled = (data as BotCard[]).slice().sort(() => Math.random() - 0.5);
           setBots(shuffled);
         }
       } catch {
+        if (!cancelled) setFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -46,7 +53,7 @@ export function SuggestedBots({ kinkTags, showFilter = false }: { kinkTags: stri
     return () => {
       cancelled = true;
     };
-  }, [kinkTags]);
+  }, [kinkTags, reloadKey]);
 
   const visible = (
     filter === "everyone" ? bots : bots.filter((b) => b.gender === filter)
@@ -94,6 +101,18 @@ export function SuggestedBots({ kinkTags, showFilter = false }: { kinkTags: stri
             </div>
           ))}
         </div>
+      ) : failed ? (
+        <div className="py-3">
+          <p className="text-xs text-muted-faint">
+            Couldn&rsquo;t load character suggestions.
+          </p>
+          <button
+            onClick={() => setReloadKey((k) => k + 1)}
+            className="mt-1.5 text-xs text-accent-candle hover:text-accent-candle-deep focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none rounded px-1"
+          >
+            Try again
+          </button>
+        </div>
       ) : visible.length === 0 ? (
         <p className="text-xs text-muted-faint py-3">
           No characters in this lane yet — the community is still growing.
@@ -109,7 +128,7 @@ export function SuggestedBots({ kinkTags, showFilter = false }: { kinkTags: stri
               className="snap-start flex-shrink-0 w-36 text-left ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none rounded-lg"
             >
               <div className="relative aspect-[3/4] rounded-[16px] bg-gradient-to-br from-foreground/10 to-foreground/5 border border-line flex items-center justify-center mb-2 overflow-hidden">
-                <span className="text-3xl font-bold text-foreground/20 font-retro">{bot.name.charAt(0).toUpperCase()}</span>
+                <span className="text-3xl font-bold text-foreground/20 font-display">{bot.name.charAt(0).toUpperCase()}</span>
                 {genderLabel(bot.gender) && (
                   <span className="absolute top-2 right-2 text-[9px] font-mono px-1.5 py-0.5 rounded bg-background/70 text-muted border border-line">
                     {genderLabel(bot.gender)}

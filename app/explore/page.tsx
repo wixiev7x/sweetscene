@@ -22,10 +22,14 @@ export default function ExplorePage() {
   const [genre, setGenre] = useState("All");
   const [nsfwEnabled, setNsfwEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
+      setFailed(false);
       try {
         const supabase = createClient();
         const { data, error } = await supabase
@@ -50,13 +54,13 @@ export default function ExplorePage() {
           setCharacters(mapped);
         }
       } catch {
-        // show empty state on error
+        if (!cancelled) setFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [reloadKey]);
 
   const filtered = characters.filter((c) => {
     if (c.name.toLowerCase().includes(search.toLowerCase()) || c.tagline.toLowerCase().includes(search.toLowerCase())) {
@@ -69,7 +73,7 @@ export default function ExplorePage() {
   });
 
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
+    <div className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
       <div className="max-w-5xl mx-auto">
         <h1 className="text-3xl font-light text-foreground-dim mb-2">Explore Characters</h1>
         <p className="text-sm text-muted mb-8">Discover AI characters created by the community.</p>
@@ -107,6 +111,16 @@ export default function ExplorePage() {
               </div>
             ))}
           </div>
+        ) : failed ? (
+          <div className="text-center py-20">
+            <p className="text-muted text-lg mb-2">Couldn&rsquo;t load the character shelf.</p>
+            <button
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="text-sm text-brand-light hover:text-brand-lighter underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-line-focus rounded px-1"
+            >
+              Try again
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-muted text-lg mb-2">No characters found matching your filters.</p>
@@ -115,7 +129,7 @@ export default function ExplorePage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((c) => (
-              <Link key={c.id} href={`/chat/${c.id}`} onClick={() => playSound("click")}
+              <Link key={c.id} href={`/play/${c.id}`} onClick={() => playSound("click")} aria-label={`Start a solo scene with ${c.name}`}
                 className="group bg-surface/50 border border-white/10 rounded-2xl p-5 hover:border-brand/30 transition-all">
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-brand to-crimson-600 flex items-center justify-center text-lg font-bold text-white flex-shrink-0">
@@ -125,7 +139,7 @@ export default function ExplorePage() {
                     <h3 className="text-base text-foreground group-hover:text-brand-light transition-colors">{c.name}</h3>
                     <p className="text-xs text-muted mt-1 line-clamp-2">{c.tagline}</p>
                     <div className="flex items-center gap-2 mt-3">
-                      <span className="bg-neon-magenta/10 text-brand-light text-xs rounded-full px-2.5 py-0.5">{c.genre}</span>
+                      <span className="bg-brand/10 text-brand-light text-xs rounded-full px-2.5 py-0.5">{c.genre}</span>
                       {c.isNsfw && <span className="bg-crimson-500/10 text-crimson-400 text-xs rounded-full px-2.5 py-0.5">18+</span>}
                     </div>
                   </div>
@@ -141,6 +155,6 @@ export default function ExplorePage() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

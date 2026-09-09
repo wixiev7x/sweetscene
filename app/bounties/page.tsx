@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
 import { createClient } from "@/lib/supabase/client";
@@ -109,13 +110,8 @@ export default function BountiesPage() {
     }
   }
 
-  function handleRespond(author: string) {
-    playSound("click");
-    toast.success(`Response sent to ${author}!`);
-  }
-
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
+    <div className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <h1 className="text-4xl font-bold gradient-text mb-2">Bounties</h1>
@@ -211,23 +207,26 @@ export default function BountiesPage() {
                 {bounty.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-4">
                     {bounty.tags.map((tag, i) => (
-                      <span key={i} className="bg-neon-magenta/10 text-brand-light text-xs rounded-full px-3 py-1">
+                      <span key={i} className="bg-brand/10 text-brand-light text-xs rounded-full px-3 py-1">
                         {tag}
                       </span>
                     ))}
                   </div>
                 )}
-                <button
-                  onClick={() => handleRespond(bounty.author)}
-                  className="px-4 py-2 rounded-lg bg-surface-raised border border-white/10 text-sm font-medium text-foreground hover:border-brand/30 hover:text-brand-light transition-all"
+                {/* The board is display-only for now — no fake "respond"
+                 * actions. Building the scene is the real next step. */}
+                <Link
+                  href="/create"
+                  onClick={() => playSound("click")}
+                  className="inline-block px-4 py-2 rounded-lg bg-surface-raised border border-white/10 text-sm font-medium text-foreground hover:border-brand/30 hover:text-brand-light transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
                 >
-                  Respond
-                </button>
+                  Build this scene
+                </Link>
               </div>
             ))}
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

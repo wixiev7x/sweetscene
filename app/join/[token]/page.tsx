@@ -100,12 +100,12 @@ export default function JoinInvitePage() {
   };
 
   return (
-    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-12 flex items-center justify-center">
+    <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-12 flex items-center justify-center">
       <div className="w-full max-w-md">
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent-candle mb-2 text-center">
           Private invitation
         </p>
-        <h1 className="font-retro text-3xl md:text-4xl mb-6 text-center">
+        <h1 className="font-display text-3xl md:text-4xl mb-6 text-center">
           A room <span className="gradient-text">awaits.</span>
         </h1>
 
@@ -160,7 +160,7 @@ export default function JoinInvitePage() {
 
           {state.phase === "own_link" && (
             <>
-              <p className="font-retro text-xl mb-2">This is your link</p>
+              <p className="font-display text-xl mb-2">This is your link</p>
               <p className="text-sm text-muted mb-6 max-w-xs">
                 You made this invitation. Share it with someone — or start a room yourself from matchmaking.
               </p>
@@ -175,7 +175,7 @@ export default function JoinInvitePage() {
 
           {state.phase === "expired" && (
             <>
-              <p className="font-retro text-xl mb-2">This invitation expired</p>
+              <p className="font-display text-xl mb-2">This invitation expired</p>
               <p className="text-sm text-muted mb-6 max-w-xs">
                 One-day links close on schedule. Ask your host for a fresh one.
               </p>
@@ -190,7 +190,7 @@ export default function JoinInvitePage() {
 
           {state.phase === "revoked" && (
             <>
-              <p className="font-retro text-xl mb-2">This invitation was revoked</p>
+              <p className="font-display text-xl mb-2">This invitation was revoked</p>
               <p className="text-sm text-muted mb-6 max-w-xs">
                 The host turned this link off. If that surprises you, ask them what changed.
               </p>
@@ -205,7 +205,7 @@ export default function JoinInvitePage() {
 
           {state.phase === "invalid" && (
             <>
-              <p className="font-retro text-xl mb-2">Invitation not found</p>
+              <p className="font-display text-xl mb-2">Invitation not found</p>
               <p className="text-sm text-muted mb-6 max-w-xs">
                 This link doesn&rsquo;t match any room. Check that you copied the whole thing.
               </p>
@@ -220,7 +220,7 @@ export default function JoinInvitePage() {
 
           {state.phase === "error" && (
             <>
-              <p className="font-retro text-xl mb-2">Something interrupted the night</p>
+              <p className="font-display text-xl mb-2">Something interrupted the night</p>
               <p className="text-sm text-muted mb-6 max-w-xs">{state.message}</p>
               <button
                 onClick={() => setState({ phase: "checking" })}
@@ -232,6 +232,6 @@ export default function JoinInvitePage() {
           )}
         </div>
       </div>
-    </main>
+    </div>
   );
 }

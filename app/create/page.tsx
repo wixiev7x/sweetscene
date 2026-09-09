@@ -105,24 +105,24 @@ export default function CreatePage() {
 
   if (published) {
     return (
-      <main className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center px-6">
         <div className="max-w-md text-center">
           <div className="text-5xl mb-4 text-success">&#x2713;</div>
-          <h1 className="text-3xl font-retro mb-3">Character published!</h1>
-          <p className="text-sm text-muted mb-8">It will appear in Explore once approved.</p>
+          <h1 className="text-3xl font-display mb-3">Character published!</h1>
+          <p className="text-sm text-muted mb-8">It goes live in Explore right away — our moderation team reviews every new host.</p>
           <Link href="/explore" className="px-8 py-3 rounded-full font-medium text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light active:scale-95 transform transition-all inline-block focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none">
             View in Explore →
           </Link>
         </div>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
+    <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
       <div className="max-w-2xl mx-auto">
         <p className="text-xs uppercase tracking-[0.2em] text-accent-candle font-mono mb-2">The workshop</p>
-        <h1 className="text-3xl md:text-4xl font-retro mb-2">Create a character</h1>
+        <h1 className="text-3xl md:text-4xl font-display mb-2">Create a character</h1>
         <p className="text-sm text-muted mb-6">
           Design an AI personality for others to meet. Upload artwork so they find you in the dark.
         </p>
@@ -146,7 +146,7 @@ export default function CreatePage() {
                     <span className="w-5 h-5 border-2 border-line-strong border-t-accent-candle rounded-full animate-spin" />
                   </div>
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-4xl font-retro text-muted-faint">
+                  <div className="absolute inset-0 flex items-center justify-center text-4xl font-display text-muted-faint">
                     {name[0] || "?"}
                   </div>
                 )}
@@ -262,6 +262,6 @@ export default function CreatePage() {
           </button>
         </form>
       </div>
-    </main>
+    </div>
   );
 }

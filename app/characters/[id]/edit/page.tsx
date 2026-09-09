@@ -198,15 +198,15 @@ export default function EditCharacterPage({
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <LoadingState text="Loading character…" />
-      </main>
+      </div>
     );
   }
 
   if (error && !initial) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center gap-4 px-6">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6">
         <p className="text-muted-strong">{error}</p>
         <Link
           href="/characters/my"
@@ -214,12 +214,12 @@ export default function EditCharacterPage({
         >
           ← Back to my characters
         </Link>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen max-w-2xl mx-auto px-6 py-12">
+    <div className="min-h-screen max-w-2xl mx-auto px-6 py-12">
       <div className="mb-8">
         <Link
           href={`/characters/${id}`}
@@ -465,6 +465,6 @@ export default function EditCharacterPage({
           </Link>
         </div>
       </form>
-    </main>
+    </div>
   );
 }

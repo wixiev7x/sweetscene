@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { pageMeta } from "@/lib/seo";
+
+export const metadata: Metadata = pageMeta({
+  title: "Terms of Service",
+  description:
+    "The rules of the scene — age requirements, conduct, NSFW policy, moderation, and refunds.",
+  path: "/legal/terms",
+});
 
 /**
  * Terms of Service page. Covers age requirement (16+), NSFW opt-in,
@@ -10,15 +19,6 @@ export default function TermsPage() {
   return (
     <div className="min-h-screen bg-void-950 text-white">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,45,149,0.08)_0%,transparent_50%)]" />
-
-      <nav className="sticky top-0 z-10 border-b border-white/5 backdrop-blur-md bg-void-950/40 px-6 py-4">
-        <Link
-          href="/"
-          className="text-xl font-bold text-brand-light hover:text-brand-lighter transition-colors"
-        >
-          sweetscene
-        </Link>
-      </nav>
 
       <article className="max-w-2xl mx-auto px-6 py-12 space-y-8 text-foreground-dim leading-relaxed">
         <h1 className="text-3xl font-light text-white tracking-wide">

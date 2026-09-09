@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { SiteNav } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import {
   createCharacter,
@@ -302,8 +301,6 @@ export default function CreateCharacterPage() {
   return (
     <div className="min-h-screen bg-void-950 text-white">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,45,149,0.08)_0%,transparent_50%)]" />
-
-      <SiteNav />
 
       <div className="max-w-2xl mx-auto px-6 pt-12 pb-8">
         <h1 className="text-3xl font-light text-foreground tracking-wide">
@@ -664,6 +661,9 @@ export default function CreateCharacterPage() {
           <Field label="NSFW Content" hint={profile?.is_vip ? "Enable for uncensored roleplay." : "NSFW requires VIP."}>
             <button
               type="button"
+              role="switch"
+              aria-checked={isNsfw}
+              aria-label="NSFW content"
               onClick={toggleNsfw}
               disabled={!profile?.is_vip}
               className={[
@@ -672,7 +672,7 @@ export default function CreateCharacterPage() {
                 isNsfw ? "bg-gradient-to-r from-brand-dark to-crimson-600" : "bg-surface-raised",
               ].join(" ")}
             >
-              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-300 ${isNsfw ? "left-7" : "left-0.5"}`} />
+              <span aria-hidden="true" className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-300 ${isNsfw ? "left-7" : "left-0.5"}`} />
             </button>
           </Field>
 

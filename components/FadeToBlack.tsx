@@ -486,17 +486,6 @@ export default function FadeToBlack({
           }
         }
 
-        @keyframes typingBounce {
-          0%,
-          80%,
-          100% {
-            opacity: 0.3;
-            transform: translateY(0);
-          }
-          40% {
-            opacity: 1;
-            transform: translateY(-4px);
-          }
         }
 
         @keyframes glowExpand {
