@@ -533,13 +533,13 @@ export default function Home() {
               Safety
             </Link>
             <Link
-              href="/legal/terms"
+              href="/terms"
               className="type-meta text-muted underline-offset-4 transition-colors hover:text-accent-candle hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
             >
               Terms
             </Link>
             <Link
-              href="/legal/privacy"
+              href="/privacy"
               className="type-meta text-muted underline-offset-4 transition-colors hover:text-accent-candle hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
             >
               Privacy

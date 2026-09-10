@@ -24,8 +24,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/create", priority: 0.6 },
     { path: "/signup", priority: 0.5 },
     { path: "/login", priority: 0.4 },
-    { path: "/legal/terms", priority: 0.3 },
-    { path: "/legal/privacy", priority: 0.3 },
+    { path: "/terms", priority: 0.3 },
+    { path: "/privacy", priority: 0.3 },
   ];
   return publicRoutes.map((r) => ({
     url: `${site}${r.path}`,

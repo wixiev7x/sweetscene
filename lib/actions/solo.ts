@@ -9,6 +9,7 @@ import { moderateText, screenOutput } from "@/lib/utils/moderation";
 import { buildCharacterChatPrompt, parseExampleDialog } from "@/lib/ai/prompts";
 import { getProvider } from "@/lib/ai";
 import { assertNotBanned } from "@/lib/utils/ban";
+import { isNsfwAccessAllowed } from "@/lib/verification/gate";
 import { MESSAGE_TOKEN_COST, WAITING_ROOM_MESSAGE_CAP } from "@/lib/config/constants";
 import type { AIMessage } from "@/lib/ai/provider";
 
@@ -191,6 +192,32 @@ function toCharacterInfo(char: ResolvedCharacter): CharacterInfo {
 }
 
 /**
+ * Server-side NSFW age gate for solo scenes — FAILS CLOSED.
+ *
+ * An NSFW character requires the viewer's profile to be
+ * age_cohort='adult' AND, once an ID-verification provider is
+ * configured, a passed verification. (An earlier version of this file
+ * *commented* that such a gate existed downstream; it did not. This is
+ * the actual enforcement — every solo path calls it after resolving
+ * the character.)
+ */
+async function nsfwGateError(
+  userId: string,
+  isNsfw: boolean
+): Promise<string | null> {
+  if (!isNsfw) return null;
+  const verdict = await isNsfwAccessAllowed(userId);
+  if (verdict.allowed) return null;
+  if (verdict.reason === "minor") {
+    return "This scene is 18+ — your account isn't confirmed as an adult.";
+  }
+  if (verdict.reason === "unverified") {
+    return "This scene requires age verification — verify from your profile to continue.";
+  }
+  return "Couldn't confirm your age for this scene — try again shortly.";
+}
+
+/**
  * Creates a new solo play session for the given character. If the
  * character has a first_message, it is inserted as the opening
  * assistant turn so the user walks into a greeting.
@@ -207,6 +234,9 @@ export async function startSoloSession(
 
   const char = await resolveCharacter(supabase, characterId);
   if (!char) return { error: "Character not found" };
+
+  const nsfwError = await nsfwGateError(user.id, char.is_nsfw);
+  if (nsfwError) return { error: nsfwError };
 
   const now = new Date().toISOString();
   const initialMessages: SoloMessage[] = [];
@@ -267,11 +297,13 @@ export async function startWaitingRoomSession(): Promise<SessionResult> {
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not authenticated" };
 
-  /* Pick a random public character for the waiting room. */
+  /* Pick a random public SFW character for the waiting room — the
+     waiting room serves every account, so NSFW hosts never appear. */
   const { data: randomChars } = await supabase
     .from("characters")
     .select("id")
     .eq("visibility", "public")
+    .eq("is_nsfw", false)
     .limit(50);
 
   if (!randomChars || randomChars.length === 0) {
@@ -345,6 +377,9 @@ export async function getOrCreateSoloSession(
     const char = await resolveCharacter(supabase, characterId);
     if (!char) return { error: "Character not found" };
 
+  const nsfwError = await nsfwGateError(user.id, char.is_nsfw);
+  if (nsfwError) return { error: nsfwError };
+
     return {
       sessionId: existing.id as string,
       messages: (existing.messages as SoloMessage[]) ?? [],
@@ -381,6 +416,9 @@ export async function continueSoloSession(
 
   const char = await resolveCharacter(supabase, session.character_id as string);
   if (!char) return { error: "Character not found" };
+
+  const nsfwError = await nsfwGateError(user.id, char.is_nsfw);
+  if (nsfwError) return { error: nsfwError };
 
   return {
     sessionId: session.id as string,
@@ -426,6 +464,9 @@ export async function appendSoloMessage(
   const char = await resolveCharacter(supabase, session.character_id as string);
   if (!char) return { error: "Character not found" };
 
+  const nsfwError = await nsfwGateError(user.id, char.is_nsfw);
+  if (nsfwError) return { error: nsfwError };
+
   /* S17/M8: waiting-room sessions are capped at 30 user messages so
      the free waiting-room chat doesn't become an unlimited AI
      substitute. Regular solo sessions keep the 50-entry cap. */
@@ -438,9 +479,9 @@ export async function appendSoloMessage(
   /* B5: apply the moderation gate + full PII redaction + injection
      scrub on solo input, matching the matched-chat pipeline in
      messages.ts. The character's own rating decides which policy
-     applies: an NSFW character is one the viewer already passed the
-     age_cohort='adult' gate to open, so adult content in that scene is
-     the product working. The categories that are refused regardless —
+     applies: an NSFW character is one the viewer passed the NSFW age
+     gate (nsfwGateError above) to open, so adult content in that scene
+     is the product working. The categories that are refused regardless —
      sexual/minors first among them — do not consult this flag. */
   const verdict = await moderateText(content, {
     nsfwAllowed: char.is_nsfw,

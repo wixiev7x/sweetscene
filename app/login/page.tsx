@@ -165,11 +165,11 @@ function LoginPageInner() {
                 />
                 <span>
                   I agree to the{" "}
-                  <Link href="/legal/terms" className="text-accent-candle hover:text-accent-candle-deep underline">
+                  <Link href="/terms" className="text-accent-candle hover:text-accent-candle-deep underline">
                     Terms
                   </Link>{" "}
                   and{" "}
-                  <Link href="/legal/privacy" className="text-accent-candle hover:text-accent-candle-deep underline">
+                  <Link href="/privacy" className="text-accent-candle hover:text-accent-candle-deep underline">
                     Privacy Policy
                   </Link>
                   . I confirm I am 16 or older.

@@ -35,8 +35,8 @@ const MORE_GROUP: NavItem[] = [
   { href: "/achievements", label: "Achievements", icon: "M8 21h8M12 17v4M6 4h12v7a6 6 0 01-12 0zM4 4h2v7a2 2 0 01-2-2zM18 4h2v5a2 2 0 01-2 2z" },
   { href: "/safety", label: "Safety", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
   { href: "/how", label: "Help", icon: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 8v4M12 16h.01" },
-  { href: "/legal/terms", label: "Terms", icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M9 15l2 2 4-4" },
-  { href: "/legal/privacy", label: "Privacy", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+  { href: "/terms", label: "Terms", icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M9 15l2 2 4-4" },
+  { href: "/privacy", label: "Privacy", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
 ];
 
 const MOBILE_TABS: NavItem[] = [
@@ -121,12 +121,14 @@ export function SiteNav({ className = "" }: { className?: string }) {
         if (cancelled) return;
         if (user) {
           setUser(user);
-          const { data } = await supabase
-            .from("profiles")
-            .select("tokens_balance")
-            .eq("id", user.id)
-            .single();
-          if (!cancelled && data?.tokens_balance != null) setTokens(data.tokens_balance);
+          /* tokens_balance is column-REVOKE'd from direct reads — the
+             owner value comes from the get_own_profile RPC. */
+          const { data: own } = await supabase.rpc("get_own_profile");
+          const rows = (Array.isArray(own) ? own : [own]) as Array<{
+            tokens_balance?: number | null;
+          } | null>;
+          const balance = rows?.[0]?.tokens_balance;
+          if (!cancelled && balance != null) setTokens(balance);
         }
       } catch {
       }

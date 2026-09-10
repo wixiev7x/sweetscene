@@ -189,9 +189,9 @@ function SignupPageInner() {
             />
             <span className="text-xs text-muted leading-relaxed">
               I agree to the{" "}
-              <a href="/legal/terms" className="text-accent-candle hover:text-accent-candle-deep underline">Terms of Service</a>{" "}
+              <a href="/terms" className="text-accent-candle hover:text-accent-candle-deep underline">Terms of Service</a>{" "}
               and{" "}
-              <a href="/legal/privacy" className="text-accent-candle hover:text-accent-candle-deep underline">Privacy Policy</a>
+              <a href="/privacy" className="text-accent-candle hover:text-accent-candle-deep underline">Privacy Policy</a>
               . I confirm I am 16 or older.
             </span>
           </label>

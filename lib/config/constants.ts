@@ -34,6 +34,21 @@ export function poolForTier(tier: MatchTier): number {
 /* ── Free-tier limits ── */
 export const FREE_TIER_DAILY_MATCH_CAP = 3;
 
+/* ── ID verification gate ──
+ *
+ * When true AND an ID-verification provider is configured (see
+ * lib/verification/config.ts), matchmaking requires a verified age
+ * before a user can join a queue. NSFW access additionally requires
+ * verification in the same configured state.
+ *
+ * NOTE (operator decision): true means ID verification is required for
+ * ALL matchmaking, not just NSFW — that is the launch requirement as
+ * written. Flip to false to gate NSFW only. Enforcement only activates
+ * once a provider is configured, so the platform keeps working before
+ * keys exist.
+ */
+export const REQUIRE_ID_VERIFICATION_FOR_MATCHMAKING = true;
+
 /* ──── Message limits ── */
 export const MESSAGE_MAX_LENGTH = 500;
 export const MESSAGE_TOKEN_COST = 20;

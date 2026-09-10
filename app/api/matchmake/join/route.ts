@@ -2,11 +2,29 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { expireOldEntries, findAndCreateMatches } from "@/lib/matchmaking-server";
+import { getVerificationState } from "@/lib/verification/gate";
+import { REQUIRE_ID_VERIFICATION_FOR_MATCHMAKING } from "@/lib/config/constants";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Please sign up to start matchmaking" }, { status: 401 });
+
+  /* Age-verification gate. Only bites once a provider is configured —
+   * until then the platform runs exactly as before. Fail-closed once
+   * configured: unverified users cannot queue. */
+  if (REQUIRE_ID_VERIFICATION_FOR_MATCHMAKING) {
+    const verification = await getVerificationState(user.id);
+    if (verification.configured && !verification.verified) {
+      return NextResponse.json(
+        {
+          error: "Age verification is required before matchmaking.",
+          needsVerification: true,
+        },
+        { status: 403 }
+      );
+    }
+  }
 
   await expireOldEntries();
 

@@ -7,6 +7,7 @@ import { verifyTurnstile } from "@/lib/utils/turnstile";
 import { rateLimitByIp } from "@/lib/utils/ratelimit";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { isVerificationConfigured } from "@/lib/verification/config";
 
 /**
  * Validates a post-login destination. Same rules as the auth callback:
@@ -138,6 +139,12 @@ export async function signUpWithEmail(
     };
   }
 
+  /* New accounts go straight to age verification when a provider is
+   * configured — the account isn't "fully active" until then. An
+   * explicit ?next= destination still wins (the user was mid-flow). */
+  if (safeNext(next) === "/lobby" && isVerificationConfigured()) {
+    redirect("/age-verification");
+  }
   redirect(safeNext(next));
 }
 

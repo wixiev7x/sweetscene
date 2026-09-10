@@ -54,9 +54,20 @@ export interface NowPaymentsPaymentStatus {
 /**
  * Returns the NOWPayments API base URL from env, falling back to the
  * standard production endpoint.
+ *
+ * Sandbox: NOWPayments offers a separate sandbox environment
+ * (https://sandbox.nowpayments.io) with its own account and API key.
+ * Point NOWPAYMENTS_API_BASE at it and use the sandbox key to dry-run
+ * the full order → webhook → credit chain without real money. Without
+ * a sandbox account+key, the first live test IS the real-money test.
  */
 function getApiBase(): string {
   return process.env.NOWPAYMENTS_API_BASE ?? "https://api.nowpayments.io/v1";
+}
+
+/** True when the API base points at a non-production NOWPayments host. */
+export function isSandboxApiBase(): boolean {
+  return getApiBase() !== "https://api.nowpayments.io/v1";
 }
 
 /**

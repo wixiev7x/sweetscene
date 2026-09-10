@@ -243,6 +243,7 @@ function MatchmakePageInner() {
   });
   const [maxNotice, setMaxNotice] = useState(false);
   const [searching, setSearching] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
   const [loaderStage, setLoaderStage] = useState(0);
   const [sharedTags, setSharedTags] = useState<string[]>([]);
   const [elapsed, setElapsed] = useState(0);
@@ -314,6 +315,7 @@ function MatchmakePageInner() {
     async (searchMode: MatchMode, tags: string[], gender: GenderPref | null) => {
       if (!requireAuth()) return;
       setSearching(true);
+      setNeedsVerification(false);
       try {
         const res = await fetch("/api/matchmake/join", {
           method: "POST",
@@ -325,6 +327,10 @@ function MatchmakePageInner() {
           return;
         }
         const data = await res.json();
+        if (data.needsVerification) {
+          setNeedsVerification(true);
+          return;
+        }
         if (data.id) {
           setLoaderStage(0);
           setElapsed(0);
@@ -640,6 +646,24 @@ function MatchmakePageInner() {
 
         {state.phase === "idle" || state.phase === "cancelled" ? (
           <div className="flex flex-col">
+            {needsVerification && (
+              <div className="mb-6 bg-surface border border-accent-candle/40 rounded-[var(--radius-card)] p-6 text-center">
+                <p className="type-body font-semibold text-foreground mb-2">
+                  Age verification required
+                </p>
+                <p className="type-meta text-muted mb-4 max-w-sm mx-auto">
+                  Matchmaking needs a one-time age check before you can queue. It runs
+                  with an independent provider — we only receive the result.
+                </p>
+                <Link
+                  href="/age-verification"
+                  data-cursor="primary"
+                  className="inline-flex h-11 items-center rounded-full bg-gradient-to-r from-brand to-brand-dark px-6 text-sm font-semibold text-accent-foreground ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
+                >
+                  Verify your age →
+                </Link>
+              </div>
+            )}
             {!mode ? (
               <div className="grid sm:grid-cols-2 gap-4">
                 {MODE_CARDS.map((m) => (

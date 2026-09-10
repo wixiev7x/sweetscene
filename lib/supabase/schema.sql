@@ -4050,3 +4050,19 @@ CREATE TABLE IF NOT EXISTS bounties (
   responses INT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- ════════════════════════════════════════════════════════════════════
+-- 2026-09-10 — Age verification + profile-column exposure fix.
+--
+-- Full, commented, runnable copies live in supabase/migrations/:
+--   2026-09-10-01-profiles-sensitive-column-revokes.sql  (CRITICAL —
+--     the documented B5/B6 column REVOKEs were never applied to the
+--     live databases; tokens_balance etc. were anon-readable)
+--   2026-09-10-02-age-verification.sql  (age_verified columns, widened
+--     get_own_profile, DB-level NSFW row gates on bots/characters)
+--
+-- The app-side integration (lib/verification/*, gating in
+-- matchmaking/solo/characters actions, /age-verification UI) is inert
+-- until AGE_VERIFICATION_PROVIDER/API_KEY/WEBHOOK_SECRET env vars are
+-- set — by design, so nothing bricks before a provider is chosen.
+-- ════════════════════════════════════════════════════════════════════
