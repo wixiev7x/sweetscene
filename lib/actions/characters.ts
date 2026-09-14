@@ -8,6 +8,7 @@ import { scrubInjection } from "@/lib/utils/safety";
 import { moderateFields } from "@/lib/utils/moderation";
 import { validateAvatarUrl } from "@/lib/utils/url";
 import { createAdminClient } from "@/lib/supabase/server-admin";
+import { isNsfwAccessAllowed } from "@/lib/verification/gate";
 import {
   importCharacterCard,
   exportCharacterCard,
@@ -203,17 +204,34 @@ export async function createCharacter(
   }
 
   /* C3: re-check VIP server-side for NSFW character creation. The
-     client gate is bypassable by calling the action directly. */
+     client gate is bypassable by calling the action directly.
+     Also fails closed on age: creating NSFW content requires an
+     adult-confirmed account (+ passed ID verification once a
+     provider is configured). */
   if (params.is_nsfw) {
     const admin = createAdminClient();
     const { data: profileRow } = (await admin
       .from("profiles")
-      .select("is_vip")
+      .select("is_vip, age_cohort, age_verified")
       .eq("id", user.id)
-      .single()) as { data: { is_vip: boolean } | null };
+      .single()) as {
+      data: { is_vip: boolean; age_cohort: string | null; age_verified: boolean | null } | null;
+    };
 
     if (!profileRow || !profileRow.is_vip) {
       return { error: "NSFW characters require VIP" };
+    }
+    if (profileRow.age_cohort !== "adult") {
+      return { error: "NSFW characters require an adult-confirmed account" };
+    }
+    const nsfw = await isNsfwAccessAllowed(user.id);
+    if (!nsfw.allowed) {
+      return {
+        error:
+          nsfw.reason === "unverified"
+            ? "NSFW characters require age verification — verify from your profile."
+            : "NSFW characters require an adult account.",
+      };
     }
   }
 
@@ -322,12 +340,26 @@ export async function updateCharacter(
     const admin = createAdminClient();
     const { data: profileRow } = (await admin
       .from("profiles")
-      .select("is_vip")
+      .select("is_vip, age_cohort, age_verified")
       .eq("id", user.id)
-      .single()) as { data: { is_vip: boolean } | null };
+      .single()) as {
+      data: { is_vip: boolean; age_cohort: string | null; age_verified: boolean | null } | null;
+    };
 
     if (!profileRow || !profileRow.is_vip) {
       return { error: "NSFW characters require VIP" };
+    }
+    if (profileRow.age_cohort !== "adult") {
+      return { error: "NSFW characters require an adult-confirmed account" };
+    }
+    const nsfw = await isNsfwAccessAllowed(user.id);
+    if (!nsfw.allowed) {
+      return {
+        error:
+          nsfw.reason === "unverified"
+            ? "NSFW characters require age verification — verify from your profile."
+            : "NSFW characters require an adult account.",
+      };
     }
   }
 

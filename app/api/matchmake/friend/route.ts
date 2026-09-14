@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 
+/** Username search for the Invite Room. The room itself is created
+ * only when the invitee opens the invite link — never unilaterally. */
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -28,38 +30,4 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({ users: friend });
-}
-
-export async function PUT(req: NextRequest) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Login required" }, { status: 401 });
-
-  const body = await req.json();
-  const { friendId, botId } = body as { friendId: string; botId?: string };
-
-  if (!friendId) return NextResponse.json({ error: "Friend ID required" }, { status: 400 });
-
-  const admin = createAdminClient();
-
-  const characterIds = botId ? [botId] : [];
-
-  const { data, error } = await admin
-    .from("matches")
-    .insert({
-      user_a: user.id,
-      user_b: friendId,
-      is_ai_match: false,
-      status: "active",
-      tier: "quick",
-      scenario_tags: [],
-      shared_pool: 2000,
-      character_ids: characterIds,
-    })
-    .select("id")
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  return NextResponse.json({ matchId: data.id });
 }

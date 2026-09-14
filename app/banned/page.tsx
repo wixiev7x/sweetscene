@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
@@ -54,7 +55,11 @@ export default async function BannedPage() {
         </div>
 
         <p className="text-xs text-muted">
-          If you believe this is an error, please contact support.
+          If you believe this is an error, please review the{" "}
+          <Link href="/safety" className="text-accent-candle hover:text-accent-candle-deep underline">
+            safety guidelines
+          </Link>{" "}
+          or reply through the email on your account.
         </p>
       </div>
     </div>

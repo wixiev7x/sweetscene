@@ -7,6 +7,24 @@ import { verifyTurnstile } from "@/lib/utils/turnstile";
 import { rateLimitByIp } from "@/lib/utils/ratelimit";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { isVerificationConfigured } from "@/lib/verification/config";
+
+/**
+ * Validates a post-login destination. Same rules as the auth callback:
+ * site-relative path only — no protocol-relative or cross-origin URLs
+ * (open-redirect guard). Falls back to /lobby.
+ */
+function safeNext(next?: string): string {
+  if (
+    next &&
+    /^\/[^/\\].*$/.test(next) &&
+    !next.startsWith("//") &&
+    !next.includes("\\")
+  ) {
+    return next;
+  }
+  return "/lobby";
+}
 
 /**
  * Server action invoked by the login page after a Turnstile solve.
@@ -20,7 +38,8 @@ import { headers } from "next/headers";
  */
 export async function signInWithProvider(
   provider: "google" | "discord",
-  turnstileToken: string
+  turnstileToken: string,
+  next?: string
 ): Promise<{ error?: string }> {
   /* S4: IP-based brute-force throttle. 5 OAuth attempts per 5 minutes
      per IP — prevents credential stuffing via the OAuth endpoints. */
@@ -41,10 +60,13 @@ export async function signInWithProvider(
 
   const supabase = await createClient();
 
+  /* Carry the validated destination through the OAuth round-trip —
+   * the callback re-validates it on the way back. */
+  const destination = safeNext(next);
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback`,
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/auth/callback?next=${encodeURIComponent(destination)}`,
     },
   });
 
@@ -65,7 +87,8 @@ export async function signUpWithEmail(
   email: string,
   password: string,
   turnstileToken: string,
-  username?: string
+  username?: string,
+  next?: string
 ): Promise<{ error?: string }> {
   const headerList = await headers();
   const req = new Request("https://internal/auth-check", { headers: headerList });
@@ -116,7 +139,13 @@ export async function signUpWithEmail(
     };
   }
 
-  redirect("/lobby");
+  /* New accounts go straight to age verification when a provider is
+   * configured — the account isn't "fully active" until then. An
+   * explicit ?next= destination still wins (the user was mid-flow). */
+  if (safeNext(next) === "/lobby" && isVerificationConfigured()) {
+    redirect("/age-verification");
+  }
+  redirect(safeNext(next));
 }
 
 /**
@@ -126,7 +155,8 @@ export async function signUpWithEmail(
 export async function signInWithEmail(
   email: string,
   password: string,
-  turnstileToken: string
+  turnstileToken: string,
+  next?: string
 ): Promise<{ error?: string }> {
   const headerList = await headers();
   const req = new Request("https://internal/auth-check", { headers: headerList });
@@ -151,7 +181,7 @@ export async function signInWithEmail(
   });
   if (error) return { error: error.message };
 
-  redirect("/lobby");
+  redirect(safeNext(next));
 }
 
 /**

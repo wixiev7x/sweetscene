@@ -53,18 +53,30 @@ export default function MessageList({
   }
 
   return (
-    <div className="flex flex-col gap-2 p-4 pb-24 overflow-y-auto h-full bg-gradient-to-b from-transparent via-black/20 to-black/40">
+    <div className="flex flex-col gap-2 p-4 pb-24 overflow-y-auto h-full bg-gradient-to-b from-transparent via-background/20 to-background/40">
       <div className="max-w-3xl mx-auto w-full flex flex-col gap-3">
         {/* ── EMPTY STATE ── */}
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-20">
             <span
-              className="block text-4xl opacity-20 mb-3"
+              className="block mb-3"
               style={{
                 animation: "breathGlow 3s infinite ease-in-out",
               }}
             >
-              &#x1F52E;
+              <svg width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+                <ellipse cx="20" cy="14" rx="9" ry="10" fill="var(--accent-candle)" opacity="0.25" />
+                <path d="M20 7c2.5 3 4 4.5 4 7a4 4 0 1 1-8 0c0-2.5 1.5-4 4-7z" fill="var(--accent-candle)" />
+                <rect x="16" y="18" width="8" height="2" rx="1" fill="var(--accent-candle-deep)" />
+                <rect x="14" y="20" width="12" height="13" rx="2.5" fill="var(--surface-300)" />
+                <rect x="14" y="20" width="12" height="13" rx="2.5" fill="url(#candleShade)" />
+                <defs>
+                  <linearGradient id="candleShade" x1="14" y1="20" x2="26" y2="33" gradientUnits="userSpaceOnUse">
+                    <stop stopColor="var(--accent-candle)" stopOpacity="0.15" />
+                    <stop offset="1" stopColor="transparent" />
+                  </linearGradient>
+                </defs>
+              </svg>
             </span>
             <p className="text-muted text-sm italic">
               The scene is about to begin...
@@ -84,15 +96,15 @@ export default function MessageList({
               <div key={msg.id} className="flex flex-col items-center w-full my-3">
                 {/* character label */}
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-brand/30 text-[10px]">&#9670;</span>
-                  <span className="text-xs text-brand-lighter/80 uppercase tracking-wider font-semibold">
+                  <span className="text-accent-candle/40 text-[10px]">&#9670;</span>
+                  <span className="text-xs text-accent-candle uppercase tracking-wider font-semibold">
                     &#x1F3AD; {charName}
                   </span>
-                  <span className="text-brand/30 text-[10px]">&#9670;</span>
+                  <span className="text-accent-candle/40 text-[10px]">&#9670;</span>
                 </div>
 
                 {/* bubble */}
-                <div className="max-w-[80%] px-4 py-3 bg-gradient-to-b from-brand-deep/30 to-black/20 border border-brand/20 rounded-xl italic font-light text-foreground text-sm leading-relaxed transition-all duration-300">
+                <div className="max-w-[80%] px-4 py-3 bg-accent-candle/10 border border-accent-candle/25 rounded-xl italic font-light text-foreground text-sm leading-relaxed transition-all duration-300">
                   {msg.content}
                 </div>
 
@@ -124,14 +136,14 @@ export default function MessageList({
               >
                 {mine ? (
                   <>
-                    <span className="text-xs text-brand-lighter/70 font-medium">
+                    <span className="text-xs text-accent-candle font-medium">
                       You
                     </span>
-                    <span className="block w-6 h-6 rounded-full bg-brand/40 border border-brand-light/30" />
+                    <span className="block w-6 h-6 rounded-full bg-accent-candle/30 border border-accent-candle/50" />
                   </>
                 ) : (
                   <>
-                    <span className="block w-6 h-6 rounded-full bg-pink-500/40 border border-pink-400/30" />
+                    <span className="block w-6 h-6 rounded-full bg-accent-rose/30 border border-accent-rose/50" />
                     <span className="text-xs text-muted-strong font-medium">
                       {otherName}
                     </span>
@@ -144,8 +156,8 @@ export default function MessageList({
                 className={[
                   "max-w-[75%] px-4 py-3 text-sm leading-relaxed transition-all duration-300",
                   mine
-                    ? "bg-gradient-to-br from-brand-dark/80 to-crimson-600/80 text-white rounded-2xl rounded-br-sm"
-                    : "bg-white/10 text-foreground rounded-2xl rounded-bl-sm",
+                    ? "bg-accent-rose/20 border border-accent-rose/30 text-foreground rounded-2xl rounded-br-sm"
+                    : "bg-surface-raised border border-line text-foreground rounded-2xl rounded-bl-sm",
                 ].join(" ")}
               >
                 {msg.content}

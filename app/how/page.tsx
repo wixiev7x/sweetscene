@@ -10,14 +10,14 @@ const STEPS = [
 
 export default function HowPage() {
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8 pb-14 md:pb-0">
+    <div className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-2xl font-light text-foreground-dim mb-2">How It Works</h1>
         <p className="text-sm text-muted mb-8">Three steps to anonymous connection.</p>
 
         <div className="grid sm:grid-cols-3 gap-5">
           {STEPS.map((step) => (
-            <div key={step.title} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-center hover:border-neon-magenta/40 transition-all">
+            <div key={step.title} className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-6 text-center hover:border-brand/40 transition-all">
               <span className="block text-3xl mb-3">{step.emoji}</span>
               <h2 className="text-sm text-foreground font-light mb-2">{step.title}</h2>
               <p className="text-xs text-muted leading-relaxed">{step.desc}</p>
@@ -31,6 +31,6 @@ export default function HowPage() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

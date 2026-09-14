@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { SiteNav, Spinner } from "@/components/ui";
+import { Spinner } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { getMyProfile } from "@/lib/actions/profile";
 import { findMatch, createAIMatch } from "@/lib/actions/matchmaking";
@@ -455,10 +455,8 @@ export default function LobbyPage() {
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_20%,rgba(255,45,149,0.15)_0%,transparent_60%)]" />
 
       {/* ── NAV BAR ── */}
-      <SiteNav />
-
       {/* ── MAIN CONTENT ── */}
-      <main className="relative z-0 max-w-4xl mx-auto px-6 py-12">
+      <div className="relative z-0 max-w-4xl mx-auto px-6 py-12">
         {/* ── PROFILE CARD ── */}
         <div className="flex items-center gap-6 bg-white/5 border border-white/10 rounded-2xl p-6">
           {profile?.anonymous_pfp_url ? (
@@ -757,7 +755,7 @@ export default function LobbyPage() {
             </Link>
           </div>
         )}
-      </main>
+      </div>
 
       {/* ── KEYFRAMES ── */}
       <style jsx>{`
@@ -769,17 +767,6 @@ export default function LobbyPage() {
             opacity: 1;
           }
         }
-        @keyframes typingBounce {
-          0%,
-          80%,
-          100% {
-            opacity: 0.3;
-            transform: translateY(0);
-          }
-          40% {
-            opacity: 1;
-            transform: translateY(-4px);
-          }
         }
       `}</style>
     </div>

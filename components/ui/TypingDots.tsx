@@ -21,7 +21,7 @@ export function TypingDots({
       {[0, 0.2, 0.4].map((delay) => (
         <span
           key={delay}
-          className={`${DOT_SIZES[size]} rounded-full bg-brand-light`}
+          className={`${DOT_SIZES[size]} rounded-full bg-accent-candle`}
           style={{
             animation: "typingBounce 1.4s infinite ease-in-out",
             animationDelay: `${delay}s`,

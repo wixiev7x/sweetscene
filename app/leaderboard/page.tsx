@@ -8,9 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 type Creator = {
   rank: number;
   name: string;
-  messages: number;
-  characters: number;
-  reveals: number;
+  reputation: number;
 };
 
 const podiumStyles: Record<number, { card: string; rank: string; label: string }> = {
@@ -36,11 +34,14 @@ const formatNum = (n: number) => n.toLocaleString();
 export default function LeaderboardPage() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      setLoading(true);
+      setFailed(false);
       try {
         const supabase = createClient();
         const { data, error } = await supabase
@@ -55,35 +56,28 @@ export default function LeaderboardPage() {
           const mapped: Creator[] = data.map((p: Record<string, unknown>, i: number) => ({
             rank: i + 1,
             name: (p.anonymous_username as string) || `User_${i + 1}`,
-            messages: (p.reputation_score as number) ?? 0,
-            characters: 0,
-            reveals: 0,
+            reputation: (p.reputation_score as number) ?? 0,
           }));
           setCreators(mapped);
         }
       } catch {
-        // show empty state on error
+        if (!cancelled) setFailed(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
-
-  const handleCreatorClick = (rank: number) => {
-    playSound("click");
-    setSelected(selected === rank ? null : rank);
-  };
+  }, [reloadKey]);
 
   const podium = creators.slice(0, 3);
   const rest = creators.slice(3);
 
   return (
-    <main className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
+    <div className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
       <div className="max-w-4xl mx-auto">
         <div className="mb-8 text-center">
-          <h1 className="text-4xl font-bold gradient-text mb-2">Creator Leaderboard</h1>
-          <p className="text-muted-strong">Top creators ranked by total engagement on their characters.</p>
+          <h1 className="type-display text-3xl md:text-4xl gradient-text mb-2">Creator Leaderboard</h1>
+          <p className="type-body text-muted-strong">Top scene-builders, ranked by reputation earned in play.</p>
         </div>
 
         {loading ? (
@@ -100,6 +94,16 @@ export default function LeaderboardPage() {
                 </div>
               </div>
             ))}
+          </div>
+        ) : failed ? (
+          <div className="text-center py-20">
+            <p className="text-muted text-lg mb-2">Couldn&rsquo;t load the leaderboard.</p>
+            <button
+              onClick={() => setReloadKey((k) => k + 1)}
+              className="text-sm text-brand-light hover:text-brand-lighter underline-offset-4 hover:underline focus-visible:ring-2 focus-visible:ring-line-focus rounded px-1"
+            >
+              Try again
+            </button>
           </div>
         ) : creators.length === 0 ? (
           <div className="text-center py-20">
@@ -121,12 +125,9 @@ export default function LeaderboardPage() {
                 return (
                   <div
                     key={creator.rank}
-                    onClick={() => handleCreatorClick(creator.rank)}
-                    className={`rounded-2xl p-6 border cursor-pointer transition-all hover:scale-[1.02] ${
+                    className={`rounded-2xl p-6 border transition-transform hover:scale-[1.02] ${
                       style.card
-                    } ${selected === creator.rank ? "scale-[1.02] pulse-glow" : ""} ${
-                      creator.rank === 1 ? "sm:order-2 sm:-translate-y-2" : creator.rank === 2 ? "sm:order-1" : "sm:order-3"
-                    }`}
+                    } ${creator.rank === 1 ? "sm:order-2 sm:-translate-y-2" : creator.rank === 2 ? "sm:order-1" : "sm:order-3"}`}
                   >
                     <div className="text-center mb-4">
                       <div className={`text-5xl font-bold ${style.rank} mb-1`}>
@@ -142,7 +143,7 @@ export default function LeaderboardPage() {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted">Reputation</span>
-                        <span className="font-semibold text-foreground">{formatNum(creator.messages)}</span>
+                        <span className="font-semibold text-foreground">{formatNum(creator.reputation)}</span>
                       </div>
                     </div>
                   </div>
@@ -154,10 +155,7 @@ export default function LeaderboardPage() {
               {rest.map((creator) => (
                 <div
                   key={creator.rank}
-                  onClick={() => handleCreatorClick(creator.rank)}
-                  className={`flex items-center justify-between p-4 bg-surface/50 border rounded-xl cursor-pointer transition-all hover:border-white/20 hover:bg-surface-raised ${
-                    selected === creator.rank ? "border-brand/30 bg-surface-raised" : "border-white/10"
-                  }`}
+                  className="flex items-center justify-between p-4 bg-surface/50 border border-white/10 rounded-xl transition-all hover:border-white/20 hover:bg-surface-raised"
                 >
                   <div className="flex items-center gap-4">
                     <span className="text-lg font-bold text-muted-strong w-8">#{creator.rank}</span>
@@ -169,7 +167,7 @@ export default function LeaderboardPage() {
                   <div className="flex items-center gap-6 text-sm">
                     <div className="text-right">
                       <p className="text-muted-faint text-xs">Reputation</p>
-                      <p className="font-semibold text-foreground">{formatNum(creator.messages)}</p>
+                      <p className="font-semibold text-foreground">{formatNum(creator.reputation)}</p>
                     </div>
                   </div>
                 </div>
@@ -189,6 +187,6 @@ export default function LeaderboardPage() {
           </Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

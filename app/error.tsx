@@ -17,8 +17,8 @@ export default function GlobalError({
   return (
     <div className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6">
       <div className="w-full max-w-md ios-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[20px] p-8 text-center">
-        <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-neon-magenta/10 flex items-center justify-center">
-          <span className="text-neon-magenta text-2xl">&#x2665;</span>
+        <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-brand/10 flex items-center justify-center">
+          <span className="text-brand text-2xl">&#x2665;</span>
         </div>
         <h1 className="text-xl font-semibold mb-2">Something went wrong</h1>
         <p className="text-sm text-muted mb-6">

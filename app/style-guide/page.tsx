@@ -140,7 +140,7 @@ export default function StyleGuidePage() {
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-12">
+    <div className="mx-auto max-w-4xl px-6 py-12">
       <header className="border-b border-line pb-8">
         <h1 className="text-3xl font-bold text-foreground">Style guide</h1>
         <p className="mt-2 max-w-2xl text-sm text-muted">
@@ -233,13 +233,14 @@ export default function StyleGuidePage() {
         </div>
       </Section>
 
-      <Section title="Typography" description="Geist Sans for UI, Geist Mono for code and IDs.">
+      <Section title="Typography" description="DM Serif Display for display, Fira Sans for everything else.">
         <div className="space-y-3">
+          <p className="type-display text-foreground">Display — DM Serif Display</p>
           <p className="text-3xl font-bold text-foreground">Heading 1 — 3xl bold</p>
           <p className="text-xl font-semibold text-foreground">Heading 2 — xl semibold</p>
-          <p className="text-base text-foreground">Body — base regular</p>
-          <p className="text-sm text-muted">Small — sm, muted</p>
-          <p className="font-mono text-xs text-muted-strong">Mono — xs, for IDs and code</p>
+          <p className="type-body text-foreground">Body — Fira Sans</p>
+          <p className="type-meta text-muted">Meta — small, muted</p>
+          <p className="type-eyebrow text-accent-candle">Eyebrow — uppercase, tracked</p>
         </div>
       </Section>
 
@@ -374,6 +375,6 @@ export default function StyleGuidePage() {
       <footer className="py-10 text-sm text-muted">
         This page reads no data and calls no server action. Restyle it freely.
       </footer>
-    </main>
+    </div>
   );
 }

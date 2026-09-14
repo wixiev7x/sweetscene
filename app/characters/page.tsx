@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { SiteNav, Spinner } from "@/components/ui";
+import { Spinner } from "@/components/ui";
 import { getPublicCharacters } from "@/lib/actions/characters";
 import { getRecentSessions } from "@/lib/actions/solo";
 
@@ -80,9 +80,6 @@ export default function CharactersPage() {
   const [sortBy, setSortBy] = useState<"recent" | "popular">("recent");
   /* Phase 8A — new filter dimensions. */
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(
-    null
-  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [recentSessions, setRecentSessions] = useState<RecentSession[]>([]);
@@ -198,8 +195,6 @@ export default function CharactersPage() {
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,45,149,0.08)_0%,transparent_50%)]" />
 
       {/* ── NAV BAR ── */}
-      <SiteNav />
-
       {/* ── PAGE HEADER ── */}
       <div className="max-w-6xl mx-auto px-6 pt-12 pb-8">
         <h1 className="text-3xl font-light text-foreground tracking-wide">
@@ -542,106 +537,6 @@ export default function CharactersPage() {
           </div>
         )}
       </div>
-
-      {/* ── DETAIL MODAL ── */}
-      {selectedCharacter && (
-        <div
-          className="fixed inset-0 z-40 bg-void-950/80 backdrop-blur-sm flex items-center justify-center p-6"
-          onClick={() => setSelectedCharacter(null)}
-        >
-          {(() => {
-            const char = selectedCharacter;
-            const gIdx = hashGradient(char.name);
-            const [from, to] = GRADIENTS[gIdx];
-
-            return (
-              <div
-                className="relative max-w-md w-full bg-gradient-to-b from-white/[0.08] to-white/[0.03] border border-white/10 rounded-3xl p-8"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* close button */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedCharacter(null)}
-                  className="absolute top-4 right-4 text-muted hover:text-foreground-dim text-sm transition-colors"
-                >
-                  &#10005;
-                </button>
-
-                {/* avatar */}
-                <div className="flex justify-center">
-                  <div
-                    className={`w-20 h-20 rounded-full bg-gradient-to-br ${from} ${to} flex items-center justify-center`}
-                  >
-                    <span className="text-2xl text-white font-bold">
-                      {char.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-
-                {/* name */}
-                <h2 className="text-2xl font-medium text-white mt-4 text-center">
-                  {char.name}
-                </h2>
-
-                {/* nsfw badge */}
-                <div className="flex justify-center mt-2">
-                  <span
-                    className={[
-                      "text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border",
-                      char.is_nsfw
-                        ? "bg-red-500/10 text-red-400 border-red-500/20"
-                        : "bg-green-500/10 text-green-400 border-green-500/20",
-                    ].join(" ")}
-                  >
-                    {char.is_nsfw ? "NSFW" : "SFW"}
-                  </span>
-                </div>
-
-                {/* tags */}
-                <div className="flex flex-wrap gap-2 justify-center mt-3">
-                  {char.scenario_tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-xs px-2 py-1 rounded-full bg-white/5 text-muted-strong capitalize"
-                    >
-                      {tag.replace(/_/g, " ")}
-                    </span>
-                  ))}
-                </div>
-
-                {/* prompt */}
-                <p className="text-xs text-muted uppercase tracking-wider mt-6">
-                  Character Prompt
-                </p>
-                <div className="text-sm text-foreground-dim leading-relaxed mt-2 bg-white/5 rounded-xl p-4">
-                  {char.user_prompt}
-                </div>
-
-                {/* divider */}
-                <div className="bg-gradient-to-r from-transparent via-white/10 to-transparent h-px my-6" />
-
-                {/* play button */}
-                <Link
-                  href={`/play/${char.id}`}
-                  className="block text-center w-full bg-gradient-to-r from-brand-dark to-crimson-600 text-white font-medium py-3 rounded-xl hover:from-brand hover:to-crimson-500 active:scale-95 transform transition-all"
-                >
-                  &#9654; Play Solo
-                </Link>
-
-                {/* close text */}
-                <button
-                  type="button"
-                  onClick={() => setSelectedCharacter(null)}
-                  className="block w-full text-sm text-muted hover:text-foreground-dim transition-colors text-center mt-3"
-                >
-                  Close
-                </button>
-              </div>
-            );
-          })()}
-        </div>
-      )}
 
       {/* ── LINE-CLAMP UTILITY ── */}
       <style jsx>{`

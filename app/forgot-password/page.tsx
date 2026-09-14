@@ -37,10 +37,10 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6 pb-14 md:pb-0">
+    <div className="min-h-screen bg-void-950 text-white flex items-center justify-center px-6">
       <div className="ios-card bg-white/5 backdrop-blur-xl border border-white/10 rounded-[20px] p-8 w-full max-w-md">
         <div className="flex flex-col items-center text-center gap-2 mb-6">
-          <span className="font-retro text-[10px] tracking-wider text-neon-magenta neon-text">SWEETSCENE</span>
+          <span className="font-display text-[10px] tracking-wider text-brand">SWEETSCENE</span>
           <h1 className="text-2xl font-bold">Reset password</h1>
           <p className="text-sm text-muted">
             {sent
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
 
         {sent ? (
           <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-neon-magenta/10 flex items-center justify-center text-xl text-neon-magenta">✓</div>
+            <div className="w-12 h-12 rounded-full bg-brand/10 flex items-center justify-center text-xl text-brand">✓</div>
             <Link
               href="/login"
               className="h-[52px] w-full flex items-center justify-center rounded-full bg-gradient-to-r from-brand-dark to-crimson-600 text-white font-semibold ios-press"
@@ -66,7 +66,7 @@ export default function ForgotPasswordPage() {
               placeholder="Email address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="h-[52px] w-full rounded-[16px] bg-white/5 border border-white/10 px-4 text-base placeholder:text-muted-faint focus:outline-none focus:border-neon-magenta/50"
+              className="h-[52px] w-full rounded-[16px] bg-white/5 border border-white/10 px-4 text-base placeholder:text-muted-faint focus:outline-none focus:border-brand/50"
               required
             />
             <button

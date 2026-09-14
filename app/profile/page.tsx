@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { SiteNav, Spinner, Badge, ProgressBar } from "@/components/ui";
+import { Spinner, Badge, ProgressBar } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import {
   getMyProfile,
@@ -333,8 +333,6 @@ export default function ProfilePage() {
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,45,149,0.08)_0%,transparent_50%)]" />
 
       {/* ── NAV BAR ── */}
-      <SiteNav />
-
       {/* ── PAGE HEADER ── */}
       <div className="max-w-3xl mx-auto px-6 pt-12 pb-8">
         <h1 className="text-3xl font-light text-foreground tracking-wide">
@@ -651,6 +649,9 @@ export default function ProfilePage() {
             {profile.age_cohort === "adult" ? (
               <button
                 type="button"
+                role="switch"
+                aria-checked={!!profile.nsfw_opt_in}
+                aria-label="NSFW content opt-in"
                 onClick={handleToggleNsfw}
                 disabled={nsfwLoading}
                 className={[
@@ -659,6 +660,7 @@ export default function ProfilePage() {
                 ].join(" ")}
               >
                 <span
+                  aria-hidden="true"
                   className={[
                     "absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform",
                     profile.nsfw_opt_in ? "translate-x-6" : "translate-x-0",

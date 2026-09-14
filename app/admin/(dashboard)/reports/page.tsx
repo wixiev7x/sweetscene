@@ -50,9 +50,9 @@ export default function AdminReportsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted">Loading...</p>
-      </main>
+      </div>
     );
   }
 
@@ -64,7 +64,7 @@ export default function AdminReportsPage() {
   ];
 
   return (
-    <main className="min-h-screen p-8">
+    <div className="min-h-screen p-8">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-8">
           <Link href="/admin" className="text-muted hover:text-foreground-dim">
@@ -181,6 +181,6 @@ export default function AdminReportsPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

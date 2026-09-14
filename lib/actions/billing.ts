@@ -3,7 +3,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
-import { createInvoice } from "@/lib/nowpayments/server";
+import { createInvoice, isSandboxApiBase } from "@/lib/nowpayments/server";
 import { rateLimit } from "@/lib/utils/ratelimit";
 import { randomUUID } from "node:crypto";
 import { logger } from "@/lib/utils/logger";
@@ -64,7 +64,17 @@ export async function createVIPOrder(): Promise<BillingResult> {
     currency: "usd",
   });
 
-  if (insertError) return { error: "Failed to create order" };
+  if (insertError) {
+    logger.error("payment_row_insert_failed", { kind: "vip", orderId });
+    return { error: "Failed to create order" };
+  }
+  logger.info("payment_order_created", {
+    kind: "vip",
+    orderId,
+    userId: user.id,
+    amount: VIP_PRICE_USD,
+    sandbox: isSandboxApiBase(),
+  });
 
   try {
     const invoice = await createInvoice({
@@ -74,6 +84,11 @@ export async function createVIPOrder(): Promise<BillingResult> {
       orderDescription: "VIP 30-day pass",
     });
 
+    logger.info("payment_invoice_created", {
+      kind: "vip",
+      orderId,
+      invoiceId: invoice.id,
+    });
     return { invoiceUrl: invoice.invoice_url };
   } catch (err) {
     logger.error("invoice_create_failed", { kind: "vip", orderId, err });
@@ -157,10 +172,16 @@ async function placeTokenOrder(
   if (existingPending) {
     /* Mark the old pending row as expired — don't reuse NOWPayments
        invoices as they may have expired on their side. */
+    const supersededOrderId = (existingPending as Record<string, unknown>).order_id as string;
     await admin
       .from("payments")
       .update({ status: "expired", updated_at: new Date().toISOString() })
-      .eq("order_id", (existingPending as Record<string, unknown>).order_id as string);
+      .eq("order_id", supersededOrderId);
+    logger.info("payment_pending_superseded", {
+      supersededOrderId,
+      newOrderId: orderId,
+      userId: user.id,
+    });
   }
 
   const { error: insertError } = await admin.from("payments").insert({
@@ -173,7 +194,18 @@ async function placeTokenOrder(
     token_quantity: quantity,
   });
 
-  if (insertError) return { error: "Failed to create order" };
+  if (insertError) {
+    logger.error("payment_row_insert_failed", { kind: "tokens", orderId, quantity });
+    return { error: "Failed to create order" };
+  }
+  logger.info("payment_order_created", {
+    kind: "tokens",
+    orderId,
+    userId: user.id,
+    amount: priceUsd,
+    quantity,
+    sandbox: isSandboxApiBase(),
+  });
 
   try {
     const invoice = await createInvoice({
@@ -183,6 +215,11 @@ async function placeTokenOrder(
       orderDescription: `${quantity.toLocaleString()} tokens`,
     });
 
+    logger.info("payment_invoice_created", {
+      kind: "tokens",
+      orderId,
+      invoiceId: invoice.id,
+    });
     return { invoiceUrl: invoice.invoice_url };
   } catch (err) {
     logger.error("invoice_create_failed", { kind: "tokens", orderId, err });
