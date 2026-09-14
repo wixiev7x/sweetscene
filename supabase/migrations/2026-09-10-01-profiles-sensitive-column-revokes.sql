@@ -1,4 +1,7 @@
 -- ════════════════════════════════════════════════════════════════════
+-- SUPERSEDED by 2026-09-10-05: column-level REVOKEs do not override
+-- Supabase's table-level GRANT, so this file's revokes are no-ops.
+-- Kept for history; 05 applies the working pattern.
 -- 2026-09-10 · CRITICAL · Profile column exposure fix
 --
 -- Run on BOTH the staging project (runjhpkyqcdbiijrqmfl) AND the

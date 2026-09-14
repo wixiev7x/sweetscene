@@ -1,4 +1,7 @@
 -- ════════════════════════════════════════════════════════════════════
+-- SUPERSEDED by 2026-09-10-05: same reason as 01 — column-level
+-- REVOKEs are no-ops under a table-level GRANT. 05 revokes the
+-- table-level UPDATE grant and re-grants only safe columns.
 -- 2026-09-10 · CRITICAL · Privilege escalation + token minting fix
 --
 -- Run on BOTH projects (staging runjhpkyqcdbiijrqmfl AND production

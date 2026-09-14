@@ -1,4 +1,7 @@
 -- ════════════════════════════════════════════════════════════════════
+-- SUPERSEDED by 2026-09-10-05 on the profiles-lock sections (same
+-- column-REVOKE no-op reason). The age columns + widened RPC it
+-- created are still valid and in use; run 05 after this one.
 -- 2026-09-10 · 04 · PRODUCTION consolidated security migration
 --
 -- For vnugflrlzrvngopweixe ONLY. One paste, covers 01+02+03 combined.
