@@ -314,6 +314,34 @@ async function main() {
       : `HTTP ${anonProfile.status} → ${anonProfile.text.slice(0, 120)}`
   );
 
+  /* 11. ESCALATION — B patches OWN is_admin (must be revoked after
+     migration 2026-09-10-03; before it, this was a full self-admin
+     escalation verified live on staging). */
+  const bSelfAdmin = await api(`/rest/v1/profiles?id=eq.${users.B.id}`, {
+    method: "PATCH",
+    token: users.B.token,
+    body: { is_admin: true },
+  });
+  const bAdminBlocked = [401, 403, 42501].includes(bSelfAdmin.status);
+  record(
+    "ESCALATION: B sets own is_admin=true",
+    bAdminBlocked,
+    `HTTP ${bSelfAdmin.status} → ${bSelfAdmin.text.slice(0, 120)} (must be 401/403/42501 — run migration 03)`
+  );
+
+  /* 12. ESCALATION — B patches OWN tokens_balance (token minting). */
+  const bSelfTokens = await api(`/rest/v1/profiles?id=eq.${users.B.id}`, {
+    method: "PATCH",
+    token: users.B.token,
+    body: { tokens_balance: 999999 },
+  });
+  const bTokensBlocked = [401, 403, 42501].includes(bSelfTokens.status);
+  record(
+    "ESCALATION: B sets own tokens_balance=999999",
+    bTokensBlocked,
+    `HTTP ${bSelfTokens.status} → ${bSelfTokens.text.slice(0, 120)} (must be 401/403/42501 — run migration 03)`
+  );
+
   /* Cleanup */
   if (CLEANUP && SERVICE) {
     for (const id of createdUserIds) {

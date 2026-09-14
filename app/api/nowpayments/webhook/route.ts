@@ -7,6 +7,12 @@ import {
 } from "@/lib/notifications/dispatch";
 import { logger } from "@/lib/utils/logger";
 import { VIP_DURATION_DAYS } from "@/lib/billing/constants";
+import {
+  findCanary,
+  reportCanaryHit,
+  recordInvalidSignature,
+  isSignatureBruteforceBlocked,
+} from "@/lib/security/canary";
 
 /* ════════════════════════════════════════════════════════════════════
  * Phase 8 — NOWPayments IPN webhook handler.
@@ -104,6 +110,25 @@ async function handleWebhook(request: Request): Promise<NextResponse> {
 
   const signatureHeader = request.headers.get("x-nowpayments-sig");
 
+  /* 0b. Honeytoken + brute-force guards.
+         - A published canary value in the signature or payload means
+           someone is replaying scraped credentials — alarm and reject.
+         - Repeated invalid signatures from one IP get throttled. */
+  const clientIp =
+    request.headers.get("cf-connecting-ip") ??
+    (request.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() ??
+    "unknown";
+
+  if (isSignatureBruteforceBlocked(clientIp)) {
+    return NextResponse.json({ error: "Too many invalid attempts" }, { status: 429 });
+  }
+
+  const canary = findCanary(signatureHeader, rawBody);
+  if (canary) {
+    reportCanaryHit(canary, { surface: "nowpayments_webhook", ip: clientIp });
+    return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+  }
+
   /* 1. Verify signature. A throw here means the IPN secret is unset —
          that is a server misconfiguration, not a bad request, so return
          500 and let NOWPayments retry once it is fixed. */
@@ -119,7 +144,11 @@ async function handleWebhook(request: Request): Promise<NextResponse> {
   }
 
   if (!isValid) {
-    logger.warn("np_signature_invalid", { bytes: rawBody.length });
+    logger.warn("np_signature_invalid", { bytes: rawBody.length, ip: clientIp });
+    const { blocked } = recordInvalidSignature(clientIp);
+    if (blocked) {
+      return NextResponse.json({ error: "Too many invalid attempts" }, { status: 429 });
+    }
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 

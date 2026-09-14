@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
 import { createClient } from "@/lib/supabase/client";
+import { createBot } from "@/lib/actions/community";
 
 const GENRES = ["Romance", "Mystery", "Fantasy", "Sci-Fi", "Slice of Life", "Thriller"];
 const STYLES = ["Casual", "Formal", "Poetic", "Dark", "Playful", "Mysterious"];
@@ -76,8 +77,7 @@ export default function CreatePage() {
     setSubmitting(true);
 
     try {
-      const supabase = createClient();
-      const { error } = await supabase.from("bots").insert({
+      const result = await createBot({
         name: name.trim(),
         tagline: tagline.trim(),
         personality: personality.trim(),
@@ -89,14 +89,17 @@ export default function CreatePage() {
         image_url: imageUrl,
       });
 
-      if (error) throw error;
+      if ("error" in result) {
+        toast.error(result.error);
+        playSound("error");
+        return;
+      }
 
       playSound("matchFound");
       toast.success("Character published successfully!");
       setPublished(true);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to publish character";
-      toast.error(message);
+    } catch {
+      toast.error("Failed to publish character");
       playSound("error");
     } finally {
       setSubmitting(false);

@@ -29,7 +29,9 @@ export async function POST(_request: Request): Promise<NextResponse> {
     );
   }
 
-  /* Provider picked but adapter not finished — same fail-closed. */
+  /* Provider picked but adapter not finished — same fail-closed. The
+     canary scan (lib/security/canary.ts) is wired in together with the
+     provider adapter implementation. */
   logger.warn("age_verification_webhook_not_implemented", {});
   return NextResponse.json(
     { error: "Webhook handler not implemented for the configured provider yet" },

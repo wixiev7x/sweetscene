@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
 import HeartBurst from "@/components/ui/HeartBurst";
+import { postConfession } from "@/lib/actions/community";
 
 type Mood = "Heartwarming" | "Funny" | "Awkward" | "Spicy" | "Melancholic";
 
@@ -96,19 +97,16 @@ export default function ConfessionsPage() {
     if (!trimmed || submitting) return;
     setSubmitting(true);
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("confessions")
-        .insert({ text: trimmed, mood: selectedMood ?? "Heartwarming", likes: 0 })
-        .select("id, text, mood, likes, created_at")
-        .single();
-      if (error || !data) {
-        toast.error("Could not post your story — try again");
+      /* Goes through the server action: moderated, scrubbed,
+         rate-limited, then persisted — never a raw client insert. */
+      const result = await postConfession(trimmed, selectedMood);
+      if ("error" in result) {
+        toast.error(result.error);
         return;
       }
       playSound("matchFound");
       toast.success("Posted anonymously");
-      setConfessions((prev) => [data as Confession, ...prev]);
+      setConfessions((prev) => [result.confession as Confession, ...prev]);
       setText("");
       setSelectedMood(null);
       setShowForm(false);

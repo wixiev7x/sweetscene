@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
 import { createClient } from "@/lib/supabase/client";
+import { postBounty } from "@/lib/actions/community";
 
 type Bounty = {
   id: string;
@@ -73,18 +74,15 @@ export default function BountiesPage() {
     setSubmitting(true);
 
     try {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("bounties")
-        .insert({
-          text: text.trim(),
-          tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
-          responses: 0,
-        })
-        .select("id, anonymous_author, text, tags, responses, created_at")
-        .single();
+      /* Goes through the server action: moderated, scrubbed,
+         rate-limited, then persisted — never a raw client insert. */
+      const result = await postBounty(text.trim(), tags);
 
-      if (error) throw error;
+      if ("error" in result) {
+        toast.error(result.error);
+        return;
+      }
+      const data = result.bounty as Record<string, unknown>;
 
       playSound("matchFound");
       toast.success("Bounty posted successfully!");
