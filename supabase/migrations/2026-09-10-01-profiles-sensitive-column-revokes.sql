@@ -11,6 +11,9 @@
 -- schema.sql has documented these REVOKEs since Phase B5/B6 — they
 -- were simply never applied to the running database.
 --
+-- Run order note: this file is order-independent now. The four
+-- age_verification columns it previously listed are revoked inside
+-- migration 02, which is the file that creates them.
 -- After running: the owner still sees their own values through the
 -- get_own_profile() SECURITY DEFINER RPC (widened in migration 02).
 -- Kept readable on purpose: display/flag columns used by hot paths
@@ -31,12 +34,10 @@ REVOKE SELECT (
   is_admin,
   connection_tickets,
   recent_ratings,
-  tos_accepted_at,
-  age_verified,
-  age_verification_id,
-  age_verification_status,
-  age_verified_at
+  tos_accepted_at
 ) ON profiles FROM anon, authenticated;
+-- (the age_verification_* columns are revoked in migration 02, which
+--  creates them — this file no longer depends on run order)
 
 -- Sanity check (run in the SQL editor, expect 42501 permission denied):
 --   SELECT tokens_balance FROM profiles LIMIT 1;  -- as anon/authenticated

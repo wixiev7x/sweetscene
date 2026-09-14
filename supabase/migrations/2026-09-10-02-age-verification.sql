@@ -24,6 +24,8 @@ CREATE INDEX IF NOT EXISTS idx_profiles_age_verification_id
 -- these — a client must never be able to flip its own verification.
 REVOKE UPDATE (age_verified, age_verification_id, age_verification_status, age_verified_at)
   ON profiles FROM authenticated, anon;
+REVOKE SELECT (age_verified, age_verification_id, age_verification_status, age_verified_at)
+  ON profiles FROM authenticated, anon;
 
 -- ── 2. Widen get_own_profile so owners keep seeing their own values ──
 -- (Return type changes → drop first; this is the documented pattern
