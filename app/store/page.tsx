@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/utils/sound";
 import { createVIPOrder, createTokenPackageOrder } from "@/lib/actions/billing";
+import { createRiskPayVIPOrder, createRiskPayTokenPackageOrder } from "@/lib/actions/riskpay";
 import { TOKEN_PACKAGES, VIP_PRICE_USD, VIP_DURATION_DAYS } from "@/lib/billing/constants";
 
 type PlanTone = "free" | "recommended";
@@ -60,7 +61,7 @@ const FAQS = [
   },
   {
     q: "How do I pay?",
-    a: "Checkout runs through NOWPayments — pay in crypto, no card required. Your balance updates when the payment confirms.",
+    a: "Card, PayPal, bank transfer (via RiskPay) or crypto (via NOWPayments). Your balance updates the moment the payment confirms.",
   },
 ];
 
@@ -157,6 +158,42 @@ export default function StorePage() {
     }
     fetchProfile();
   }, []);
+
+  async function handleCardVip() {
+    playSound("click");
+    setPurchasing("card-vip");
+    setPurchaseError("");
+    try {
+      const result = await createRiskPayVIPOrder();
+      if ("error" in result) {
+        setPurchaseError(result.error);
+      } else {
+        window.location.assign(result.invoiceUrl);
+      }
+    } catch {
+      setPurchaseError("Couldn't start checkout — try again");
+    } finally {
+      setPurchasing(null);
+    }
+  }
+
+  async function handleCardPack(packageId: string) {
+    playSound("click");
+    setPurchasing(`card-${packageId}`);
+    setPurchaseError("");
+    try {
+      const result = await createRiskPayTokenPackageOrder(packageId);
+      if ("error" in result) {
+        setPurchaseError(result.error);
+      } else {
+        window.location.assign(result.invoiceUrl);
+      }
+    } catch {
+      setPurchaseError("Couldn't start checkout — try again");
+    } finally {
+      setPurchasing(null);
+    }
+  }
 
   async function handleBuyVip() {
     playSound("click");
@@ -258,18 +295,31 @@ export default function StorePage() {
                       {plan.cta}
                     </Link>
                   ) : (
-                    <button
-                      onClick={handleBuyVip}
-                      disabled={purchasing === "vip"}
-                      data-cursor="primary"
-                      aria-live="polite"
-                      className="block w-full h-11 px-4 rounded-full font-semibold text-sm text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {purchasing === "vip" && (
-                        <span className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" aria-hidden="true" />
-                      )}
-                      {purchasing === "vip" ? "Opening checkout…" : isVip ? "Extend by 30 days" : plan.cta}
-                    </button>
+                    <div className="space-y-2">
+                      <button
+                        onClick={handleCardVip}
+                        disabled={purchasing === "card-vip"}
+                        data-cursor="primary"
+                        aria-live="polite"
+                        className="block w-full h-11 px-4 rounded-full font-semibold text-sm text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {purchasing === "card-vip" && (
+                          <span className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" aria-hidden="true" />
+                        )}
+                        {purchasing === "card-vip" ? "Opening checkout…" : isVip ? "Extend by 30 days — Card / PayPal" : "Get VIP — Card / PayPal / Bank"}
+                      </button>
+                      <button
+                        onClick={handleBuyVip}
+                        disabled={purchasing === "vip"}
+                        aria-live="polite"
+                        className="block w-full h-10 px-4 rounded-full text-sm bg-surface-sunken border border-line text-foreground hover:border-accent-candle/40 hover:text-accent-candle transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {purchasing === "vip" && (
+                          <span className="w-3.5 h-3.5 rounded-full border-2 border-foreground/30 border-t-foreground animate-spin" aria-hidden="true" />
+                        )}
+                        {purchasing === "vip" ? "Opening…" : "Pay with crypto"}
+                      </button>
+                    </div>
                   )
                 ) : (
                   <Link
@@ -307,17 +357,28 @@ export default function StorePage() {
                     Buy
                   </Link>
                 ) : (
-                  <button
-                    onClick={() => handleBuyPack(pack.id)}
-                    disabled={purchasing === pack.id}
-                    aria-live="polite"
-                    className="block w-full h-10 px-4 rounded-full text-sm bg-surface-sunken border border-line text-foreground hover:border-accent-candle/40 hover:text-accent-candle transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    {purchasing === pack.id && (
-                      <span className="w-3.5 h-3.5 rounded-full border-2 border-foreground/30 border-t-foreground animate-spin" aria-hidden="true" />
-                    )}
-                    {purchasing === pack.id ? "Opening…" : "Buy"}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => handleCardPack(pack.id)}
+                      disabled={purchasing === `card-${pack.id}`}
+                      data-cursor="primary"
+                      aria-live="polite"
+                      className="block w-full h-10 px-4 rounded-full text-sm font-semibold text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {purchasing === `card-${pack.id}` && (
+                        <span className="w-3.5 h-3.5 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" aria-hidden="true" />
+                      )}
+                      {purchasing === `card-${pack.id}` ? "Opening…" : "Card / PayPal / Bank"}
+                    </button>
+                    <button
+                      onClick={() => handleBuyPack(pack.id)}
+                      disabled={purchasing === pack.id}
+                      aria-live="polite"
+                      className="block w-full h-9 px-4 rounded-full text-xs bg-surface-sunken border border-line text-foreground hover:border-accent-candle/40 hover:text-accent-candle transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {purchasing === pack.id ? "Opening…" : "Pay with crypto"}
+                    </button>
+                  </div>
                 )}
               </div>
             ))}
