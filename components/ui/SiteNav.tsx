@@ -289,9 +289,9 @@ export function SiteNav({ className = "" }: { className?: string }) {
           <div className="flex items-center gap-2.5">
             {/* Token pill — real balance */}
             <Link
-              href="/store"
+              href="/checkout?item=starter"
               prefetch={false}
-              aria-label={`Token balance: ${tokens ?? 0} — open Store`}
+              aria-label={`Token balance: ${tokens ?? 0} — buy more`}
               className="ios-press relative flex items-center gap-1.5 rounded-full bg-surface-raised border border-line px-3 h-9 type-body text-foreground font-medium transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"
             >
               <CoinIcon className="w-4 h-4" />
@@ -301,7 +301,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
 
             {/* Premium */}
             <Link
-              href="/premium"
+              href="/checkout?item=vip"
               prefetch={false}
               data-cursor="primary"
               className="ios-press hidden sm:flex items-center gap-1.5 rounded-full px-3.5 h-9 type-body font-semibold text-accent-foreground transition-all hover:opacity-90 focus-visible:ring-2 ring-line-focus"
@@ -310,14 +310,14 @@ export function SiteNav({ className = "" }: { className?: string }) {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" />
               </svg>
-              <span>Premium</span>
+              <span>Upgrade</span>
             </Link>
 
             {/* Premium icon on mobile */}
             <Link
-              href="/premium"
+              href="/checkout?item=vip"
               prefetch={false}
-              aria-label="Go Premium"
+              aria-label="Upgrade"
               className="ios-press sm:hidden flex items-center justify-center w-9 h-9 rounded-full bg-surface-raised border border-line text-accent-candle transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
