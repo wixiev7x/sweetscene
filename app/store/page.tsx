@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/utils/sound";
-import { createVIPOrder, createTokenPackageOrder } from "@/lib/actions/billing";
 import { TOKEN_PACKAGES, VIP_PRICE_USD, VIP_DURATION_DAYS } from "@/lib/billing/constants";
 
 type PlanTone = "free" | "recommended";
@@ -60,7 +59,7 @@ const FAQS = [
   },
   {
     q: "How do I pay?",
-    a: "Checkout runs through NOWPayments — pay in crypto, no card required. Your balance updates when the payment confirms.",
+    a: "Card, Apple Pay, Google Pay (via PayRam) or crypto (via NOWPayments). Your balance updates the moment the payment confirms.",
   },
 ];
 
@@ -132,8 +131,6 @@ export default function StorePage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isVip, setIsVip] = useState(false);
   const [vipExpires, setVipExpires] = useState<string | null>(null);
-  const [purchasing, setPurchasing] = useState<string | null>(null);
-  const [purchaseError, setPurchaseError] = useState("");
   const [faqOpen, setFaqOpen] = useState<number | null>(null);
 
   useEffect(() => {
@@ -157,42 +154,6 @@ export default function StorePage() {
     }
     fetchProfile();
   }, []);
-
-  async function handleBuyVip() {
-    playSound("click");
-    setPurchasing("vip");
-    setPurchaseError("");
-    try {
-      const result = await createVIPOrder();
-      if ("error" in result) {
-        setPurchaseError(result.error);
-      } else {
-        window.location.assign(result.invoiceUrl);
-      }
-    } catch {
-      setPurchaseError("Couldn't start checkout — try again");
-    } finally {
-      setPurchasing(null);
-    }
-  }
-
-  async function handleBuyPack(packageId: string) {
-    playSound("click");
-    setPurchasing(packageId);
-    setPurchaseError("");
-    try {
-      const result = await createTokenPackageOrder(packageId);
-      if ("error" in result) {
-        setPurchaseError(result.error);
-      } else {
-        window.location.assign(result.invoiceUrl);
-      }
-    } catch {
-      setPurchaseError("Couldn't start checkout — try again");
-    } finally {
-      setPurchasing(null);
-    }
-  }
 
   const planCard = (tone: PlanTone) => {
     if (tone === "recommended") return "border-accent-candle/50 bg-accent-candle/[0.04] md:scale-[1.03]";
@@ -219,10 +180,6 @@ export default function StorePage() {
             </p>
           )}
         </div>
-
-        {purchaseError && (
-          <p className="type-body text-danger mb-6 text-center" role="alert">{purchaseError}</p>
-        )}
 
         <div className="mb-10">
           <h2 className="type-title font-display mb-1">Membership</h2>
@@ -258,18 +215,14 @@ export default function StorePage() {
                       {plan.cta}
                     </Link>
                   ) : (
-                    <button
-                      onClick={handleBuyVip}
-                      disabled={purchasing === "vip"}
+                    <Link
+                      href="/checkout?item=vip"
+                      onClick={() => playSound("click")}
                       data-cursor="primary"
-                      aria-live="polite"
-                      className="block w-full h-11 px-4 rounded-full font-semibold text-sm text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                      className="block w-full text-center h-11 leading-[44px] px-4 rounded-full font-semibold text-sm text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95"
                     >
-                      {purchasing === "vip" && (
-                        <span className="w-4 h-4 rounded-full border-2 border-accent-foreground/30 border-t-accent-foreground animate-spin" aria-hidden="true" />
-                      )}
-                      {purchasing === "vip" ? "Opening checkout…" : isVip ? "Extend by 30 days" : plan.cta}
-                    </button>
+                      {isVip ? "Extend by 30 days" : plan.cta}
+                    </Link>
                   )
                 ) : (
                   <Link
@@ -307,17 +260,14 @@ export default function StorePage() {
                     Buy
                   </Link>
                 ) : (
-                  <button
-                    onClick={() => handleBuyPack(pack.id)}
-                    disabled={purchasing === pack.id}
-                    aria-live="polite"
-                    className="block w-full h-10 px-4 rounded-full text-sm bg-surface-sunken border border-line text-foreground hover:border-accent-candle/40 hover:text-accent-candle transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2"
+                  <Link
+                    href={`/checkout?item=${pack.id}`}
+                    onClick={() => playSound("click")}
+                    data-cursor="primary"
+                    className="block w-full text-center h-10 leading-10 text-sm font-semibold text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95"
                   >
-                    {purchasing === pack.id && (
-                      <span className="w-3.5 h-3.5 rounded-full border-2 border-foreground/30 border-t-foreground animate-spin" aria-hidden="true" />
-                    )}
-                    {purchasing === pack.id ? "Opening…" : "Buy"}
-                  </button>
+                    Buy
+                  </Link>
                 )}
               </div>
             ))}
