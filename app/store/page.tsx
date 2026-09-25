@@ -59,7 +59,7 @@ const FAQS = [
   },
   {
     q: "How do I pay?",
-    a: "Card, PayPal, bank transfer (via RiskPay) or crypto (via NOWPayments). Your balance updates the moment the payment confirms.",
+    a: "Card, Apple Pay, Google Pay (via PayRam) or crypto (via NOWPayments). Your balance updates the moment the payment confirms.",
   },
 ];
 

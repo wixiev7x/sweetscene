@@ -5,38 +5,32 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { rateLimit } from "@/lib/utils/ratelimit";
 import { logger } from "@/lib/utils/logger";
-import { randomUUID, randomBytes } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import {
   TOKEN_PACKAGES,
   VIP_PRICE_USD,
 } from "@/lib/billing/constants";
 import {
-  createTemporaryWallet,
-  buildPaymentUrl,
-  isRiskPayConfigured,
-} from "@/lib/riskpay/server";
+  createPayment,
+  isPayRamConfigured,
+} from "@/lib/payram/server";
 
 /* ════════════════════════════════════════════════════════════════════
- * RiskPay billing server actions — fiat checkout (customer pays by
- * card / PayPal / bank via RiskPay's provider page; merchant receives
- * instant USDC on Polygon).
+ * PayRam billing server actions — card checkout (customer pays by
+ * card / Apple Pay / Google Pay through PayRam's card-to-crypto
+ * onramp on the self-hosted gateway's page; the merchant receives
+ * USDC on Base).
  *
  * Same security posture as the NOWPayments actions: identity from the
  * session, rate limited, price ALWAYS derived server-side, atomic
- * claim on the payments row by the callback route.
+ * claim on the payments row by the webhook route.
  * ════════════════════════════════════════════════════════════════════ */
 
 type BillingResult =
   | { invoiceUrl: string }
   | { error: string };
 
-/** Per-order callback secret — makes the callback URL unguessable and
- *  is verified on every callback before anything is granted. */
-function newCallbackSecret(): string {
-  return randomBytes(24).toString("hex");
-}
-
-async function placeRiskPayOrder(params: {
+async function placePayRamOrder(params: {
   kind: "vip" | "tokens";
   amountUsd: number;
   tokenQuantity?: number;
@@ -51,17 +45,15 @@ async function placeRiskPayOrder(params: {
     return { error: "Too many requests. Slow down." };
   }
 
-  if (!isRiskPayConfigured()) {
-    logger.warn("riskpay_not_configured", { userId: user.id });
+  if (!isPayRamConfigured()) {
+    logger.warn("payram_not_configured", { userId: user.id });
     return { error: "Card payments aren't available right now." };
   }
 
   /* Customer email for the checkout page — the account's own email. */
-  const { data: userData } = await supabase.auth.getUser();
-  const email = userData?.user?.email ?? "customer@sweetscene.love";
+  const email = user.email ?? "customer@sweetscene.love";
 
-  const orderRef = `rp-${params.kind}-${randomUUID()}`;
-  const callbackSecret = newCallbackSecret();
+  const orderRef = `pr-${params.kind}-${randomUUID()}`;
 
   const admin = createAdminClient();
   const { error: insertError } = await admin.from("payments").insert({
@@ -74,30 +66,28 @@ async function placeRiskPayOrder(params: {
     ...(params.tokenQuantity ? { token_quantity: params.tokenQuantity } : {}),
   });
   if (insertError) {
-    logger.error("riskpay_payment_row_insert_failed", { orderRef, insertError });
+    logger.error("payram_payment_row_insert_failed", { orderRef, insertError });
     return { error: "Failed to create order" };
   }
 
-  logger.info("rp_order_created", {
+  logger.info("payram_order_created", {
     kind: params.kind,
     orderRef,
     userId: user.id,
     amount: params.amountUsd,
-    provider: "riskpay",
+    provider: "payram",
   });
 
-  const siteUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.sweetscene.love";
-
-  let wallet;
+  let payment;
   try {
-    wallet = await createTemporaryWallet({
+    payment = await createPayment({
       orderRef,
-      callbackSecret,
-      siteUrl: siteUrl.replace(/\/$/, ""),
+      customerId: user.id,
+      customerEmail: email,
+      amountUsd: params.amountUsd,
     });
   } catch (err) {
-    logger.error("rp_wallet_creation_failed", { orderRef, err });
+    logger.error("payram_payment_creation_failed", { orderRef, err });
     await admin
       .from("payments")
       .update({ status: "failed", updated_at: new Date().toISOString() })
@@ -105,47 +95,41 @@ async function placeRiskPayOrder(params: {
     return { error: "Couldn't start checkout — try again" };
   }
 
-  /* Persist the RiskPay order data on the payments row (payment_id
-     carries the ipn_token until the callback replaces it with the
-     payout txid; the callback secret + expected receiving address are
-     encoded into the callback URL / verified via the status API). */
-  const { error: walletError } = await admin
+  /* Persist the PayRam reference on the payments row — the webhook
+     cross-checks the gateway's own status API with it before any
+     grant. */
+  const { error: refError } = await admin
     .from("payments")
     .update({
-      payment_id: wallet.ipnToken,
+      payment_id: payment.referenceId,
       updated_at: new Date().toISOString(),
     })
     .eq("order_id", orderRef);
-  if (walletError) {
-    logger.error("riskpay_wallet_write_failed", { orderRef, walletError });
+  if (refError) {
+    logger.error("payram_reference_write_failed", { orderRef, refError });
   }
 
-  const paymentUrl = buildPaymentUrl({
-    addressIn: wallet.addressIn,
-    customerEmail: email,
-    amountUsd: params.amountUsd,
-  });
-
-  logger.info("rp_wallet_created", {
+  logger.info("payram_payment_created", {
     orderRef,
-    polygonAddressIn: wallet.polygonAddressIn,
+    referenceId: payment.referenceId,
   });
 
-  return { invoiceUrl: paymentUrl };
+  return { invoiceUrl: payment.paymentUrl };
 }
 
-/** VIP pass via card/PayPal/bank checkout (USDC payout to merchant). */
-export async function createRiskPayVIPOrder(): Promise<BillingResult> {
-  return placeRiskPayOrder({ kind: "vip", amountUsd: VIP_PRICE_USD });
+/** VIP pass via card / Apple Pay / Google Pay checkout (card-to-crypto
+ *  onramp; USDC on Base to the merchant wallet). */
+export async function createPayRamVIPOrder(): Promise<BillingResult> {
+  return placePayRamOrder({ kind: "vip", amountUsd: VIP_PRICE_USD });
 }
 
-/** Fixed token package via card/PayPal/bank checkout. */
-export async function createRiskPayTokenPackageOrder(
+/** Fixed token package via card / Apple Pay / Google Pay checkout. */
+export async function createPayRamTokenPackageOrder(
   packageId: string
 ): Promise<BillingResult> {
   const pkg = TOKEN_PACKAGES.find((p) => p.id === packageId);
   if (!pkg) return { error: "Invalid package" };
-  return placeRiskPayOrder({
+  return placePayRamOrder({
     kind: "tokens",
     amountUsd: pkg.priceUsd,
     tokenQuantity: pkg.tokens,

@@ -7,9 +7,9 @@ import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/utils/sound";
 import { createVIPOrder, createTokenPackageOrder } from "@/lib/actions/billing";
 import {
-  createRiskPayVIPOrder,
-  createRiskPayTokenPackageOrder,
-} from "@/lib/actions/riskpay";
+  createPayRamVIPOrder,
+  createPayRamTokenPackageOrder,
+} from "@/lib/actions/payram";
 import {
   TOKEN_PACKAGES,
   VIP_PRICE_USD,
@@ -18,9 +18,10 @@ import {
 
 /* ════════════════════════════════════════════════════════════════════
  * Checkout — the dedicated purchase interface. Pick a product, pick a
- * payment method (Card / PayPal / Bank via RiskPay, or Crypto via
- * NOWPayments), see the order summary, pay. The actual charge always
- * runs through the server actions — prices are never client-side.
+ * payment method (Card / Apple Pay / Google Pay via PayRam's
+ * card-to-crypto onramp, or Crypto via NOWPayments), see the order
+ * summary, pay. The actual charge always runs through the server
+ * actions — prices are never client-side.
  * ════════════════════════════════════════════════════════════════════ */
 
 type ProductId = "vip" | "starter" | "standard" | "whale";
@@ -73,8 +74,8 @@ const PAY_METHODS: {
 }[] = [
   {
     id: "card",
-    label: "Card · PayPal · Bank",
-    desc: "Visa, Mastercard, Apple Pay, Google Pay, PayPal, SEPA/ACH. Handled by licensed providers.",
+    label: "Card / Apple Pay / Google Pay",
+    desc: "Visa, Mastercard, Amex, Apple Pay, Google Pay and 175+ methods, via PayRam. First-time card payments require a quick one-time verification.",
     icons: "💳",
   },
   {
@@ -148,8 +149,8 @@ function CheckoutInner() {
       const result =
         method === "card"
           ? selected === "vip"
-            ? await createRiskPayVIPOrder()
-            : await createRiskPayTokenPackageOrder(selected)
+            ? await createPayRamVIPOrder()
+            : await createPayRamTokenPackageOrder(selected)
           : selected === "vip"
             ? await createVIPOrder()
             : await createTokenPackageOrder(selected);
@@ -306,7 +307,7 @@ function CheckoutInner() {
               <p className="text-2xl font-display text-foreground">${product.price.toFixed(2)}</p>
             </div>
             <p className="type-meta text-muted-faint mb-5">
-              Paying with {method === "card" ? "card / PayPal / bank" : "crypto"}
+              Paying with {method === "card" ? "card via PayRam" : "crypto"}
             </p>
 
             {isLoggedIn === false ? (

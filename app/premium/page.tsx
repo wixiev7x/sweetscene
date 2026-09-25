@@ -62,7 +62,7 @@ export default function PremiumPage() {
             <span className="text-accent-candle">${VIP_PRICE_USD.toFixed(2)}</span>
             <span className="type-body text-muted"> / {VIP_DURATION_DAYS} days</span>
           </p>
-          <p className="type-meta text-muted mb-6">Pay in crypto via NOWPayments. No card, no renewal.</p>
+          <p className="type-meta text-muted mb-6">One-time payment — no auto-renewal, nothing to cancel. Pay by card, Apple Pay, Google Pay or crypto.</p>
           <Link
             href="/checkout?item=vip"
             onClick={() => playSound("click")}
@@ -72,7 +72,7 @@ export default function PremiumPage() {
             Get the VIP pass →
           </Link>
           <p className="type-meta text-muted-faint mt-4">
-            Pick your payment method at checkout — card, PayPal, bank, or crypto.
+            Pick your payment method at checkout — card, Apple Pay, Google Pay, or crypto.
           </p>
         </div>
 
