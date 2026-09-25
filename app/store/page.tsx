@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/utils/sound";
-import { TOKEN_PACKAGES, VIP_PRICE_USD, VIP_DURATION_DAYS } from "@/lib/billing/constants";
+import { TOKEN_PACKAGES, VIP_PRICE_USD } from "@/lib/billing/constants";
 
 type PlanTone = "free" | "recommended";
 
@@ -29,13 +29,14 @@ const PLANS: { name: string; price: string; period: string; desc: string; featur
   {
     name: "VIP",
     price: `$${VIP_PRICE_USD.toFixed(2)}`,
-    period: `${VIP_DURATION_DAYS} days`,
+    period: "month · renews",
     desc: "Everything, unlocked",
     features: [
       "Unlimited daily matches",
       "Deep Dive scenes (10k shared pool)",
       "NSFW character creation (18+)",
       "AI image generation",
+      "Or $99.99 / year — 2 months free",
     ],
     cta: "Get VIP",
     tone: "recommended",
@@ -51,7 +52,7 @@ const PACK_LABELS: Record<string, string> = {
 const FAQS = [
   {
     q: "Is VIP a subscription?",
-    a: `No — VIP is a ${VIP_DURATION_DAYS}-day pass. It expires on its own; there is no auto-renewal and nothing to cancel.`,
+    a: `Your choice. VIP Monthly ($9.99) renews every 30 days and VIP Yearly ($99.99, 2 months free) renews yearly — we remind you a few days before each renewal and one payment extends it, nothing is ever auto-charged. Prefer no strings? The one-time 30-day pass ($9.99) simply expires.`,
   },
   {
     q: "What are tokens?",
@@ -216,12 +217,12 @@ export default function StorePage() {
                     </Link>
                   ) : (
                     <Link
-                      href="/checkout?item=vip"
+                      href="/checkout?item=vip_monthly"
                       onClick={() => playSound("click")}
                       data-cursor="primary"
                       className="block w-full text-center h-11 leading-[44px] px-4 rounded-full font-semibold text-sm text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95"
                     >
-                      {isVip ? "Extend by 30 days" : plan.cta}
+                      {isVip ? "Renew VIP" : plan.cta}
                     </Link>
                   )
                 ) : (

@@ -10,7 +10,7 @@ import { logger } from "@/lib/utils/logger";
 import {
   TOKEN_PACKAGES,
   DYNAMIC_TOKEN_RATE_USD,
-  VIP_PRICE_USD,
+  getVipPlan,
 } from "@/lib/billing/constants";
 
 /* ════════════════════════════════════════════════════════════════════
@@ -41,6 +41,24 @@ type BillingResult =
  * @returns The hosted invoice URL for redirect, or an error.
  */
 export async function createVIPOrder(): Promise<BillingResult> {
+  return createVipPlanOrder("vip");
+}
+
+/**
+ * Creates a NOWPayments invoice for any VIP-family plan: the one-time
+ * 30-day pass or a renewal-based subscription (monthly / yearly). The
+ * plan is looked up server-side; the price is never a parameter. The
+ * webhook derives the plan back from the order-id prefix and grants
+ * the matching number of days via grant_vip, which stacks onto the
+ * existing expiry.
+ *
+ * @param planId - One of 'vip', 'vip_monthly', 'vip_yearly'.
+ * @returns The hosted invoice URL for redirect, or an error.
+ */
+export async function createVipPlanOrder(planId: string): Promise<BillingResult> {
+  const plan = getVipPlan(planId);
+  if (!plan) return { error: "Invalid plan" };
+
   const supabase = await createClient();
 
   const {
@@ -52,7 +70,7 @@ export async function createVIPOrder(): Promise<BillingResult> {
     return { error: "Too many requests. Slow down." };
   }
 
-  const orderId = `vip-${randomUUID()}`;
+  const orderId = `${plan.id}-${randomUUID()}`;
   const admin = createAdminClient();
 
   const { error: insertError } = await admin.from("payments").insert({
@@ -60,38 +78,40 @@ export async function createVIPOrder(): Promise<BillingResult> {
     user_id: user.id,
     type: "vip",
     status: "pending",
-    amount: VIP_PRICE_USD,
+    amount: plan.priceUsd,
     currency: "usd",
   });
 
   if (insertError) {
-    logger.error("payment_row_insert_failed", { kind: "vip", orderId });
+    logger.error("payment_row_insert_failed", { kind: plan.id, orderId });
     return { error: "Failed to create order" };
   }
   logger.info("payment_order_created", {
-    kind: "vip",
+    kind: plan.id,
     orderId,
     userId: user.id,
-    amount: VIP_PRICE_USD,
+    amount: plan.priceUsd,
     sandbox: isSandboxApiBase(),
   });
 
   try {
     const invoice = await createInvoice({
-      priceAmount: VIP_PRICE_USD,
+      priceAmount: plan.priceUsd,
       priceCurrency: "usd",
       orderId,
-      orderDescription: "VIP 30-day pass",
+      orderDescription: plan.subscription
+        ? `${plan.name} — ${plan.days} days, renews`
+        : "VIP 30-day pass",
     });
 
     logger.info("payment_invoice_created", {
-      kind: "vip",
+      kind: plan.id,
       orderId,
       invoiceId: invoice.id,
     });
     return { invoiceUrl: invoice.invoice_url };
   } catch (err) {
-    logger.error("invoice_create_failed", { kind: "vip", orderId, err });
+    logger.error("invoice_create_failed", { kind: plan.id, orderId, err });
     /* BUG 13: mark the pending row as 'failed' so it doesn't linger. */
     await admin
       .from("payments")

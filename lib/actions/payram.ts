@@ -8,7 +8,7 @@ import { logger } from "@/lib/utils/logger";
 import { randomUUID } from "node:crypto";
 import {
   TOKEN_PACKAGES,
-  VIP_PRICE_USD,
+  getVipPlan,
 } from "@/lib/billing/constants";
 import {
   createPayment,
@@ -33,6 +33,7 @@ type BillingResult =
 async function placePayRamOrder(params: {
   kind: "vip" | "tokens";
   amountUsd: number;
+  planId?: string;
   tokenQuantity?: number;
 }): Promise<BillingResult> {
   const supabase = await createClient();
@@ -53,7 +54,9 @@ async function placePayRamOrder(params: {
   /* Customer email for the checkout page — the account's own email. */
   const email = user.email ?? "customer@sweetscene.love";
 
-  const orderRef = `pr-${params.kind}-${randomUUID()}`;
+  /* Order ref carries the plan in its prefix — the webhook derives the
+     grant days back from it (vip_monthly → 30, vip_yearly → 365). */
+  const orderRef = `pr-${params.planId ?? params.kind}-${randomUUID()}`;
 
   const admin = createAdminClient();
   const { error: insertError } = await admin.from("payments").insert({
@@ -120,7 +123,23 @@ async function placePayRamOrder(params: {
 /** VIP pass via card / Apple Pay / Google Pay checkout (card-to-crypto
  *  onramp; USDC on Base to the merchant wallet). */
 export async function createPayRamVIPOrder(): Promise<BillingResult> {
-  return placePayRamOrder({ kind: "vip", amountUsd: VIP_PRICE_USD });
+  return createPayRamVipPlanOrder("vip");
+}
+
+/** Any VIP-family plan via card checkout — the one-time pass or a
+ *  renewal-based subscription (monthly / yearly). The plan is looked
+ *  up server-side; the webhook derives it back from the order-id
+ *  prefix and grants the matching days via grant_vip (stacking). */
+export async function createPayRamVipPlanOrder(
+  planId: string
+): Promise<BillingResult> {
+  const plan = getVipPlan(planId);
+  if (!plan) return { error: "Invalid plan" };
+  return placePayRamOrder({
+    kind: "vip",
+    planId: plan.id,
+    amountUsd: plan.priceUsd,
+  });
 }
 
 /** Fixed token package via card / Apple Pay / Google Pay checkout. */

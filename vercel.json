@@ -4,6 +4,10 @@
     {
       "path": "/api/matchmake/tick",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/subscription-reminders",
+      "schedule": "30 14 * * *"
     }
   ]
 }

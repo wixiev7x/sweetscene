@@ -3,10 +3,11 @@ import { createAdminClient } from "@/lib/supabase/server-admin";
 import { verifyWebhookSignature, getPaymentStatus } from "@/lib/nowpayments/server";
 import {
   notifyVipGranted,
+  notifySubscriptionActive,
   notifyTokensPurchased,
 } from "@/lib/notifications/dispatch";
 import { logger } from "@/lib/utils/logger";
-import { VIP_DURATION_DAYS } from "@/lib/billing/constants";
+import { vipPlanFromOrderRef } from "@/lib/billing/constants";
 import {
   findCanary,
   reportCanaryHit,
@@ -303,13 +304,19 @@ async function handleWebhook(request: Request): Promise<NextResponse> {
   }
   logger.info("np_payment_claimed", { orderId, paymentId, paymentRowId: payment.id });
 
-  /* 8. Grant. We hold the claim, so this runs exactly once. */
+  /* 8. Grant. We hold the claim, so this runs exactly once. Every
+        VIP-family order stores type "vip"; the plan (and its grant
+        days) is derived from the order-id prefix — vip_monthly → 30,
+        vip_yearly → 365, plain vip → the one-time 30-day pass.
+        grant_vip stacks the days onto the existing expiry, so a
+        renewal simply extends the membership. */
+  const vipPlan = payment.type === "vip" ? vipPlanFromOrderRef(orderId) : null;
   let grantError: string | null = null;
 
-  if (payment.type === "vip") {
+  if (vipPlan) {
     const { error: rpcError } = await admin.rpc("grant_vip", {
       p_user_id: payment.user_id,
-      p_days: VIP_DURATION_DAYS,
+      p_days: vipPlan.days,
       p_payment_id: paymentId,
     } as never);
     grantError = rpcError ? "grant_vip failed" : null;
@@ -364,7 +371,9 @@ async function handleWebhook(request: Request): Promise<NextResponse> {
       () => {}
     );
 
-  if (payment.type === "vip") {
+  if (vipPlan?.subscription) {
+    await notifySubscriptionActive(payment.user_id, vipPlan.name).catch(() => {});
+  } else if (vipPlan) {
     await notifyVipGranted(payment.user_id).catch(() => {});
   } else if (payment.token_quantity) {
     await notifyTokensPurchased(payment.user_id, payment.token_quantity).catch(

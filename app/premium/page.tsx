@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { playSound } from "@/lib/utils/sound";
-import { VIP_PRICE_USD, VIP_DURATION_DAYS } from "@/lib/billing/constants";
+import { VIP_PLANS } from "@/lib/billing/constants";
 
 /* Everything listed here is enforced in the product: the deep tier
  * and daily-match cap checks live in the matchmaking actions, NSFW
@@ -34,13 +34,14 @@ export default function PremiumPage() {
   return (
     <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
       <div className="max-w-3xl mx-auto">
-        <p className="type-eyebrow text-accent-candle mb-2">The VIP pass</p>
+        <p className="type-eyebrow text-accent-candle mb-2">The VIP membership</p>
         <h1 className="type-display text-3xl sm:text-4xl mb-3">
           Nights that run <span className="gradient-text">long.</span>
         </h1>
         <p className="type-body text-muted mb-8 max-w-xl">
-          One pass, everything unlocked. ${VIP_PRICE_USD.toFixed(2)} for {VIP_DURATION_DAYS} days —
-          it expires on its own, so there&rsquo;s never a renewal to cancel.
+          Everything unlocked. Subscribe monthly or yearly — it renews with one payment
+          when the period ends (we nudge you a few days ahead, nothing is ever
+          auto-charged) — or grab a one-time 30-day pass.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-10">
@@ -57,24 +58,57 @@ export default function PremiumPage() {
           ))}
         </div>
 
-        <div className="bg-surface border border-accent-candle/40 bg-accent-candle/[0.04] rounded-[var(--radius-card)] p-8 text-center mb-10">
-          <p className="font-display text-4xl mb-1">
-            <span className="text-accent-candle">${VIP_PRICE_USD.toFixed(2)}</span>
-            <span className="type-body text-muted"> / {VIP_DURATION_DAYS} days</span>
-          </p>
-          <p className="type-meta text-muted mb-6">One-time payment — no auto-renewal, nothing to cancel. Pay by card, Apple Pay, Google Pay or crypto.</p>
+        <div className="grid sm:grid-cols-2 gap-4 mb-4 max-w-xl mx-auto">
+          {VIP_PLANS.filter((p) => p.subscription).map((plan) => (
+            <div
+              key={plan.id}
+              className={`relative bg-surface border rounded-[var(--radius-card)] p-6 text-center ${
+                "best" in plan && plan.best
+                  ? "border-accent-candle/40 bg-accent-candle/[0.04]"
+                  : "border-line"
+              }`}
+            >
+              {"best" in plan && plan.best && (
+                <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-accent-candle text-accent-foreground type-eyebrow font-bold">
+                  Best value
+                </span>
+              )}
+              <p className="type-eyebrow text-muted-faint mb-1">{plan.name}</p>
+              <p className="font-display text-3xl text-foreground mb-1">
+                <span className="text-accent-candle">${plan.priceUsd.toFixed(2)}</span>
+                <span className="type-meta text-muted"> / {plan.days === 365 ? "year" : "month"}</span>
+              </p>
+              <p className="type-meta text-muted mb-5">
+                {plan.days === 365 ? "365 days — 2 months free · " : "30 days · "}
+                {plan.detail}
+              </p>
+              <Link
+                href={`/checkout?item=${plan.id}`}
+                onClick={() => playSound("click")}
+                data-cursor="primary"
+                className="inline-flex h-11 items-center rounded-full bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light px-8 text-sm font-semibold text-accent-foreground ios-press shadow-lg shadow-brand/20 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
+              >
+                Subscribe →
+              </Link>
+              <p className="type-meta text-muted-faint mt-4 leading-relaxed">
+                Renews with one payment when it ends — never auto-charged.
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <p className="type-meta text-muted-faint text-center mb-10">
+          Prefer one-time?{" "}
           <Link
             href="/checkout?item=vip"
+            className="text-accent-candle underline underline-offset-2"
             onClick={() => playSound("click")}
-            data-cursor="primary"
-            className="inline-flex h-12 items-center rounded-full bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light px-8 text-sm font-semibold text-accent-foreground ios-press shadow-lg shadow-brand/20 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
           >
-            Get the VIP pass →
-          </Link>
-          <p className="type-meta text-muted-faint mt-4">
-            Pick your payment method at checkout — card, Apple Pay, Google Pay, or crypto.
-          </p>
-        </div>
+            $9.99 for a 30-day pass
+          </Link>{" "}
+          — expires on its own, nothing to cancel. Card, Apple Pay, Google Pay or
+          crypto at checkout.
+        </p>
 
         <p className="type-meta text-muted-faint text-center">
           Free tier stays free: 3 matches a day, Quick-tier scenes, every character.

@@ -5,26 +5,23 @@ import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/utils/sound";
-import { createVIPOrder, createTokenPackageOrder } from "@/lib/actions/billing";
+import { createVipPlanOrder, createTokenPackageOrder } from "@/lib/actions/billing";
 import {
-  createPayRamVIPOrder,
+  createPayRamVipPlanOrder,
   createPayRamTokenPackageOrder,
 } from "@/lib/actions/payram";
-import {
-  TOKEN_PACKAGES,
-  VIP_PRICE_USD,
-  VIP_DURATION_DAYS,
-} from "@/lib/billing/constants";
+import { TOKEN_PACKAGES, VIP_PLANS } from "@/lib/billing/constants";
 
 /* ════════════════════════════════════════════════════════════════════
- * Checkout — the dedicated purchase interface. Pick a product, pick a
- * payment method (Card / Apple Pay / Google Pay via PayRam's
- * card-to-crypto onramp, or Crypto via NOWPayments), see the order
- * summary, pay. The actual charge always runs through the server
- * actions — prices are never client-side.
+ * Checkout — the dedicated purchase interface. Pick a product (a
+ * membership — one-time pass or renewal-based subscription — or a
+ * token pack), pick a payment method (Card / Apple Pay / Google Pay
+ * via PayRam's card-to-crypto onramp, or Crypto via NOWPayments), see
+ * the order summary, pay. The actual charge always runs through the
+ * server actions — prices are never client-side.
  * ════════════════════════════════════════════════════════════════════ */
 
-type ProductId = "vip" | "starter" | "standard" | "whale";
+type ProductId = "vip" | "vip_monthly" | "vip_yearly" | "starter" | "standard" | "whale";
 type PayMethod = "card" | "crypto";
 
 type Product = {
@@ -35,22 +32,27 @@ type Product = {
   detail: string;
   features: string[];
   best?: boolean;
+  subscription?: boolean;
 };
 
+const VIP_FEATURES = [
+  "Unlimited daily matches",
+  "Deep Dive scenes (10k pool)",
+  "NSFW creation (18+)",
+  "AI image generation",
+];
+
 const PRODUCTS: Product[] = [
-  {
-    id: "vip",
-    name: "VIP Pass",
-    eyebrow: "Membership",
-    price: VIP_PRICE_USD,
-    detail: `${VIP_DURATION_DAYS} days · one-time`,
-    features: [
-      "Unlimited daily matches",
-      "Deep Dive scenes (10k pool)",
-      "NSFW creation (18+)",
-      "AI image generation",
-    ],
-  },
+  ...VIP_PLANS.map((p) => ({
+    id: p.id as ProductId,
+    name: p.name,
+    eyebrow: p.subscription ? "Membership · subscription" : "Membership",
+    price: p.priceUsd,
+    detail: p.detail,
+    features: VIP_FEATURES,
+    best: "best" in p ? p.best : undefined,
+    subscription: p.subscription,
+  })),
   ...TOKEN_PACKAGES.map((p) => ({
     id: p.id as ProductId,
     name: `${p.tokens.toLocaleString()} tokens`,
@@ -65,6 +67,8 @@ const PRODUCTS: Product[] = [
     best: p.id === "standard",
   })),
 ];
+
+const VIP_PLAN_IDS = new Set<string>(VIP_PLANS.map((p) => p.id));
 
 const PAY_METHODS: {
   id: PayMethod;
@@ -148,11 +152,11 @@ function CheckoutInner() {
     try {
       const result =
         method === "card"
-          ? selected === "vip"
-            ? await createPayRamVIPOrder()
+          ? VIP_PLAN_IDS.has(selected)
+            ? await createPayRamVipPlanOrder(selected)
             : await createPayRamTokenPackageOrder(selected)
-          : selected === "vip"
-            ? await createVIPOrder()
+          : VIP_PLAN_IDS.has(selected)
+            ? await createVipPlanOrder(selected)
             : await createTokenPackageOrder(selected);
       if ("error" in result) {
         setError(result.error);
@@ -338,9 +342,11 @@ function CheckoutInner() {
             )}
 
             <p className="type-meta text-muted-faint text-center mt-5 leading-relaxed">
-              {selected === "vip"
-                ? `One-time ${VIP_DURATION_DAYS}-day pass — no auto-renewal, nothing to cancel.`
-                : "Tokens never expire and stack with any pass."}
+              {product.subscription
+                ? "Renews when you pay before it ends — we'll remind you a few days ahead. Nothing is ever auto-charged."
+                : selected === "vip"
+                  ? `One-time ${VIP_PLANS.find((p) => p.id === "vip")!.days}-day pass — no auto-renewal, nothing to cancel.`
+                  : "Tokens never expire and stack with any pass."}
             </p>
           </aside>
         </div>

@@ -8,9 +8,10 @@ import {
 import {
   notifyVipGranted,
   notifyTokensPurchased,
+  notifySubscriptionActive,
 } from "@/lib/notifications/dispatch";
 import { logger } from "@/lib/utils/logger";
-import { VIP_DURATION_DAYS } from "@/lib/billing/constants";
+import { vipPlanFromOrderRef } from "@/lib/billing/constants";
 import {
   findCanary,
   reportCanaryHit,
@@ -120,8 +121,9 @@ async function handleWebhook(request: Request): Promise<NextResponse> {
     hasTx: !!txHash,
   });
 
-  /* 2. Our order reference must be well-formed. */
-  if (!invoiceId || !/^pr-[a-z]+-[0-9a-f-]{10,}$/.test(invoiceId)) {
+  /* 2. Our order reference must be well-formed. Underscores allowed —
+     subscription order refs are pr-vip_monthly-… / pr-vip_yearly-…. */
+  if (!invoiceId || !/^pr-[a-z_]+-[0-9a-f-]{10,}$/.test(invoiceId)) {
     return NextResponse.json({ error: "Bad request" }, { status: 400 });
   }
 
@@ -282,12 +284,18 @@ async function handleWebhook(request: Request): Promise<NextResponse> {
     anchor: paymentAnchor.slice(0, 16),
   });
 
-  /* 9. Grant — identical RPCs to the NOWPayments path. */
+  /* 9. Grant — identical RPCs to the NOWPayments path. Every
+        VIP-family order stores type "vip"; the plan (and its grant
+        days) is derived from the order-id prefix — vip_monthly → 30,
+        vip_yearly → 365, plain vip → the one-time 30-day pass.
+        grant_vip stacks the days onto the existing expiry, so a
+        renewal simply extends the membership. */
+  const vipPlan = payment.type === "vip" ? vipPlanFromOrderRef(invoiceId) : null;
   let grantError: string | null = null;
-  if (payment.type === "vip") {
+  if (vipPlan) {
     const { error: rpcError } = await admin.rpc("grant_vip", {
       p_user_id: payment.user_id,
-      p_days: VIP_DURATION_DAYS,
+      p_days: vipPlan.days,
       p_payment_id: paymentAnchor,
     } as never);
     grantError = rpcError ? "grant_vip failed" : null;
@@ -326,7 +334,9 @@ async function handleWebhook(request: Request): Promise<NextResponse> {
   });
 
   /* 10. User notification (best-effort). */
-  if (payment.type === "vip") {
+  if (vipPlan?.subscription) {
+    await notifySubscriptionActive(payment.user_id, vipPlan.name).catch(() => {});
+  } else if (vipPlan) {
     await notifyVipGranted(payment.user_id).catch(() => {});
   } else if (payment.token_quantity) {
     await notifyTokensPurchased(payment.user_id, payment.token_quantity).catch(
