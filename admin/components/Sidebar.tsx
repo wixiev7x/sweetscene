@@ -15,6 +15,8 @@ const SUPER_ADMIN_ITEMS = [
   { label: "AI Settings", href: "/ai-settings" },
   { label: "Site Settings", href: "/site-settings" },
   { label: "Payments", href: "/payments" },
+  { label: "Transactions", href: "/payments/records" },
+  { label: "Subscriptions", href: "/subscriptions" },
   { label: "Admins", href: "/admins" },
 ];
 

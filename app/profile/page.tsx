@@ -479,7 +479,7 @@ export default function ProfilePage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-strong">$9.99 / 30 days</span>
+              <span className="text-sm text-muted-strong">$9.99 / month · or $99.99 / year (2 months free)</span>
               <button
                 type="button"
                 onClick={handleBuyVIP}
@@ -501,8 +501,14 @@ export default function ProfilePage() {
               VIP Active
             </p>
             <p className="text-sm text-muted mt-1">
-              Expires {formatDate(profile.vip_expires_at)}
+              Renews by {formatDate(profile.vip_expires_at)} — extend early, the days stack.
             </p>
+            <Link
+              href="/checkout?item=vip_monthly"
+              className="inline-flex items-center mt-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-medium text-sm px-6 py-2.5 rounded-xl hover:from-yellow-400 hover:to-amber-400 active:scale-95 transition-all"
+            >
+              Renew VIP →
+            </Link>
           </div>
         </section>
       )}

@@ -44,6 +44,8 @@ export type NotificationType =
   | "token_refund"
   | "tokens_purchased"
   | "vip_granted"
+  | "subscription_active"
+  | "subscription_renewal_due"
   | "admin_message";
 
 export type NotificationRow = {
@@ -191,5 +193,38 @@ export async function notifyVipGranted(userId: string): Promise<void> {
     type: "vip_granted",
     title: "VIP activated",
     body: "Your VIP membership is now active. Enjoy the perks!",
+  });
+}
+
+/**
+ * Sent when a subscription plan payment confirms. Renewal-based:
+ * nothing auto-charges — the reminder cron nudges the user before the
+ * period ends and one payment extends it.
+ */
+export async function notifySubscriptionActive(
+  userId: string,
+  planName: string
+): Promise<void> {
+  await createNotification({
+    userId,
+    type: "subscription_active",
+    title: `${planName} active`,
+    body: `Your ${planName} subscription is active. We'll nudge you a few days before it renews — one payment keeps every perk, nothing is ever auto-charged.`,
+  });
+}
+
+/**
+ * Sent by the renewal-reminders cron a few days before a VIP period
+ * ends (both subscription purchases and stacked passes).
+ */
+export async function notifySubscriptionRenewalDue(
+  userId: string,
+  renewsOn: string
+): Promise<void> {
+  await createNotification({
+    userId,
+    type: "subscription_renewal_due",
+    title: "VIP renews soon",
+    body: `Your VIP renews on ${renewsOn}. Renew before then to keep unlimited matches, Deep Dive scenes and AI images — one payment, nothing auto-charged.`,
   });
 }

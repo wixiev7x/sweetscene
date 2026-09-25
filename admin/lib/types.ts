@@ -1,5 +1,34 @@
 export type UserRole = "user" | "moderator" | "super_admin";
 
+export interface PaymentRecord {
+  id: string;
+  order_id: string;
+  user_id: string;
+  username: string | null;
+  type: string;
+  plan: string;
+  plan_label: string;
+  status: string;
+  amount: number;
+  currency: string | null;
+  token_quantity: number | null;
+  payment_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SubscriptionRecord {
+  user_id: string;
+  username: string | null;
+  plan: string;
+  plan_label: string;
+  vip_expires_at: string;
+  status: "active" | "expiring_soon";
+  total_paid: number;
+  payments_count: number;
+  last_payment_at: string | null;
+}
+
 export interface AdminStats {
   total_users: number;
   active_bans: number;

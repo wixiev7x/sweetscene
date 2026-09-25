@@ -7,15 +7,23 @@ import type { AdminUser, BanRecord } from "@/lib/types";
 export async function searchUsers(query: string): Promise<AdminUser[]> {
   const supabase = await createClient();
 
+  /* profiles has no "username" column — the app-facing handle is
+     anonymous_username. Querying the old name made this silently
+     return [] (PostgREST error → null). */
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, username, role, is_banned, ban_reason, banned_at, created_at")
-    .ilike("username", `%${query}%`)
+    .select(
+      "id, anonymous_username, role, is_banned, ban_reason, banned_at, created_at"
+    )
+    .ilike("anonymous_username", `%${query}%`)
     .limit(50);
 
   if (!profiles) return [];
 
-  return profiles as unknown as AdminUser[];
+  return (profiles as unknown as Array<Record<string, unknown>>).map((p) => ({
+    ...p,
+    username: p.anonymous_username ?? undefined,
+  })) as unknown as AdminUser[];
 }
 
 export async function searchUsersByEmail(
@@ -40,17 +48,20 @@ export async function searchUsersByEmail(
 
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, username, role, is_banned, ban_reason, banned_at, created_at")
+    .select(
+      "id, anonymous_username, role, is_banned, ban_reason, banned_at, created_at"
+    )
     .in("id", ids);
 
   if (!profiles) return [];
 
   const emailMap = new Map(matched.map((u) => [u.id, u.email]));
 
-  return (profiles as unknown as AdminUser[]).map((p) => ({
+  return (profiles as unknown as Array<Record<string, unknown>>).map((p) => ({
     ...p,
-    email: emailMap.get(p.id),
-  }));
+    username: p.anonymous_username ?? undefined,
+    email: emailMap.get(p.id as string),
+  })) as unknown as AdminUser[];
 }
 
 export async function banUser(
