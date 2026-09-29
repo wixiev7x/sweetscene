@@ -234,7 +234,7 @@ async function handleWebhook(request: Request): Promise<NextResponse> {
   /* 7. Amount sanity — the USD value actually settled must cover the
         order. */
   const paid = Number(
-    body.filled_amount_in_usd ?? gatewayStatus.amountInUSD ?? body.amount
+    gatewayStatus.amountInUSD ?? body.filled_amount_in_usd ?? body.amount
   );
   if (!isAmountAcceptable(payment.amount, paid)) {
     logger.error("payram_webhook_underpaid", {
