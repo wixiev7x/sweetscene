@@ -40,4 +40,4 @@ Thumbs.db
 supabase/.temp/
 
 # Vercel
-.vercel
+.vercelpayment-audit/
