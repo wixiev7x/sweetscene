@@ -324,6 +324,76 @@ export async function listCharacters(
   return { characters: (data ?? []) as AdminCharacterRow[] };
 }
 
+/* ── Phase 5 — character review queue ─────────────────────────────── */
+
+export type PendingCharacterRow = {
+  id: string;
+  name: string;
+  tagline: string | null;
+  avatar_url: string | null;
+  creator_id: string | null;
+  creator_username: string | null;
+  is_nsfw: boolean;
+  category: string | null;
+  triggers: string[];
+  limits: string[];
+  updated_at: string;
+};
+
+/**
+ * Phase 5 — characters awaiting avatar review (status pending_review),
+ * oldest first. Moderator-tier: content review surface.
+ */
+export async function listPendingCharacters(
+  limit: number = 50,
+  offset: number = 0
+): Promise<{ characters: PendingCharacterRow[] } | { error: string }> {
+  try {
+    await assertModerator();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("list_characters_pending_review", {
+    p_limit: limit,
+    p_offset: offset,
+  });
+
+  if (error) return { error: "Failed to load review queue" };
+
+  return { characters: (data ?? []) as PendingCharacterRow[] };
+}
+
+/**
+ * Phase 5 — approve/reject a character in the review queue. Writes the
+ * admin_audit_log row (approved_character / rejected_character) and
+ * notifies the creator. The RPC refuses anything not pending_review.
+ */
+export async function adminReviewCharacter(
+  characterId: string,
+  decision: "approved" | "rejected",
+  note: string = ""
+): Promise<{ success: true } | { error: string }> {
+  try {
+    await assertModerator();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  const trimmed = note.trim().slice(0, 500);
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_review_character", {
+    p_character_id: characterId,
+    p_decision: decision,
+    p_note: trimmed,
+  });
+
+  if (error) return { error: "Failed to review character" };
+  return { success: true };
+}
+
 export async function setCharacterFlag(
   characterId: string,
   flag: "is_featured" | "is_hidden",

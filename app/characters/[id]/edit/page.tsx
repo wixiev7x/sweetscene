@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getCharacter, updateCharacter } from "@/lib/actions/characters";
+import { getCharacter, updateCharacter, publishMyCharacter } from "@/lib/actions/characters";
 import { getMyProfile } from "@/lib/actions/profile";
 import { LoadingState } from "@/components/ui";
 
@@ -68,6 +68,10 @@ export default function EditCharacterPage({
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const [isVip, setIsVip] = useState(false);
+  /* Phase 5 — review workflow. */
+  const [charStatus, setCharStatus] = useState<string>("draft");
+  const [publishing, setPublishing] = useState(false);
+  const [publishNote, setPublishNote] = useState("");
 
   /* The values as loaded, so the patch can carry only real changes. */
   const [initial, setInitial] = useState<Record<string, unknown> | null>(null);
@@ -83,6 +87,10 @@ export default function EditCharacterPage({
   const [isNsfw, setIsNsfw] = useState(false);
   const [visibility, setVisibility] = useState<Visibility>("private");
   const [category, setCategory] = useState<Category>("roleplay");
+  /* Phase 5 — tagline/triggers/limits. */
+  const [tagline, setTagline] = useState("");
+  const [triggersText, setTriggersText] = useState("");
+  const [limitsText, setLimitsText] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -123,6 +131,10 @@ export default function EditCharacterPage({
       setIsNsfw(Boolean(c.is_nsfw));
       setVisibility(((c.visibility as Visibility) ?? "private") as Visibility);
       setCategory(((c.category as Category) ?? "roleplay") as Category);
+      setCharStatus((c.status as string) ?? "draft");
+      setTagline((c.tagline as string) ?? "");
+      setTriggersText(((c.triggers as string[]) ?? []).join(", "));
+      setLimitsText(((c.limits as string[]) ?? []).join(", "));
 
       if (!("error" in profileResult)) {
         setIsVip(Boolean(profileResult.profile.is_vip));
@@ -143,6 +155,39 @@ export default function EditCharacterPage({
         : prev.length >= MAX_TAGS
           ? prev
           : [...prev, tag]
+    );
+  }
+
+  /* Phase 5 — split textarea into capped list items (same rule as the
+     create page; the server re-validates and caps). */
+  function parseListItems(text: string): string[] {
+    return text
+      .split(/[,;\n]/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0)
+      .slice(0, 10);
+  }
+
+  /* Phase 5 — publish the character (draft/rejected → review or live,
+     depending on avatar). Shows the resulting status inline. */
+  async function handlePublish() {
+    if (publishing || saving) return;
+    setPublishing(true);
+    setError("");
+    setPublishNote("");
+    const result = await publishMyCharacter(id);
+    setPublishing(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    setCharStatus(result.status);
+    setPublishNote(
+      result.status === "published"
+        ? "Published — your character is live now."
+        : result.status === "pending_review"
+          ? "Submitted for review — it goes public once approved (usually fast)."
+          : "Saved as draft. Upload/remove the avatar in My Characters, then publish."
     );
   }
 
@@ -177,6 +222,9 @@ export default function EditCharacterPage({
     diff("is_nsfw", isNsfw, Boolean(initial.is_nsfw));
     diff("visibility", visibility, initial.visibility ?? "private");
     diff("category", category, initial.category ?? "roleplay");
+    diff("tagline", tagline.trim(), initial.tagline ?? "");
+    diff("triggers", parseListItems(triggersText), initial.triggers ?? []);
+    diff("limits", parseListItems(limitsText), initial.limits ?? []);
 
     if (Object.keys(patch).length === 0) {
       setSaved(true);
@@ -227,11 +275,46 @@ export default function EditCharacterPage({
         >
           ← Back
         </Link>
-        <h1 className="mt-3 text-3xl font-bold">Edit character</h1>
+        <div className="mt-3 flex items-center gap-3 flex-wrap">
+          <h1 className="text-3xl font-bold">Edit character</h1>
+          <span
+            className={[
+              "px-2.5 py-0.5 rounded-full text-xs font-medium border",
+              charStatus === "published"
+                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                : charStatus === "pending_review"
+                  ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-300"
+                  : charStatus === "rejected"
+                    ? "border-red-500/30 bg-red-500/10 text-red-400"
+                    : "border-amber-500/30 bg-amber-500/10 text-amber-300",
+            ].join(" ")}
+          >
+            {charStatus === "published"
+              ? "Live"
+              : charStatus === "pending_review"
+                ? "In review"
+                : charStatus === "rejected"
+                  ? "Rejected"
+                  : "Draft"}
+          </span>
+          {charStatus !== "published" && (
+            <button
+              type="button"
+              onClick={handlePublish}
+              disabled={publishing || saving}
+              className="px-4 py-1.5 rounded-full text-xs font-medium bg-gradient-to-r from-brand-dark to-crimson-600 text-white hover:from-brand hover:to-crimson-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {publishing ? "Publishing…" : "Publish →"}
+            </button>
+          )}
+        </div>
         <p className="mt-1 text-sm text-muted">
           Changes apply to new scenes. Conversations already running keep the
           version they started with.
         </p>
+        {publishNote && (
+          <p className="mt-2 text-sm text-cyan-300">{publishNote}</p>
+        )}
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
@@ -282,6 +365,53 @@ export default function EditCharacterPage({
             onChange={(e) => setShortDescription(e.target.value)}
             maxLength={200}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="tagline" className="block text-sm font-medium mb-2">
+            Tagline <span className="text-muted font-normal text-xs">(max 120)</span>
+          </label>
+          <input
+            id="tagline"
+            value={tagline}
+            onChange={(e) => setTagline(e.target.value)}
+            maxLength={120}
+            placeholder="One-line hook shown under the name."
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="triggers" className="block text-sm font-medium mb-2">
+            Triggers <span className="text-muted font-normal text-xs">(comma-separated, up to 10)</span>
+          </label>
+          <p className="mb-2 text-xs text-muted">
+            Things that set this character off. The AI reacts strongly to these.
+          </p>
+          <textarea
+            id="triggers"
+            value={triggersText}
+            onChange={(e) => setTriggersText(e.target.value)}
+            rows={2}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="limits" className="block text-sm font-medium mb-2">
+            Limits <span className="text-muted font-normal text-xs">(comma-separated, up to 10)</span>
+          </label>
+          <p className="mb-2 text-xs text-muted">
+            Topics the character deflects or refuses. Platform safety rules
+            always override these.
+          </p>
+          <textarea
+            id="limits"
+            value={limitsText}
+            onChange={(e) => setLimitsText(e.target.value)}
+            rows={2}
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none"
           />
         </div>
 

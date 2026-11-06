@@ -55,6 +55,37 @@ function allowedHosts(): Set<string> {
   return hosts;
 }
 
+/**
+ * Phase 5 — local-dev storage support. The supabase CLI stack serves
+ * storage over plain http on the loopback interface. Uploaded avatars
+ * would then be http://127.0.0.1:54321/storage/... URLs, which the
+ * strict https rule below would reject and break the whole upload →
+ * publish flow on dev.
+ *
+ * The allowance is deliberately narrow: it only fires when
+ *   1. the configured NEXT_PUBLIC_SUPABASE_URL itself uses http (a
+ *      production/staging deployment is https, so this is false there),
+ *   2. the env host is a loopback address (localhost/127.0.0.1/::1), and
+ *   3. the candidate URL matches that exact host over http.
+ * Static hosts (Pollinations/Unsplash) remain https-only everywhere.
+ */
+function allowsLocalHttp(parsed: URL): boolean {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return false;
+  let envUrl: URL;
+  try {
+    envUrl = new URL(supabaseUrl);
+  } catch {
+    return false;
+  }
+  if (envUrl.protocol !== "http:") return false;
+  const host = envUrl.hostname;
+  const isLoopback =
+    host === "localhost" || host === "127.0.0.1" || host === "::1";
+  if (!isLoopback) return false;
+  return parsed.protocol === "http:" && parsed.hostname === host;
+}
+
 export type AvatarUrlResult = { url: string | null } | { error: string };
 
 /**
@@ -85,7 +116,7 @@ export function validateAvatarUrl(
     return { error: "Avatar URL must be a full https:// URL" };
   }
 
-  if (parsed.protocol !== "https:") {
+  if (parsed.protocol !== "https:" && !allowsLocalHttp(parsed)) {
     return { error: "Avatar URL must use https" };
   }
 

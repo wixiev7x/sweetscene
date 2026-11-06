@@ -43,9 +43,21 @@ type CreateCharacterParams = {
   backstory?: string;
   tags?: string[];
   category?: "companion" | "roleplay" | "adventure" | "romance" | "assistant" | "other";
+  /* Phase 5 (Stripe consolidation) — tagline, behavioural fields,
+   * and the draft/publish workflow. `publish: true` submits the
+   * character for going live (via the publish_character RPC); an
+   * avatar forces pending_review, no avatar publishes directly. */
+  tagline?: string;
+  triggers?: string[];
+  limits?: string[];
+  publish?: boolean;
 };
 
-type CreateCharacterResult = { characterId: string } | { error: string };
+type CreateCharacterResult =
+  | { characterId: string; status: CharacterStatus }
+  | { error: string };
+
+export type CharacterStatus = "draft" | "pending_review" | "published" | "rejected";
 
 const MAX_NAME = 50;
 const MAX_PROMPT = 2000;
@@ -60,6 +72,11 @@ const MAX_SHORT_DESC = 200;
 const MAX_FULL_PERSONALITY = 3000;
 const MAX_BACKSTORY = 3000;
 const MAX_NEW_TAGS = 10;
+/* Phase 5 — tagline / triggers / limits caps. */
+const MAX_TAGLINE = 120;
+const MAX_BEHAVIOURAL_ITEMS = 10;
+const MAX_TRIGGER_LEN = 120;
+const MAX_LIMIT_LEN = 160;
 const VALID_CATEGORIES = [
   "companion",
   "roleplay",
@@ -68,6 +85,89 @@ const VALID_CATEGORIES = [
   "assistant",
   "other",
 ] as const;
+
+/* ── Phase 5 — real-person / celebrity name guard ───────────────────
+ * Characters are anonymous fiction. A character named after a real
+ * person is an impersonation/parasocial risk (and a takedown magnet),
+ * so obvious real-person names are refused at submit. Curated list —
+ * NOT exhaustive; the moderation classifier still screens the text.
+ * Exact (normalized) matches only, to avoid false positives on
+ * characters who merely share a first name with a celebrity.
+ * Add names as patterns emerge from the report queue. */
+const REAL_PERSON_BLOCKLIST = new Set<string>([
+  /* Musicians */
+  "taylor swift", "ariana grande", "billie eilish", "dua lipa",
+  "olivia rodrigo", "sabrina carpenter", "beyonce", "rihanna",
+  "drake", "kendrick lamar", "travis scott", "post malone",
+  "the weeknd", "justin bieber", "shawn mendes", "harry styles",
+  "niall horan", "zayn malik", "liam payne", "louis tomlinson",
+  "ed sheeran", "eminem", "jay z", "snoop dogg", "kanye west",
+  "cardi b", "nicki minaj", "miley cyrus", "selena gomez",
+  "katy perry", "lady gaga", "adele", "lizzo", "doja cat",
+  "ice spice", "lanadelrey", "lana del rey",
+  /* Actors / screen */
+  "emma watson", "daniel radcliffe", "rupert grint", "tom holland",
+  "zendaya", "timothee chalamet", "leonardo dicaprio", "brad pitt",
+  "angelina jolie", "jennifer lawrence", "scarlett johansson",
+  "chris hemsworth", "chris evans", "robert downey jr",
+  "ryan reynolds", "blake lively", "margot robbie", "florence pugh",
+  "anya taylor joy", "millie bobby brown", "keanu reeves",
+  "johnny depp", "amber heard", "winona ryder", "jenna ortega",
+  "sydney sweeney", "jacob elordi", "austin butler", "tom cruise",
+  /* Internet / streamers */
+  "mr beast", "mrbeast", "pewdiepie", "markiplier", "jacksepticeye",
+  "coryxkenshin", "kai cenat", "ishowspeed", "speed", "dream",
+  "pokimane", "amouranth", "belle delphine", "sssniperwolf",
+  /* Public figures / business */
+  "elon musk", "donald trump", "joe biden", "barack obama",
+  "kamala harris", "jd vance", "nancy pelosi", "melania trump",
+  "ivanka trump", "jeff bezos", "bill gates", "steve jobs",
+  "mark zuckerberg", "sundar pichai", "sam altman", "warren buffett",
+  "vladimir putin", "putin", "volodymyr zelensky", "xi jinping",
+  "kim jong un", "emmanuel macron", "rishi sunak", "keir starmer",
+  "oprah winfrey", "ellen degeneres", "jimmy fallon",
+  "andrew tate", "jordan peterson", "joe rogan", "ben shapiro",
+  "alex jones", "greta thunberg", "malala yousafzai",
+  /* Reality / social */
+  "kim kardashian", "kylie jenner", "kendall jenner", "khloe kardashian",
+  "kourtney kardashian", "paris hilton", "pete davidson",
+  /* Adult performers (high impersonation risk on this platform) */
+  "mia khalifa", "riley reid", "lana rhoades", "abella danger",
+  "rachel starr", "angela white",
+]);
+
+function normalizeForBlocklist(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
+}
+
+/**
+ * Phase 5 — does this patch change any authored content (as opposed to
+ * cosmetic fields like visibility)? Used to pull a pending_review
+ * character back to draft when the reviewed content changes.
+ */
+function patchTouchesAuthoredContent(patch: UpdateCharacterPatch): boolean {
+  return (
+    patch.name !== undefined ||
+    patch.user_prompt !== undefined ||
+    patch.personality !== undefined ||
+    patch.first_message !== undefined ||
+    patch.example_dialog !== undefined ||
+    patch.alternate_greetings !== undefined ||
+    patch.short_description !== undefined ||
+    patch.full_personality !== undefined ||
+    patch.backstory !== undefined ||
+    patch.tagline !== undefined ||
+    patch.triggers !== undefined ||
+    patch.limits !== undefined
+  );
+}
+
+function realPersonError(name: string): string | null {
+  if (REAL_PERSON_BLOCKLIST.has(normalizeForBlocklist(name))) {
+    return "Characters can't be named after real people. Create an original persona.";
+  }
+  return null;
+}
 
 function validateFields(p: CreateCharacterParams): string | null {
   const name = (p.name ?? "").trim();
@@ -123,6 +223,29 @@ function validateFields(p: CreateCharacterParams): string | null {
   if (p.category && !VALID_CATEGORIES.includes(p.category)) {
     return "Invalid category";
   }
+  /* Phase 5 — tagline / triggers / limits. */
+  if (p.tagline && p.tagline.trim().length > MAX_TAGLINE) {
+    return `Tagline max ${MAX_TAGLINE} chars`;
+  }
+  for (const [label, arr, maxLen] of [
+    ["triggers", p.triggers ?? [], MAX_TRIGGER_LEN],
+    ["limits", p.limits ?? [], MAX_LIMIT_LEN],
+  ] as const) {
+    if (arr.length > MAX_BEHAVIOURAL_ITEMS) {
+      return `Max ${MAX_BEHAVIOURAL_ITEMS} ${label}`;
+    }
+    for (const item of arr) {
+      if (!item || item.trim().length === 0) {
+        return `${label} can't contain empty entries`;
+      }
+      if (item.trim().length > maxLen) {
+        return `${label} entries max ${maxLen} chars`;
+      }
+    }
+  }
+  /* Phase 5 — no real-person impersonation. */
+  const realPerson = realPersonError(p.name ?? "");
+  if (realPerson) return realPerson;
   return null;
 }
 
@@ -141,6 +264,9 @@ function authoredTextFields(p: {
   full_personality?: string | null;
   backstory?: string | null;
   alternate_greetings?: string[] | null;
+  tagline?: string | null;
+  triggers?: string[] | null;
+  limits?: string[] | null;
 }): string[] {
   return [
     p.name,
@@ -150,7 +276,10 @@ function authoredTextFields(p: {
     p.short_description,
     p.full_personality,
     p.backstory,
+    p.tagline,
     ...(p.alternate_greetings ?? []),
+    ...(p.triggers ?? []),
+    ...(p.limits ?? []),
   ].filter((v): v is string => typeof v === "string" && v.length > 0);
 }
 
@@ -280,6 +409,14 @@ export async function createCharacter(
         backstory: params.backstory?.trim() ?? null,
         tags: params.tags ?? [],
         category: params.category ?? "other",
+        /* Phase 5 — behavioural fields. `status` is intentionally NOT
+         * inserted: the characters_status_insert_guard trigger forces
+         * 'draft' for user writes; publish goes through the
+         * publish_character RPC below so the avatar-review rule is
+         * enforced at the DB layer, not just here. */
+        tagline: params.tagline?.trim() ?? null,
+        triggers: (params.triggers ?? []).map((t) => t.trim()).filter(Boolean),
+        limits: (params.limits ?? []).map((l) => l.trim()).filter(Boolean),
       })
       .select("id")
       .single();
@@ -288,9 +425,55 @@ export async function createCharacter(
       return { error: "Failed to create character" };
     }
 
-    return { characterId: inserted.id };
+    /* Phase 5 — publish flow (avatar → pending_review, else published).
+     * The RPC re-checks creator + ban state server-side. */
+    if (params.publish) {
+      const { data: pubStatus } = (await supabase.rpc("publish_character", {
+        p_character_id: inserted.id,
+      })) as { data: unknown };
+      const status = (Array.isArray(pubStatus)
+        ? pubStatus[0]
+        : pubStatus) as CharacterStatus | undefined;
+      return { characterId: inserted.id, status: status ?? "draft" };
+    }
+
+    return { characterId: inserted.id, status: "draft" };
   } catch {
     return { error: "Failed to create character" };
+  }
+}
+
+/**
+ * Phase 5 — submits one of the caller's own characters for going live.
+ * Thin wrapper over the publish_character RPC, which enforces the
+ * avatar-review rule (avatar present → pending_review) and refuses
+ * banned users and other people's characters.
+ */
+export async function publishMyCharacter(
+  characterId: string
+): Promise<{ status: CharacterStatus } | { error: string }> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Not authenticated" };
+
+  if (!(await rateLimit(user.id))) {
+    return { error: "Too many requests. Slow down." };
+  }
+
+  try {
+    const { data, error } = await supabase.rpc("publish_character", {
+      p_character_id: characterId,
+    });
+    if (error) return { error: "Failed to publish character" };
+    const status = (Array.isArray(data) ? data[0] : data) as
+      | CharacterStatus
+      | undefined;
+    return { status: status ?? "draft" };
+  } catch {
+    return { error: "Failed to publish character" };
   }
 }
 
@@ -325,8 +508,9 @@ export async function updateCharacter(
     /* name and scenario_tags are read below to backfill an omitted
        patch field. They were missing from this select, so a partial
        update (name unchanged) merged `undefined` into a required field
-       and failed validateFields. */
-    .select("id, name, system_prompt, user_prompt, is_nsfw, version, scenario_tags")
+       and failed validateFields. Phase 5 adds status + avatar_url so
+       edits can reset the review state. */
+    .select("id, name, system_prompt, user_prompt, is_nsfw, version, scenario_tags, status, avatar_url")
     .eq("id", characterId)
     .eq("creator_id", user.id)
     .maybeSingle();
@@ -378,6 +562,9 @@ export async function updateCharacter(
     alternate_greetings: patch.alternate_greetings,
     visibility: patch.visibility,
     avatar_url: patch.avatar_url,
+    tagline: patch.tagline,
+    triggers: patch.triggers,
+    limits: patch.limits,
   };
   const validationError = validateFields(merged);
   if (validationError) return { error: validationError };
@@ -434,6 +621,34 @@ export async function updateCharacter(
   if (patch.backstory !== undefined) update.backstory = patch.backstory?.trim() ?? null;
   if (patch.tags !== undefined) update.tags = patch.tags;
   if (patch.category !== undefined) update.category = patch.category;
+  /* Phase 5 — behavioural fields. */
+  if (patch.tagline !== undefined) update.tagline = patch.tagline?.trim() ?? null;
+  if (patch.triggers !== undefined) update.triggers = patch.triggers.map((t) => t.trim()).filter(Boolean);
+  if (patch.limits !== undefined) update.limits = patch.limits.map((l) => l.trim()).filter(Boolean);
+
+  /* Phase 5 — review-state resets. Never write 'published'/'rejected'
+   * here: those transitions belong to the publish_character /
+   * admin_review_character RPCs (and the DB trigger enforces it).
+   *
+   *  - Editing a pending_review character pulls it back to draft —
+   *    the reviewed content changed, so the review no longer applies.
+   *  - Swapping the avatar on a live (published) character sends it
+   *    back to pending_review — the new image must be reviewed. (The
+   *    characters_status_update_guard trigger auto-demotes this case
+   *    even for direct REST writes; setting it here keeps the UI
+   *    truthful.) */
+  const existingStatus = (existing as Record<string, unknown>).status as
+    | CharacterStatus
+    | undefined;
+  const avatarChanged =
+    patch.avatar_url !== undefined &&
+    patch.avatar_url !== ((existing as Record<string, unknown>).avatar_url as string | null);
+
+  if (existingStatus === "pending_review" && patchTouchesAuthoredContent(patch)) {
+    update.status = "draft";
+  } else if (existingStatus === "published" && avatarChanged) {
+    update.status = "pending_review";
+  }
 
   const { error: updateError } = await supabase
     .from("characters")
@@ -508,6 +723,11 @@ export type CharacterPublic = {
   tags: string[];
   category: string;
   chat_count: number;
+  /* Phase 5 — tagline, behavioural fields, review state. */
+  tagline: string | null;
+  triggers: string[];
+  limits: string[];
+  status: CharacterStatus;
 };
 
 export type CharacterOwned = CharacterPublic & {
@@ -516,7 +736,7 @@ export type CharacterOwned = CharacterPublic & {
 };
 
 const PUBLIC_COLUMNS =
-  "id, name, user_prompt, scenario_tags, is_nsfw, personality, first_message, example_dialog, alternate_greetings, visibility, avatar_url, connection_score, creator_id, is_public, short_description, full_personality, backstory, tags, category, chat_count";
+  "id, name, user_prompt, scenario_tags, is_nsfw, personality, first_message, example_dialog, alternate_greetings, visibility, avatar_url, connection_score, creator_id, is_public, short_description, full_personality, backstory, tags, category, chat_count, tagline, triggers, limits, status";
 
 const OWNED_COLUMNS = `${PUBLIC_COLUMNS}, version, updated_at`;
 

@@ -1102,6 +1102,7 @@ export default function ChatPage() {
                     "Sexual content involving a minor",
                     "Threats or violence",
                     "Asking for personal info",
+                    "Impersonating a real person",
                     "Spam or scam",
                     "Other",
                   ].map((cat) => (

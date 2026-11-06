@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Spinner } from "@/components/ui";
-import { getUserCharacters, deleteCharacter, type CharacterOwned } from "@/lib/actions/characters";
+import { getUserCharacters, deleteCharacter, publishMyCharacter, type CharacterOwned } from "@/lib/actions/characters";
 
 const GRADIENTS = [
   ["from-brand", "to-crimson-500"],
@@ -30,6 +30,8 @@ export default function MyCharactersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -54,6 +56,30 @@ export default function MyCharactersPage() {
       setCharacters((prev) => prev.filter((c) => c.id !== id));
     }
     setDeletingId(null);
+  }
+
+  /* Phase 5 — publish a draft/rejected character. With an avatar it
+     goes to pending_review; without one it goes live immediately. */
+  async function handlePublish(id: string) {
+    setPublishingId(id);
+    setError("");
+    setNotice("");
+    const result = await publishMyCharacter(id);
+    setPublishingId(null);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    setCharacters((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, status: result.status } : c))
+    );
+    setNotice(
+      result.status === "published"
+        ? "Character is live now."
+        : result.status === "pending_review"
+          ? "Submitted for review — it goes public once approved (usually fast)."
+          : "Still a draft. Add or remove the avatar, then publish again."
+    );
   }
 
   return (
@@ -82,6 +108,12 @@ export default function MyCharactersPage() {
           </div>
         )}
 
+        {notice && !error && (
+          <div className="mb-6 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-sm px-4 py-3 rounded-xl text-center">
+            {notice}
+          </div>
+        )}
+
         {loading ? (
           <div className="flex flex-col items-center py-20 gap-4">
             <Spinner />
@@ -104,9 +136,37 @@ export default function MyCharactersPage() {
               const [from, to] = GRADIENTS[gIdx];
               return (
                 <div key={c.id} className="relative bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-brand/30 transition-all duration-300 group">
-                  {/* visibility badge */}
+                  {/* visibility badge + Phase 5 status badge */}
                   <span className={`absolute top-3 right-3 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border ${c.visibility === "public" ? "bg-brand/10 text-brand-light border-brand/20" : c.visibility === "unlisted" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-muted/10 text-muted-strong border-line-focus/20"}`}>
                     {c.visibility}
+                  </span>
+                  <span
+                    className={`absolute top-3 left-3 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                      c.status === "published"
+                        ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"
+                        : c.status === "pending_review"
+                          ? "bg-cyan-500/10 text-cyan-300 border-cyan-500/20"
+                          : c.status === "rejected"
+                            ? "bg-red-500/10 text-red-400 border-red-500/20"
+                            : "bg-amber-500/10 text-amber-300 border-amber-500/20"
+                    }`}
+                    title={
+                      c.status === "pending_review"
+                        ? "Waiting for avatar review — visible to you only."
+                        : c.status === "rejected"
+                          ? "Rejected by moderation. Edit it and try publishing again."
+                          : c.status === "published"
+                            ? "Live and visible to the community."
+                            : "Draft — only you can see it."
+                    }
+                  >
+                    {c.status === "published"
+                      ? "LIVE"
+                      : c.status === "pending_review"
+                        ? "IN REVIEW"
+                        : c.status === "rejected"
+                          ? "REJECTED"
+                          : "DRAFT"}
                   </span>
 
                   <Link href={`/characters/${c.id}`} className="block">
@@ -126,6 +186,12 @@ export default function MyCharactersPage() {
                     <p className="text-xs text-muted-strong mt-3 line-clamp-2">{c.user_prompt}</p>
                   </Link>
 
+                  {c.status === "rejected" && (
+                    <p className="text-[11px] text-red-400 mt-2">
+                      Rejected by moderation — edit and publish again to resubmit.
+                    </p>
+                  )}
+
                   <div className="flex gap-2 mt-4">
                     <Link
                       href={`/characters/${c.id}/edit`}
@@ -133,6 +199,16 @@ export default function MyCharactersPage() {
                     >
                       Edit
                     </Link>
+                    {c.status !== "published" && (
+                      <button
+                        type="button"
+                        disabled={publishingId === c.id || deletingId === c.id}
+                        onClick={() => handlePublish(c.id)}
+                        className="flex-1 text-xs text-brand-light bg-brand/10 border border-brand/20 px-3 py-1.5 rounded-lg hover:bg-brand/20 transition-all disabled:opacity-50"
+                      >
+                        {publishingId === c.id ? "Publishing…" : "Publish"}
+                      </button>
+                    )}
                     <button
                       type="button"
                       disabled={deletingId === c.id}

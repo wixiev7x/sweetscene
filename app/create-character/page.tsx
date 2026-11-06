@@ -78,12 +78,18 @@ export default function CreateCharacterPage() {
     "companion" | "roleplay" | "adventure" | "romance" | "assistant" | "other"
   >("other");
   const [avatarPrompt, setAvatarPrompt] = useState("");
+  /* Phase 5 — review workflow + behavioural fields. */
+  const [tagline, setTagline] = useState("");
+  const [triggersText, setTriggersText] = useState("");
+  const [limitsText, setLimitsText] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [createdStatus, setCreatedStatus] = useState<string>("draft");
   const [createdId, setCreatedId] = useState<string | null>(null);
   const [profile, setProfile] = useState<{ is_vip: boolean } | null>(null);
 
@@ -131,6 +137,15 @@ export default function CreateCharacterPage() {
     setIsNsfw((prev) => !prev);
   }
 
+  /* Phase 5 — split a free-form textarea into capped list items. */
+  function parseListItems(text: string, maxLen: number): string[] {
+    return text
+      .split(/[,;\n]/)
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0 && t.length <= maxLen)
+      .slice(0, 10);
+  }
+
   function addAlternateGreeting() {
     if (alternateGreetings.length >= 3) return;
     setAlternateGreetings((prev) => [...prev, ""]);
@@ -169,6 +184,50 @@ export default function CreateCharacterPage() {
     setGeneratingAvatar(false);
   }
 
+  /* Phase 5 — upload own avatar to Supabase Storage ("avatars" public
+     bucket, owner-scoped folder `{userId}/`). 2MB, PNG/JPEG/WebP/GIF.
+     The public URL then flows into the character row via avatar_url and
+     triggers the pending_review workflow on publish. */
+  async function handleUploadAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    /* Reset the input so re-selecting the same file re-fires onChange. */
+    e.target.value = "";
+    if (!file) return;
+    const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    if (!ALLOWED.includes(file.type)) {
+      setError("Avatar must be a PNG, JPEG, WebP, or GIF image");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Avatar image must be 2MB or smaller");
+      return;
+    }
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    setUploadingAvatar(true);
+    setError("");
+    const path = `${user.id}/${crypto.randomUUID()}`;
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (uploadError) {
+      setError(uploadError.message);
+      setUploadingAvatar(false);
+      return;
+    }
+    const { data: urlData } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(path);
+    setAvatarUrl(urlData.publicUrl);
+    setUploadingAvatar(false);
+  }
+
   async function handleImportCard(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -186,7 +245,7 @@ export default function CreateCharacterPage() {
         const supabase = createClient();
         const { data } = await supabase
           .from("characters")
-          .select("name, user_prompt, personality, first_message, example_dialog, alternate_greetings, scenario_tags, is_nsfw, avatar_url")
+          .select("name, user_prompt, personality, first_message, example_dialog, alternate_greetings, scenario_tags, is_nsfw, avatar_url, tagline, triggers, limits")
           .eq("id", result.characterId)
           .single();
         if (data) {
@@ -199,6 +258,9 @@ export default function CreateCharacterPage() {
           setSelectedTags(data.scenario_tags ?? []);
           setIsNsfw(data.is_nsfw ?? false);
           setAvatarUrl(data.avatar_url ?? null);
+          setTagline(data.tagline ?? "");
+          setTriggersText((data.triggers ?? []).join(", "));
+          setLimitsText((data.limits ?? []).join(", "));
           setCreatedId(result.characterId);
           setSuccess(true);
         }
@@ -211,12 +273,16 @@ export default function CreateCharacterPage() {
     e.target.value = "";
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(publish: boolean) {
     setError("");
     setSuccess(false);
 
     if (name.trim().length === 0 || name.trim().length > 50) {
       setError("Name must be 1-50 characters");
+      return;
+    }
+    if (tagline.trim().length > 120) {
+      setError("Tagline must be 120 characters or fewer");
       return;
     }
     if (userPrompt.trim().length === 0 || userPrompt.trim().length > 2000) {
@@ -232,11 +298,9 @@ export default function CreateCharacterPage() {
       return;
     }
 
-    const personality = personalityText
-      .split(/[,;\n]/)
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0 && t.length <= 30)
-      .slice(0, 8);
+    const personality = parseListItems(personalityText, 30).slice(0, 8);
+    const triggers = parseListItems(triggersText, 120);
+    const limits = parseListItems(limitsText, 160);
 
     setSubmitting(true);
 
@@ -258,6 +322,11 @@ export default function CreateCharacterPage() {
       backstory: backstory.trim() || undefined,
       tags: customTags,
       category,
+      /* Phase 5 — review workflow fields. */
+      tagline: tagline.trim() || undefined,
+      triggers,
+      limits,
+      publish,
     });
 
     if ("error" in result) {
@@ -267,6 +336,7 @@ export default function CreateCharacterPage() {
     }
 
     setCreatedId(result.characterId);
+    setCreatedStatus(result.status);
     setSuccess(true);
     setSubmitting(false);
   }
@@ -290,8 +360,13 @@ export default function CreateCharacterPage() {
     setCustomTagInput("");
     setCategory("other");
     setAvatarPrompt("");
+    /* Phase 5 — reset new fields. */
+    setTagline("");
+    setTriggersText("");
+    setLimitsText("");
     setSuccess(false);
     setCreatedId(null);
+    setCreatedStatus("draft");
     setError("");
   }
 
@@ -321,11 +396,22 @@ export default function CreateCharacterPage() {
       {success && createdId ? (
         <div className="max-w-md mx-auto px-6 pb-24">
           <div className="flex flex-col items-center text-center bg-white/5 border border-white/10 rounded-3xl p-10">
-            <span className="block text-5xl mb-4">🎉</span>
-            <h2 className="text-2xl font-light text-white">Character Saved!</h2>
+            <span className="block text-5xl mb-4">
+              {createdStatus === "published" ? "🎉" : createdStatus === "pending_review" ? "🔍" : "📝"}
+            </span>
+            <h2 className="text-2xl font-light text-white">
+              {createdStatus === "published"
+                ? "Character Live!"
+                : createdStatus === "pending_review"
+                  ? "Submitted for Review"
+                  : "Draft Saved"}
+            </h2>
             <p className="text-sm text-muted mt-2">
-              Your character is now stored. Play it solo or list it for the
-              community.
+              {createdStatus === "published"
+                ? "Your character is published and visible to the community."
+                : createdStatus === "pending_review"
+                  ? "Characters with uploaded avatars get a quick review before going public — usually fast. You can keep playing it solo in the meantime."
+                  : "Saved as a draft. Publish it any time from My Characters."}
             </p>
             <div className="flex flex-col items-center gap-3 mt-8 w-full">
               <Link
@@ -379,7 +465,7 @@ export default function CreateCharacterPage() {
           </div>
 
           {/* ── NAME ── */}
-          <Field label="Name" hint="Max 50 characters">
+          <Field label="Name" hint="Max 50 characters. Real people / celebrities are not allowed.">
             <input
               type="text"
               value={name}
@@ -389,6 +475,19 @@ export default function CreateCharacterPage() {
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
             />
             <CharCounter len={name.length} max={50} />
+          </Field>
+
+          {/* ── PHASE 5: TAGLINE ── */}
+          <Field label="Tagline" hint="Optional. One-line hook shown under the name. Max 120 chars.">
+            <input
+              type="text"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+              maxLength={120}
+              placeholder="She knows every book in the library — except the one you're writing."
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
+            />
+            <CharCounter len={tagline.length} max={120} />
           </Field>
 
           {/* ── USER PROMPT ── */}
@@ -485,6 +584,40 @@ export default function CreateCharacterPage() {
                 </button>
               )}
             </div>
+          </Field>
+
+          {/* ── PHASE 5: TRIGGERS ── */}
+          <Field
+            label="Triggers"
+            hint="Optional. Things that set this character off — phrases, topics, actions. Comma or newline separated, up to 10, 120 chars each. The AI reacts strongly to these."
+          >
+            <textarea
+              value={triggersText}
+              onChange={(e) => setTriggersText(e.target.value)}
+              rows={3}
+              placeholder={"whispering, being called by her first name, rain on the library skylight"}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none"
+            />
+            <p className="text-xs text-muted-faint mt-1">
+              {parseListItems(triggersText, 120).length}/10 triggers
+            </p>
+          </Field>
+
+          {/* ── PHASE 5: LIMITS ── */}
+          <Field
+            label="Limits"
+            hint="Optional. Topics the character will deflect or refuse. Comma or newline separated, up to 10, 160 chars each. Platform safety rules always override these."
+          >
+            <textarea
+              value={limitsText}
+              onChange={(e) => setLimitsText(e.target.value)}
+              rows={3}
+              placeholder={"talks about her family, physical violence, discussing other patrons"}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none"
+            />
+            <p className="text-xs text-muted-faint mt-1">
+              {parseListItems(limitsText, 160).length}/10 limits
+            </p>
           </Field>
 
           {/* ── PHASE 8A: SHORT DESCRIPTION ── */}
@@ -698,8 +831,11 @@ export default function CreateCharacterPage() {
           </Field>
 
           {/* ── AVATAR ── */}
-          <Field label="Avatar" hint="Type a description to AI-generate a tasteful SFW portrait, or upload your own later. Pollinations, free.">
-            <div className="flex items-center gap-4">
+          <Field
+            label="Avatar"
+            hint="Upload your own (PNG/JPEG/WebP/GIF, ≤2MB) or AI-generate a tasteful SFW portrait. Characters with avatars get a quick review before going public."
+          >
+            <div className="flex items-center gap-4 flex-wrap">
               {avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={avatarUrl} alt="Avatar" className="w-20 h-20 rounded-2xl object-cover shrink-0" />
@@ -710,6 +846,21 @@ export default function CreateCharacterPage() {
                   </span>
                 </div>
               )}
+              <label
+                className={[
+                  "px-5 py-2.5 rounded-xl text-sm bg-white/5 border border-white/10 text-foreground-dim hover:bg-white/10 transition-all text-center",
+                  uploadingAvatar ? "opacity-50 cursor-wait" : "cursor-pointer",
+                ].join(" ")}
+              >
+                {uploadingAvatar ? "Uploading…" : "⬆ Upload Image"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={handleUploadAvatar}
+                  disabled={uploadingAvatar}
+                />
+              </label>
               <button
                 type="button"
                 onClick={handleGenerateAvatar}
@@ -740,10 +891,10 @@ export default function CreateCharacterPage() {
           </Field>
 
           {/* ── SUBMIT ── */}
-          <div>
+          <div className="flex flex-col gap-3">
             <button
               type="button"
-              onClick={handleSubmit}
+              onClick={() => handleSubmit(true)}
               disabled={submitting}
               className={[
                 "w-full py-4 rounded-xl font-medium text-lg transition-all duration-300",
@@ -752,8 +903,20 @@ export default function CreateCharacterPage() {
                   : "bg-gradient-to-r from-brand-dark to-crimson-600 text-white hover:from-brand hover:to-crimson-500 active:scale-95",
               ].join(" ")}
             >
-              {submitting ? "Creating…" : "Create Character →"}
+              {submitting ? "Creating…" : "Publish Character →"}
             </button>
+            <button
+              type="button"
+              onClick={() => handleSubmit(false)}
+              disabled={submitting}
+              className="w-full py-3 rounded-xl font-medium text-sm text-muted-strong bg-white/5 border border-white/10 hover:bg-white/10 hover:text-foreground-dim transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Save as Draft (publish later)
+            </button>
+            <p className="text-xs text-muted-faint text-center">
+              New characters start private. Publishing with an uploaded avatar
+              sends it for a quick review; everything else goes live immediately.
+            </p>
           </div>
         </div>
       )}

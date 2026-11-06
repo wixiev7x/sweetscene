@@ -23,6 +23,34 @@ type AIResponseResult =
 /** A 2–3 sentence recap has no business being longer than this. */
 const MAX_SUMMARY_CHARS = 600;
 
+/**
+ * Phase 5 — renders a character's triggers/limits into an explicit
+ * behavioural directive appended to the system prompt. The fields are
+ * author intent ("what sparks this character" / "what this character
+ * will not do"), so they belong in the system role where the persona
+ * itself lives. Module-private on purpose: exports from a "use server"
+ * file are public RPC endpoints.
+ */
+function behaviouralDirective(
+  triggers: string[] | null | undefined,
+  limits: string[] | null | undefined
+): string {
+  const parts: string[] = [];
+  const t = (triggers ?? []).map((s) => s.trim()).filter(Boolean);
+  const l = (limits ?? []).map((s) => s.trim()).filter(Boolean);
+  if (t.length > 0) {
+    parts.push(
+      `In-character triggers — react to these strongly and in keeping with the persona: ${t.join("; ")}.`
+    );
+  }
+  if (l.length > 0) {
+    parts.push(
+      `In-character limits — the character deflects or refuses these, staying on persona: ${l.join("; ")}. (Platform safety rules always override character behaviour.)`
+    );
+  }
+  return parts.length > 0 ? `\n\n${parts.join("\n")}` : "";
+}
+
 function clampSummary(text: string): string {
   const collapsed = text.replace(/\s+/g, " ").trim();
   return collapsed.length > MAX_SUMMARY_CHARS
@@ -127,12 +155,12 @@ export async function generateAIResponse(
   const admin = createAdminClient();
   const { data: dbCharRaw } = await admin
     .from("characters")
-    .select("system_prompt, user_prompt, is_nsfw")
+    .select("system_prompt, user_prompt, is_nsfw, triggers, limits")
     .eq("id", characterId)
     .single();
 
   const dbChar = dbCharRaw as
-    | { system_prompt: string | null; user_prompt: string; is_nsfw: boolean | null }
+    | { system_prompt: string | null; user_prompt: string; is_nsfw: boolean | null; triggers: string[] | null; limits: string[] | null }
     | null;
 
   let systemPrompt: string;
@@ -149,10 +177,11 @@ export async function generateAIResponse(
     isNSFW = false;
   }
 
-  const fullSystemPrompt = buildSystemPrompt(
-    { system_prompt: systemPrompt, user_prompt: userPrompt },
-    isNSFW
-  );
+  const fullSystemPrompt =
+    buildSystemPrompt(
+      { system_prompt: systemPrompt, user_prompt: userPrompt },
+      isNSFW
+    ) + behaviouralDirective(dbChar?.triggers ?? null, dbChar?.limits ?? null);
 
   const messages: AIMessage[] = [
     { role: "system", content: fullSystemPrompt },
@@ -368,7 +397,7 @@ export async function getSoloPlayResponse(
   const admin = createAdminClient();
   const { data: dbCharRaw } = await admin
     .from("characters")
-    .select("system_prompt, user_prompt, is_nsfw, example_dialog")
+    .select("system_prompt, user_prompt, is_nsfw, example_dialog, triggers, limits")
     .eq("id", characterId)
     .single();
 
@@ -378,6 +407,8 @@ export async function getSoloPlayResponse(
         user_prompt: string;
         is_nsfw: boolean | null;
         example_dialog: string | null;
+        triggers: string[] | null;
+        limits: string[] | null;
       }
     | null;
 
@@ -387,10 +418,11 @@ export async function getSoloPlayResponse(
   const isNSFW = dbChar.is_nsfw ?? false;
   const exampleDialog = dbChar.example_dialog ?? null;
 
-  const fullSystemPrompt = buildSystemPrompt(
-    { system_prompt: systemPrompt, user_prompt: systemPrompt },
-    isNSFW
-  );
+  const fullSystemPrompt =
+    buildSystemPrompt(
+      { system_prompt: systemPrompt, user_prompt: systemPrompt },
+      isNSFW
+    ) + behaviouralDirective(dbChar.triggers, dbChar.limits);
 
   const sanitizedHistory: SoloMessage[] = history.map((m) =>
     m.role === "user" ? { ...m, content: sanitizeAndScrub(m.content) } : m

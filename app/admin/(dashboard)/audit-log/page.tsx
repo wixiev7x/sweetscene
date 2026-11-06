@@ -24,6 +24,8 @@ const ACTION_FILTERS = [
   "warned_user",
   "resolved_report",
   "resolved_moderation",
+  "approved_character",
+  "rejected_character",
   "grant_tokens",
   "set_character_flag",
   "deleted_character",
