@@ -13,10 +13,6 @@ import {
   deleteMyAccount,
 } from "@/lib/actions/profile";
 import { DELETE_CONFIRMATION } from "@/lib/config/constants";
-import {
-  createVIPOrder,
-  createTokenPackageOrder,
-} from "@/lib/actions/billing";
 import { TOKEN_PACKAGES } from "@/lib/billing/constants";
 import { listMyBlocks, unblockUser } from "@/lib/actions/blocks";
 
@@ -105,7 +101,6 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
-  const [purchasing, setPurchasing] = useState<string | null>(null);
 
   /* Blocked users. This is the only place a block can be undone — the
      block controls in a scene are one-way by design, since the scene is
@@ -266,30 +261,13 @@ export default function ProfilePage() {
     router.push("/");
   }
 
-  /* ── buy VIP: redirect to NOWPayments checkout ── */
-  async function handleBuyVIP() {
-    setPurchasing("vip");
-    setError("");
-    const result = await createVIPOrder();
-    setPurchasing(null);
-    if ("error" in result) {
-      setError(result.error);
-    } else {
-      window.location.assign(result.invoiceUrl);
-    }
+  /* ── buy VIP / tokens: card checkout lives on /billing ── */
+  function handleBuyVIP() {
+    router.push("/billing");
   }
 
-  /* ── buy token package: redirect to NOWPayments checkout ── */
-  async function handleBuyTokens(packageId: string) {
-    setPurchasing(packageId);
-    setError("");
-    const result = await createTokenPackageOrder(packageId);
-    setPurchasing(null);
-    if ("error" in result) {
-      setError(result.error);
-    } else {
-      window.location.assign(result.invoiceUrl);
-    }
+  function handleBuyTokens() {
+    router.push("/billing");
   }
 
   /* ── toggle NSFW opt-in ── */
@@ -483,10 +461,9 @@ export default function ProfilePage() {
               <button
                 type="button"
                 onClick={handleBuyVIP}
-                disabled={purchasing !== null}
                 className="bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-medium text-sm px-6 py-2.5 rounded-xl hover:from-yellow-400 hover:to-amber-400 active:scale-95 transition-all disabled:opacity-50"
               >
-                {purchasing === "vip" ? "Loading..." : "Become VIP \u2192"}
+                Become VIP \u2192
               </button>
             </div>
           </div>
@@ -504,7 +481,7 @@ export default function ProfilePage() {
               Renews by {formatDate(profile.vip_expires_at)} — extend early, the days stack.
             </p>
             <Link
-              href="/checkout?item=vip_monthly"
+              href="/billing"
               className="inline-flex items-center mt-4 bg-gradient-to-r from-yellow-500 to-amber-500 text-black font-medium text-sm px-6 py-2.5 rounded-xl hover:from-yellow-400 hover:to-amber-400 active:scale-95 transition-all"
             >
               Renew VIP →
@@ -532,11 +509,10 @@ export default function ProfilePage() {
               </p>
               <button
                 type="button"
-                onClick={() => handleBuyTokens(pkg.id)}
-                disabled={purchasing !== null}
+                onClick={() => handleBuyTokens()}
                 className="w-full bg-gradient-to-r from-brand-dark to-crimson-600 text-white font-medium text-sm py-2.5 rounded-xl hover:from-brand hover:to-crimson-500 active:scale-95 transition-all disabled:opacity-50"
               >
-                {purchasing === pkg.id ? "Loading..." : "Buy"}
+                Buy
               </button>
             </div>
           ))}

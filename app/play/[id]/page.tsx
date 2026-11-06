@@ -17,7 +17,6 @@ import {
   submitCharacterRating,
   regenerateGreeting,
 } from "@/lib/actions/solo";
-import { createTokenOrder } from "@/lib/actions/billing";
 import { TOKEN_PACKAGES } from "@/lib/billing/constants";
 import { SOLO_TOKEN_BUDGET as TOKEN_BUDGET } from "@/lib/config/constants";
 
@@ -114,7 +113,6 @@ export default function PlayPage() {
   /* Phase 8A: paywall when out of tokens. */
   const [showPaywall, setShowPaywall] = useState(false);
   const [topUpQty, setTopUpQty] = useState(10000);
-  const [topUpLoading, setTopUpLoading] = useState(false);
   const [showGuestLimit, setShowGuestLimit] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [guestMsgCount, setGuestMsgCount] = useState(0);
@@ -322,16 +320,9 @@ export default function PlayPage() {
     setShowRating(true);
   }
 
-  /* ── top up tokens: redirect to NOWPayments checkout ── */
-  async function handleTopUp() {
-    setTopUpLoading(true);
-    const result = await createTokenOrder(topUpQty);
-    setTopUpLoading(false);
-    if ("error" in result) {
-      setError(result.error);
-    } else {
-      window.location.assign(result.invoiceUrl);
-    }
+  /* ── top up tokens: card checkout lives on /billing ── */
+  function handleTopUp() {
+    window.location.assign("/billing");
   }
 
   /* ── progress bar ── */
@@ -588,10 +579,9 @@ export default function PlayPage() {
               <button
                 type="button"
                 onClick={handleTopUp}
-                disabled={topUpLoading}
                 className="w-full bg-gradient-to-r from-brand-dark to-crimson-600 text-white font-medium py-3 rounded-xl hover:from-brand hover:to-crimson-500 active:scale-95 transition-all disabled:opacity-50"
               >
-                {topUpLoading ? "Loading..." : "Top Up \u2192"}
+                Top Up \u2192
               </button>
             </div>
 

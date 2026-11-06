@@ -135,8 +135,8 @@ all existing chat history unreadable — there is no recovery path.
 
 The only strictly required values to boot are the three Supabase ones,
 `MESSAGE_ENCRYPTION_KEY`, and `NEXT_PUBLIC_SITE_URL`. Everything else
-degrades gracefully: no AI key gives mock replies, no NOWPayments key
-disables purchases, no Upstash falls back to in-memory rate limiting.
+degrades gracefully: no AI key gives mock replies, no Upstash falls
+back to in-memory rate limiting.
 
 ---
 
@@ -152,7 +152,7 @@ for rotation.
 |---|---|---|
 | DeepSeek | [platform.deepseek.com](https://platform.deepseek.com) → API keys | AI replies |
 | Cloudflare Turnstile | Cloudflare dash → Turnstile → add site | Login captcha |
-| NOWPayments | [nowpayments.io](https://nowpayments.io) → Settings → API keys, and Payment Settings → IPN secret | Crypto billing |
+| Stripe | [dashboard.stripe.com](https://dashboard.stripe.com) → Payment Links + webhook | Card billing (Phase 2) |
 | Upstash Redis | [upstash.com](https://upstash.com) → create Redis DB → REST API | Distributed rate limiting |
 | Google Gemini | [aistudio.google.com](https://aistudio.google.com) → API keys | Image generation (VIP) |
 | OpenAI | [platform.openai.com](https://platform.openai.com) → API keys | Content moderation. The moderations endpoint is free and does not consume paid credit |
@@ -163,18 +163,19 @@ preview like `sk-a1…9f3c (51 chars)`. If you lose a key, rotate it at
 the provider rather than trying to read it back. That is the correct
 recovery path regardless.
 
-### NOWPayments IPN
+### Stripe webhook (Phase 2)
 
-In the NOWPayments dashboard set the IPN callback URL to:
+In the Stripe dashboard set the webhook endpoint to:
 
 ```
-https://<your-domain>/api/nowpayments/webhook
+https://<your-domain>/api/webhooks/stripe
 ```
 
-The webhook verifies an HMAC-SHA512 signature over the sorted JSON body.
-Without `NOWPAYMENTS_IPN_SECRET` set it rejects every callback, so
-payments will be taken but tokens never credited. Send a test IPN from
-the NOWPayments dashboard before going live.
+The webhook verifies the Stripe-Signature header (HMAC-SHA256 over the
+raw body) before parsing anything. Without `STRIPE_WEBHOOK_SECRET` set
+it rejects every event, so payments will be taken but entitlements
+never credited. Send a test event with the Stripe CLI before going
+live.
 
 ---
 
@@ -226,8 +227,9 @@ Work through these in order. Each one has failed silently in testing.
       to `/lobby`.
 - [ ] Temporarily restrict a throwaway account, confirm it is blocked,
       then unban it.
-- [ ] Send a test IPN from NOWPayments and confirm the token balance
-      moves. Send the **same** IPN twice and confirm it moves only once.
+- [ ] Send a test event from the Stripe CLI and confirm the token
+      balance moves. Send the **same** event twice and confirm it moves
+      only once.
 - [ ] Confirm `/admin/settings` shows masked previews and never a raw
       key.
 

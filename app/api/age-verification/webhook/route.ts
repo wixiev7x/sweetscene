@@ -13,7 +13,7 @@ import { logger } from "@/lib/utils/logger";
  *   - rejects everything with 501 (fail closed — nothing is marked
  *     verified by an unverified source),
  *   - logs the attempt so a misconfigured provider is visible,
- *   - is excluded from proxy auth gating (like the NOWPayments IPN)
+ *   - is excluded from proxy auth gating (like the Stripe webhook)
  *     because provider webhooks carry no SweetScene session.
  *
  * NEVER mark a profile verified here without verifying the provider's

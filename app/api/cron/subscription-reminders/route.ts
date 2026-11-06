@@ -6,8 +6,8 @@ import { logger } from "@/lib/utils/logger";
 /* ════════════════════════════════════════════════════════════════════
  * Subscription renewal reminders — daily cron (vercel.json).
  *
- * Renewal-based subscriptions never auto-charge (no card-on-file
- * rail exists on PayRam/NOWPayments), so the app nudges the member a
+ * Renewal-based subscriptions never auto-charge (each period is one
+ * explicit payment), so the app nudges the member a
  * few days before their VIP period ends; one payment extends it.
  *
  * The renewal state IS profiles.vip_expires_at — grant_vip stacks

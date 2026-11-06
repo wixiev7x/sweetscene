@@ -87,8 +87,8 @@ export default function TermsPage() {
           <h2 className="text-xl text-white font-medium">7. Token Economy &amp; Refund Policy</h2>
           <p className="type-body">
             Certain platform features consume tokens (matchmaking, AI roleplay, messaging). Tokens
-            can be earned through daily activity, or purchased via NOWPayments cryptocurrency
-            payments. VIP passes provide unlimited matches and Deep Dive access for a 30-day
+            can be earned through daily activity, or purchased with card payments.
+            VIP passes provide unlimited matches and Deep Dive access for a 30-day
             period.
           </p>
           <p className="type-body">

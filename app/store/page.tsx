@@ -60,7 +60,7 @@ const FAQS = [
   },
   {
     q: "How do I pay?",
-    a: "Card, Apple Pay, Google Pay (via PayRam) or crypto (via NOWPayments). Your balance updates the moment the payment confirms.",
+    a: "Card, Apple Pay, Google Pay (via Stripe). Your balance updates the moment the payment confirms.",
   },
 ];
 
@@ -217,7 +217,7 @@ export default function StorePage() {
                     </Link>
                   ) : (
                     <Link
-                      href="/checkout?item=vip_monthly"
+                      href="/billing"
                       onClick={() => playSound("click")}
                       data-cursor="primary"
                       className="block w-full text-center h-11 leading-[44px] px-4 rounded-full font-semibold text-sm text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95"
@@ -262,7 +262,7 @@ export default function StorePage() {
                   </Link>
                 ) : (
                   <Link
-                    href={`/checkout?item=${pack.id}`}
+                    href="/billing"
                     onClick={() => playSound("click")}
                     data-cursor="primary"
                     className="block w-full text-center h-10 leading-10 text-sm font-semibold text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light transition-all focus-visible:ring-2 ring-line-focus focus-visible:outline-none active:scale-95"

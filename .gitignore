@@ -12,6 +12,7 @@ dist/
 # Env files — NEVER commit secrets
 .env
 .env.local
+.env.staging
 .env.development.local
 .env.test.local
 .env.production.local
@@ -40,4 +41,7 @@ Thumbs.db
 supabase/.temp/
 
 # Vercel
-.vercelpayment-audit/
+.vercel
+
+# Local audit artifacts (kept out of the repo)
+payment-audit/

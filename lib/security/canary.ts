@@ -28,10 +28,6 @@ const EMBEDDED_CANARIES: Record<string, string> = {
     "eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJpc3MiOiAic3VwYWJhc2UiLCAicmVmIjogImM0bjRyeS0wMDAwMDAwMCIsICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsICJpYXQiOiAxNzg1OTU3MTYyLCAiZXhwIjogMjEwMTUzMzE2Mn0.ZGNhbnFzdGFlbGtjYmVnbmRzZmQ",
   canary_supabase_anon_key:
     "eyJhbGciOiAiSFMyNTYiLCAidHlwIjogIkpXVCJ9.eyJpc3MiOiAic3VwYWJhc2UiLCAicmVmIjogImM0bjRyeS0wMDAwMDAwMCIsICJyb2xlIjogImFub24iLCAiaWF0IjogMTc4NTk1NzE2MiwgImV4cCI6IDIxMDE1MzMxNjJ9.YW5vbmNhbmFyeXRva2Vu",
-  canary_nowpayments_ipn_secret:
-    "e5b413b76ba245a9e6de33de7635f19c1eafcb13fbd2904a51c2ef9d3d7841b3",
-  canary_nowpayments_api_key:
-    "3F34110522F3DFE50C396A3375CE8911A6B7D4E2F8C9031B5A6E7F2-SANDBOX-CANARY",
   canary_deepseek_api_key:
     "sk-0173c74c688f6913e6b1e3a0c9d2f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8",
   canary_gemini_api_key:

@@ -68,8 +68,7 @@ export function PaymentRecordsClient() {
     <div className="max-w-5xl space-y-4">
       <h1 className="text-2xl font-bold text-foreground">Transactions</h1>
       <p className="text-sm text-foreground-dim">
-        Every payment order across both rails (PayRam card checkout and NOWPayments
-        crypto) — {total} total.
+        Every payment order on record — {total} total.
       </p>
 
       <div className="flex flex-wrap gap-2 items-center">

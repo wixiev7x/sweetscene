@@ -14,7 +14,7 @@
 - **Supabase region:** `ap-south-1` (Mumbai) — cannot change later, must match my
   VPS location in India
 - **Goal:** Take this ~half-finished, security-hardened Next.js app and ship the
-  **UI / animation / mobile / PWA** polish pass + wire the **NOWPayments crypto
+  **UI / animation / mobile / PWA** polish pass + wire the **card
   token** purchases + add the few **missing legal pages** so it can launch.
 
 You (Lovable) are *only* doing **frontend, UI, animations, transitions, mobile
@@ -216,10 +216,9 @@ The user explicitly toggles into NSFW mode (server re-verifies `age_cohort=
 Some are PARTIALLY done and you finish the UI layer only; the server side
 is already there:
 
-- **`/profile` "Become VIP" button** — currently a `handleBuyVIP` placeholder.
-  Read `lib/nowpayments/server.ts` (exists) + `lib/actions/billing.ts`
-  (`createVIPOrder`, `createTokenOrder` exist). Wire the button to call
-  `createVIPOrder` → redirect to NOWPayments invoice URL.
+- **`/profile` "Become VIP" button** — links to `/billing`. The legacy
+  gateway server/action files were removed 2026-11-06; card checkout
+  lives on `/billing` via Stripe Payment Links.
 - **`/play/[id]` paywall "Top Up" button** — wire to `createTokenOrder`. Show
   the SKU grid: "$2 = 5 image gens + X text tokens", "$5 = ...", "$10 = ...".
   Use **micro-tiers** as the user described — dream-style cheap micro-payment
@@ -227,7 +226,7 @@ is already there:
 - **`/legal/terms` + `/legal/privacy`** — these routes exist but pages may be
   stubs. Fill with REAL ToS + Privacy content (the user is not a lawyer —
   generate a defensible first draft covering: anonymous matchmaking, NSFW
-  adult content, payment processing via NOWPayments, encryption at rest via
+  adult content, payment processing via Stripe, encryption at rest via
   MESSAGE_ENCRYPTION_KEY, no logging of message content, age verification
   policy, CSAM reporting, 7-year payment record retention per Indian tax law).
   Mark clearly "Draft template — review with a lawyer before launch."
@@ -289,7 +288,7 @@ with attacker-controlled arguments. 4 historical vulnerabilities came from
 exactly this. **NEVER** add `'use server'` to a file unless the existing
 codebase pattern demands it. **NEVER** co-locate an internal helper in a
 `lib/actions/*` file. **NEVER** refactor a file from `lib/utils`, `lib/notifications`,
-`lib/ai`, `lib/nowpayments`, `lib/supabase` into `lib/actions/`.
+`lib/ai`, `lib/supabase` into `lib/actions/`.
 
 Files off-limits to edit (restyle OK only where the file is a `.tsx`
 component; never change behavior):
@@ -309,7 +308,7 @@ component; never change behavior):
 - `lib/utils/url.ts` (avatar URL allowlist)
 - `lib/supabase/schema.sql` (RLS + CHECK constraints)
 - `lib/config/settings.ts` (runtime secret resolution)
-- `app/api/nowpayments/webhook/route.ts` (payment IPN — signature-verified)
+- `app/api/webhooks/stripe/route.ts` (payment webhook — signature-verified)
 
 Two components that **look** presentational but **AREN'T** — restyle OK,
 behavior locked:
@@ -403,10 +402,10 @@ anything else.
 I have a working, security-hardened Next.js 16 + Supabase + framer-motion
 anonymous AI roleplay matchmaking platform. Your job is **frontend polish only**:
 Lenis smooth scroll, framer-motion transitions, mobile-responsiveness, PWA,
-rebrand, and wiring buttons to existing server actions for NOWPayments token
+rebrand, and wiring buttons to the `/billing` card checkout for token
 purchases + filling legal pages + wiring admin dashboard UI. **Never** touch
 `proxy.ts`, `lib/actions/**`, `lib/utils/safety|moderation|turnstile|url.ts`,
-`lib/ai/prompts|policy.ts`, `api/nowpayments/webhook/route.ts`. **Never** add
+`lib/ai/prompts|policy.ts`, `api/webhooks/stripe/route.ts`. **Never** add
 `'use server'` anywhere. **Never** move a `lib/utils/*` or
 `lib/notifications/*` file into `lib/actions/`. Match the existing doc-comment
 code style. After every change: `npm run build` + `npx tsc --noEmit` + `

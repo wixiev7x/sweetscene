@@ -213,8 +213,8 @@ In the Cloudflare dashboard:
 
 - **SSL/TLS → Full (strict)**. Not Flexible — Flexible sends plain HTTP
   on the last hop and the padlock becomes decorative.
-- **WAF**: if you enable it, allowlist `/api/nowpayments/webhook`. A
-  blocked IPN means payment taken and tokens never credited.
+- **WAF**: if you enable it, allowlist `/api/webhooks/stripe`. A
+  blocked webhook means payment taken and entitlements never credited.
 - Do **not** add security headers at Cloudflare. CSP and HSTS are set in
   `proxy.ts` so dev and prod match. Set in two places, they drift — and
   the one that drifts is the one you forget to check.
@@ -295,5 +295,5 @@ Application — `SETUP.md` §5, plus:
 - [ ] `MESSAGE_ENCRYPTION_KEY` is **not** the dev value
 - [ ] Upstash configured — without it rate limiting is per-process memory
 - [ ] Supabase Auth redirect URLs list the production callback
-- [ ] NOWPayments IPN points at the production webhook; send the same
-      payload twice and confirm it credits once
+- [ ] Stripe webhook points at the production endpoint; send the same
+      event twice and confirm it credits once

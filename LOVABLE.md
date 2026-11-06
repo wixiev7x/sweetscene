@@ -230,7 +230,7 @@ called only by other server code, it must live outside `lib/actions/`.
 | `lib/utils/url.ts` | Avatar URL allowlist. |
 | `lib/supabase/schema.sql` | RLS policies and CHECK constraints. |
 | `lib/config/settings.ts` | Runtime secret resolution. |
-| `app/api/nowpayments/webhook/route.ts` | Payment IPN — signature-verified. |
+| `app/api/webhooks/stripe/route.ts` | Payment webhook — signature-verified. |
 
 ### Two components that look presentational but are not
 

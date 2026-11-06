@@ -60,7 +60,7 @@ Upstash Redis (optional, in-memory fallback), Cloudflare Turnstile.
 | 6 | ✅ Done | Vibe Check + reputation + smart refund |
 | 7 | ✅ Done | DMs hardening + user blocks + report panel |
 | 8A | ✅ Done | Character system rebuild (Character.AI-style fields, per-message tokens, paywall UI) |
-| 8 | ⏳ Pending | NOWPayments monetization (replaces Stripe) |
+| 8 | 🔄 Superseded | Crypto monetization was built, then removed 2026-11-06 — Stripe card billing replaces it |
 | 9 | ⏳ Pending | Safety/legal final pass |
 | 10 | ⏳ Pending | Polish (mechanics) |
 
@@ -243,7 +243,7 @@ owner's full row; migrate all reads to a `getMyProfile()` action.
 ## Build order after Phase 5
 1. Phase 6 — Vibe Check + reputation + smart refund (1.5 days)
 2. Phase 7 — DMs hardening (0.5 day)
-3. Phase 8 — NOWPayments (replaces Stripe) (1 day)
+3. Phase 8 — card billing via Stripe (crypto rail removed 2026-11-06)
 4. Phase 9 — Safety/legal + deferred S19–S23 (0.5 day)
 5. Phase 10 — Polish mechanics + Lovable handoff (1.5 days)
 
@@ -478,7 +478,7 @@ This phase rebuilt the character system to match Character.AI / Janitor-style fi
 - ⚠️ L15/L16: tier/pool constants + scenario tag lists duplicated across 4+ files (no shared lib/config/constants.ts)
 
 ### What is MISSING entirely (needs new phases)
-- ❌ NO payment integration (Phase 8 — NOWPayments)
+- ❌ NO payment integration (Phase 8 — card billing via Stripe, after the 2026-11-06 consolidation)
 - ❌ NO legal pages: ToS, Privacy, DMCA, age verification (Phase 9)
 - ❌ NO admin dashboard / moderation UI (Phase 10)
 - ❌ NO notifications system (Phase 11)
@@ -494,18 +494,16 @@ This phase rebuilt the character system to match Character.AI / Janitor-style fi
 
 ## REMAINING PHASES — Detailed plan (6 phases)
 
-### Phase 8 — NOWPayments monetization (1 day)
-**Goal:** Real VIP checkout + token purchases via NOWPayments (crypto).
+### Phase 8 — monetization (SUPERSEDED 2026-11-06)
+The original crypto-gateway plan below was implemented, then removed in
+the payment consolidation — removal record: `deploy-guide/`. Card
+billing via Stripe Payment Links + webhook is the current plan.
 
-- 8.1 `lib/nowpayments/server.ts` (NEW) — NOWPayments API client (server-only). Reads `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_API_BASE` from env.
-- 8.2 `lib/actions/billing.ts` (NEW) — `createVIPOrder()` → NOWPayments invoice (subscription), `createTokenOrder(quantity)` → one-time payment. Both auth-checked.
-- 8.3 `app/api/nowpayments/webhook/route.ts` (NEW) — IPN webhook handler. Verifies signature, handles `payment_confirmed` → grant VIP / credit tokens. Idempotent on payment ID.
-- 8.4 Schema — `credit_tokens` RPC (service_role-only). `nowpayments_events` idempotency table. `payments` table (order_id, user_id, status, amount, crypto_amount, currency, created_at).
-- 8.5 `app/profile/page.tsx` — wire "Become VIP" to `createVIPOrder` → redirect to NOWPayments URL.
-- 8.6 `app/play/[id]/page.tsx` — paywall modal "Top Up" button → `createTokenOrder` → redirect.
-- 8.7 Free-tier daily match cap: findMatch + createAIMatch count today's matches; if !is_vip AND count >= 3, refuse.
-- 8.8 .env.local — add `NOWPAYMENTS_API_KEY`, `NOWPAYMENTS_API_BASE`.
-- 8.9 Verify: tsc + eslint + next build.
+- 8.1 `lib/billing/constants.ts` (KEPT) — plan catalogue shared by the UI.
+- 8.2 `/billing` page — Stripe Payment Links (VIP + token packs).
+- 8.3 `app/api/webhooks/stripe/route.ts` — signature-verified, idempotent webhook → `grant_vip` / `credit_tokens`.
+- 8.4 Schema — `payments` ledger + event idempotency table (service-role only).
+- 8.5–8.9 — UI wiring, env keys, build verification as originally planned.
 
 ### Phase 9 — Safety & legal final pass (0.5 day)
 **Goal:** Launchable on safety grounds.
@@ -574,7 +572,7 @@ This phase rebuilt the character system to match Character.AI / Janitor-style fi
 ## Build order (updated)
 
 1. ~~Phase 0–7 + 8A~~ ✅ DONE
-2. Phase 8 — NOWPayments (1 day)
+2. Phase 8 — Stripe card billing (1 day)
 3. Phase 9 — Safety/legal (0.5 day)
 4. Phase 10 — Admin + moderation (0.5 day)
 5. Phase 11 — Notifications + email (0.5 day)

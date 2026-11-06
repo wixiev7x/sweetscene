@@ -83,7 +83,7 @@ export default function PremiumPage() {
                 {plan.detail}
               </p>
               <Link
-                href={`/checkout?item=${plan.id}`}
+                href="/billing"
                 onClick={() => playSound("click")}
                 data-cursor="primary"
                 className="inline-flex h-11 items-center rounded-full bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light px-8 text-sm font-semibold text-accent-foreground ios-press shadow-lg shadow-brand/20 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
@@ -100,14 +100,14 @@ export default function PremiumPage() {
         <p className="type-meta text-muted-faint text-center mb-10">
           Prefer one-time?{" "}
           <Link
-            href="/checkout?item=vip"
+            href="/billing"
             className="text-accent-candle underline underline-offset-2"
             onClick={() => playSound("click")}
           >
             $9.99 for a 30-day pass
           </Link>{" "}
-          — expires on its own, nothing to cancel. Card, Apple Pay, Google Pay or
-          crypto at checkout.
+          — expires on its own, nothing to cancel. Card, Apple Pay or Google Pay
+          at checkout.
         </p>
 
         <p className="type-meta text-muted-faint text-center">

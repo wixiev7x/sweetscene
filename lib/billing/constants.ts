@@ -33,9 +33,7 @@ export const VIP_DURATION_DAYS = 30;
 /**
  * VIP plan catalogue — one-time pass plus renewal-based subscriptions.
  *
- * Neither PayRam nor NOWPayments supports merchant-initiated recurring
- * charges (no card-on-file auto-billing exists on either rail), so a
- * "subscription" is an app-layer concept: each period is a normal
+ * "Subscriptions" are an app-layer concept: each period is a normal
  * payment, `grant_vip` stacks the days onto the existing expiry, and
  * the renewal-reminders cron nudges the user a few days before it
  * ends. One payment per period — nothing is ever auto-charged.
@@ -80,8 +78,9 @@ export function getVipPlan(id: string) {
  * payments row stores type "vip" for every VIP-family order (the
  * column CHECK predates subscriptions and is deliberately left
  * untouched); the plan lives in the order-id prefix the billing
- * actions create — `vip-…`, `vip_monthly-…`, `vip_yearly-…`, with the
- * PayRam variant prefixed `pr-`. Falls back to the one-time pass.
+ * actions create — `vip-…`, `vip_monthly-…`, `vip_yearly-…` (the
+ * legacy card rail prefixed these with `pr-`, still stripped
+ * defensively). Falls back to the one-time pass.
  */
 export function vipPlanFromOrderRef(orderRef: string) {
   const ref = orderRef.replace(/^pr-/, "");

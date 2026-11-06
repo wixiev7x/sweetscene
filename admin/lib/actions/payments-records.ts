@@ -13,8 +13,8 @@ import type { PaymentRecord, SubscriptionRecord } from "@/lib/types";
  * service-role client. The payments/subscriptions tables carry no RLS
  * policies for authenticated/anon — only this client may read them.
  *
- * Subscriptions are renewal-based (no card-on-file rail exists on
- * PayRam/NOWPayments): the state IS profiles.vip_expires_at — grant_vip
+ * Subscriptions are renewal-based (one explicit payment per period):
+ * the state IS profiles.vip_expires_at — grant_vip
  * stacks every paid period — and the plan lives in the order-id prefix
  * the billing actions create (vip_monthly / vip_yearly / vip).
  * ════════════════════════════════════════════════════════════════════ */

@@ -20,8 +20,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
  *   4. Reading `solo_sessions` for AI log inspection — the admin can
  *      query all solo sessions to review AI behaviour.
  *
- *   5. Phase 8: Writing to `payments` and `nowpayments_events` tables
- *      (no RLS policies for authenticated — admin client bypasses RLS).
+ *   5. Billing: Writing to the `payments` table and billing event
+ *      ledgers (no RLS policies for authenticated — admin client
+ *      bypasses RLS).
  *      Calling `credit_tokens`, `grant_vip` service_role-only RPCs.
  *
  * SECURITY: Every caller MUST verify `supabase.auth.getUser()` on the
