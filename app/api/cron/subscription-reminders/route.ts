@@ -6,15 +6,18 @@ import { logger } from "@/lib/utils/logger";
 /* ════════════════════════════════════════════════════════════════════
  * Subscription renewal reminders — daily cron (vercel.json).
  *
- * Renewal-based subscriptions never auto-charge (each period is one
- * explicit payment), so the app nudges the member a
- * few days before their VIP period ends; one payment extends it.
+ * Stripe subscriptions renew automatically on the card, but the
+ * renewal can fail (expired card, dunning) — so the app still nudges
+ * the member a few days before their VIP period ends. If the charge
+ * succeeded, vip_expires_at has already been extended by then and no
+ * reminder fires; if it failed, this is the cue to fix the card.
  *
  * The renewal state IS profiles.vip_expires_at — grant_vip stacks
- * every paid period onto it, so one query covers subscription
- * members and stacked one-time passes alike. A notification is only
- * sent if none of this type was delivered in the last 20 hours, so
- * the daily window fires at most one reminder per period.
+ * every paid period onto it (first period at checkout, renewals via
+ * invoice.paid), so one query covers subscription members and any
+ * stacked time alike. A notification is only sent if none of this
+ * type was delivered in the last 20 hours, so the daily window fires
+ * at most one reminder per period.
  * ════════════════════════════════════════════════════════════════════ */
 
 const WINDOW_DAYS = 3;

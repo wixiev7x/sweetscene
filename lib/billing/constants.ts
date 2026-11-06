@@ -78,12 +78,13 @@ export function getVipPlan(id: string) {
  * payments row stores type "vip" for every VIP-family order (the
  * column CHECK predates subscriptions and is deliberately left
  * untouched); the plan lives in the order-id prefix the billing
- * actions create — `vip-…`, `vip_monthly-…`, `vip_yearly-…` (the
- * legacy card rail prefixed these with `pr-`, still stripped
- * defensively). Falls back to the one-time pass.
+ * actions create — `stripe-vip_monthly-…`, `stripe-vip_yearly-…`
+ * (the Stripe rail, Phase 2), and legacy `pr-vip_monthly-…` /
+ * `pr-vip_yearly-…` refs are still stripped defensively. Falls back
+ * to the one-time pass.
  */
 export function vipPlanFromOrderRef(orderRef: string) {
-  const ref = orderRef.replace(/^pr-/, "");
+  const ref = orderRef.replace(/^(stripe-|pr-)/, "");
   const plan = VIP_PLANS.find((p) => ref.startsWith(`${p.id}-`));
   return plan ?? VIP_PLANS.find((p) => p.id === "vip")!;
 }

@@ -56,10 +56,11 @@ Legend for **Scope** column:
 
 | Var | MAIN | DESIGN | Notes |
 |---|---|---|---|
-| `STRIPE_LINK_VIP` | Phase 6 | ⬜ (TEST mode) | Stripe Payment Link URL for VIP |
-| `STRIPE_LINK_TOKENS_S` / `_M` / `_L` | Phase 6 | ⬜ (TEST mode) | Payment Link URLs for token packs (maps to starter/standard/whale) |
-| `STRIPE_WEBHOOK_SECRET` | Phase 6 (LIVE) | ⬜ (TEST) | `whsec_…` for `/api/webhooks/stripe` |
-| `STRIPE_SECRET_KEY` | Phase 6 | ⬜ (TEST) | Needed for customer-portal session creation (Phase 2 "Manage subscription") |
+| `STRIPE_LINK_VIP` | Phase 2/3 (TEST) → Phase 6 (LIVE) | ⬜ | Payment Link URL — VIP monthly subscription ($9.99/30d) |
+| `STRIPE_LINK_VIP_YEARLY` | Phase 2/3 (TEST) → Phase 6 (LIVE) | ⬜ (optional) | Payment Link URL — VIP yearly subscription ($99.99/365d); card hidden when unset |
+| `STRIPE_LINK_TOKENS_S` / `_M` / `_L` | Phase 2/3 (TEST) → Phase 6 (LIVE) | ⬜ | Payment Link URLs for token packs (maps to starter 10k/$4.99, standard 50k/$19.99, whale 100k/$34.99 — MUST match `lib/billing/constants.ts`) |
+| `STRIPE_WEBHOOK_SECRET` | Phase 2/3 (TEST) → Phase 6 (LIVE) | ⬜ | `whsec_…` for `/api/webhooks/stripe` (raw-body HMAC verify + event-id idempotency) |
+| `STRIPE_SECRET_KEY` | Phase 2/3 (TEST) → Phase 6 (LIVE) | ⬜ | Customer-portal session creation ("Manage subscription"); also used to confirm payment intents if ever needed |
 
 ## 5. Security / abuse
 

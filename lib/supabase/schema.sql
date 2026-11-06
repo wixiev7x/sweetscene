@@ -4066,3 +4066,50 @@ CREATE TABLE IF NOT EXISTS bounties (
 -- until AGE_VERIFICATION_PROVIDER/API_KEY/WEBHOOK_SECRET env vars are
 -- set — by design, so nothing bricks before a provider is chosen.
 -- ════════════════════════════════════════════════════════════════════
+
+-- ════════════════════════════════════════════════════════════════════
+-- 2026-11-06 — Stripe card billing (Phase 2 of the payment
+-- consolidation; legacy Payram/NOWPayments rails removed in Phase 1,
+-- recoverable at git tag gateway-base-usdc).
+--
+-- Full, commented, runnable copy lives in supabase/migrations/
+-- 2026-11-06-01-stripe-billing.sql. Summary:
+--
+--   stripe_events(event_id PK, event_type, received_at)
+--     webhook idempotency ledger — insert-before-handle, duplicate
+--     insert returning zero rows = already processed.
+--
+--   stripe_customers(user_id PK → profiles, customer_id UNIQUE,
+--     subscription_id, subscription_status, updated_at)
+--     user ↔ Stripe customer/sub mapping; written by the webhook at
+--     checkout completion, read by the portal session action and
+--     /billing. RLS: user may SELECT their own row; all writes are
+--     service-role (webhook) only.
+--
+-- Payments rows from Stripe reuse the legacy shape unchanged:
+-- order_id `stripe-{plan}-{uuid}`, payment_id holds the checkout
+-- session id (renewals: the invoice id), grants still flow through
+-- grant_vip / credit_tokens.
+-- ════════════════════════════════════════════════════════════════════
+
+create table if not exists public.stripe_events (
+  event_id    text primary key,
+  event_type  text not null,
+  received_at timestamptz not null default now()
+);
+
+create table if not exists public.stripe_customers (
+  user_id             uuid primary key references public.profiles(id) on delete cascade,
+  customer_id         text not null unique,
+  subscription_id     text,
+  subscription_status text,
+  updated_at          timestamptz not null default now()
+);
+
+alter table public.stripe_events    enable row level security;
+alter table public.stripe_customers enable row level security;
+
+create policy "users can read own stripe profile"
+  on public.stripe_customers
+  for select
+  using (auth.uid() = user_id);

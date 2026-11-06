@@ -39,9 +39,9 @@ export default function PremiumPage() {
           Nights that run <span className="gradient-text">long.</span>
         </h1>
         <p className="type-body text-muted mb-8 max-w-xl">
-          Everything unlocked. Subscribe monthly or yearly — it renews with one payment
-          when the period ends (we nudge you a few days ahead, nothing is ever
-          auto-charged) — or grab a one-time 30-day pass.
+          Everything unlocked. Subscribe monthly or yearly — it renews on your
+          card when the period ends, and you can cancel anytime (paid time
+          stays). Card, Apple Pay or Google Pay at checkout.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-10">
@@ -91,23 +91,23 @@ export default function PremiumPage() {
                 Subscribe →
               </Link>
               <p className="type-meta text-muted-faint mt-4 leading-relaxed">
-                Renews with one payment when it ends — never auto-charged.
+                Renews automatically on your card — cancel anytime, paid time stays.
               </p>
             </div>
           ))}
         </div>
 
         <p className="type-meta text-muted-faint text-center mb-10">
-          Prefer one-time?{" "}
+          Subscriptions renew automatically on your card. Manage or cancel
+          anytime from{" "}
           <Link
             href="/billing"
             className="text-accent-candle underline underline-offset-2"
             onClick={() => playSound("click")}
           >
-            $9.99 for a 30-day pass
+            Billing
           </Link>{" "}
-          — expires on its own, nothing to cancel. Card, Apple Pay or Google Pay
-          at checkout.
+          — paid time always stays.
         </p>
 
         <p className="type-meta text-muted-faint text-center">

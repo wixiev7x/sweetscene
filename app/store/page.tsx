@@ -52,7 +52,7 @@ const PACK_LABELS: Record<string, string> = {
 const FAQS = [
   {
     q: "Is VIP a subscription?",
-    a: `Your choice. VIP Monthly ($9.99) renews every 30 days and VIP Yearly ($99.99, 2 months free) renews yearly — we remind you a few days before each renewal and one payment extends it, nothing is ever auto-charged. Prefer no strings? The one-time 30-day pass ($9.99) simply expires.`,
+    a: `Your choice. VIP Monthly ($9.99) renews every 30 days and VIP Yearly ($99.99, 2 months free) renews yearly — both renew automatically on your card and you can cancel anytime from Billing (paid time always stays).`,
   },
   {
     q: "What are tokens?",
