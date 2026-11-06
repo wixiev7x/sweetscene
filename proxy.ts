@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
 /**
  * Proxy (Next 16 successor to middleware.ts). Redirects unauthenticated
@@ -43,6 +44,47 @@ function hasSessionCookie(req: NextRequest): boolean {
   return cookies.some(
     (c) => c.name.startsWith("sb-") && c.name.includes("-auth-token")
   );
+}
+
+/**
+ * Phase 17: ban redirect. For signed-in visits to protected pages, ask
+ * the `is_current_user_banned` SECURITY DEFINER RPC whether the account
+ * is currently banned and, if so, send the user to /banned (which shows
+ * the stored reason and expiry). This is a UX routing layer, NOT the
+ * enforcement layer — every Server Action still fails closed via
+ * assertNotBanned, RLS still blocks writes, and /api routes are
+ * unaffected (the matcher excludes them). Fails OPEN on any error here
+ * for the same reason the auth check is optimistic: the real gates are
+ * server-side and this must never become a self-inflicted outage.
+ *
+ * The RPC lazily clears an expired temp ban, so this also self-heals.
+ */
+async function isBanned(req: NextRequest): Promise<boolean> {
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+      {
+        cookies: {
+          getAll: () => req.cookies.getAll(),
+          /* Read-only check: the RPC performs no cookie writes. */
+          setAll: () => {},
+        },
+      }
+    );
+
+    /* Verify the JWT server-side so anonymous / garbage cookies short-
+       circuit without an RPC round-trip. */
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+
+    const { data } = await supabase.rpc("is_current_user_banned");
+    return Array.isArray(data) ? data[0] === true : data === true;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -105,7 +147,7 @@ function withSecurityHeaders(res: NextResponse, req: NextRequest): NextResponse 
   return res;
 }
 
-export function proxy(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   const isProtected = PROTECTED_PREFIXES.some(
@@ -117,6 +159,20 @@ export function proxy(req: NextRequest) {
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return withSecurityHeaders(NextResponse.redirect(url), req);
+  }
+
+  /* Phase 17: signed-in + banned + visiting a protected page → /banned.
+     /banned is not in PROTECTED_PREFIXES, so there is no redirect loop.
+     Shadow bans are deliberately NOT routed — a shadow-banned user must
+     experience the site normally (their content is filtered out by the
+     messages SELECT policy and claim_match instead). */
+  if (isProtected && hasSessionCookie(req) && !PUBLIC_EXCEPTIONS.includes(pathname)) {
+    if (await isBanned(req)) {
+      const url = req.nextUrl.clone();
+      url.pathname = "/banned";
+      url.search = "";
+      return withSecurityHeaders(NextResponse.redirect(url), req);
+    }
   }
 
   /* If already signed in and visiting /login, bounce to the lobby. */

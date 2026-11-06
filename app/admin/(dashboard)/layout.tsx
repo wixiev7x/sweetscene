@@ -17,12 +17,33 @@ export default async function AdminLayout({
     redirect("/admin/login");
   }
 
-  const { data } = await supabase.rpc("assert_current_user_admin");
-  const isAdmin = (data as unknown as boolean[] | null)?.[0];
+  /* Moderator tier OR admin. Section-level layouts and the server
+     actions enforce the finer-grained rules (users/settings/
+     characters/audit are admin-only). */
+  const { data: modData } = await supabase.rpc("assert_current_user_mod");
+  const isMod =
+    (Array.isArray(modData) ? modData[0] === true : modData === true);
 
-  if (!isAdmin) {
+  if (!isMod) {
     redirect("/lobby");
   }
+
+  const { data: roleData } = await supabase.rpc("get_my_admin_role");
+  const role = (
+    Array.isArray(roleData) ? roleData[0] : roleData
+  ) as string | null;
+
+  const isAdmin = role === "admin";
+
+  const navItems = [
+    { href: "/admin", label: "Dashboard", show: true },
+    { href: "/admin/users", label: "Users", show: isAdmin },
+    { href: "/admin/characters", label: "Characters", show: isAdmin },
+    { href: "/admin/reports", label: "Reports", show: true },
+    { href: "/admin/moderation", label: "Moderation", show: true },
+    { href: "/admin/audit-log", label: "Audit Log", show: isAdmin },
+    { href: "/admin/settings", label: "Settings", show: isAdmin },
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -35,27 +56,17 @@ export default async function AdminLayout({
             Admin
           </Link>
           <nav className="flex items-center gap-4 text-sm text-muted">
-            <Link href="/admin" className="hover:text-foreground-dim">
-              Dashboard
-            </Link>
-            <Link href="/admin/users" className="hover:text-foreground-dim">
-              Users
-            </Link>
-            <Link href="/admin/characters" className="hover:text-foreground-dim">
-              Characters
-            </Link>
-            <Link href="/admin/reports" className="hover:text-foreground-dim">
-              Reports
-            </Link>
-            <Link href="/admin/moderation" className="hover:text-foreground-dim">
-              Moderation
-            </Link>
-            <Link href="/admin/audit-log" className="hover:text-foreground-dim">
-              Audit Log
-            </Link>
-            <Link href="/admin/settings" className="hover:text-foreground-dim">
-              Settings
-            </Link>
+            {navItems
+              .filter((item) => item.show)
+              .map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="hover:text-foreground-dim"
+                >
+                  {item.label}
+                </Link>
+              ))}
           </nav>
           <Link
             href="/"

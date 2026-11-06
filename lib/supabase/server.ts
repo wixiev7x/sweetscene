@@ -22,28 +22,43 @@ export async function createClient() {
              XSS exposure of the JWT is mitigated by CSP, sameSite lax,
              and secure:true. When the user ticked "Remember me" the
              login page set the sweetscene-remember cookie, and the
-             session cookie lives 30 days instead of 7. */
+             session cookie lives 30 days instead of 7.
+             try/catch: in Server Components cookies() is READ-ONLY —
+             without this, any page-level getUser() that needs to clear
+             or refresh a dead session 500s ("Cookies can only be
+             modified in a Server Action or Route Handler"). Found via
+             the Phase 4 banned-redirect E2E; Server Actions are
+             unaffected (set still succeeds there). */
           const remember = cookieStore.get("sweetscene-remember")?.value === "1";
-          cookieStore.set(name, value, {
-            ...options,
-            httpOnly: false,
-            sameSite: "lax",
-            secure: true,
-            path: "/",
-            maxAge: remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7,
-          });
+          try {
+            cookieStore.set(name, value, {
+              ...options,
+              httpOnly: false,
+              sameSite: "lax",
+              secure: true,
+              path: "/",
+              maxAge: remember ? 60 * 60 * 24 * 30 : 60 * 60 * 24 * 7,
+            });
+          } catch {
+            /* read-only in this context — keep the request alive */
+          }
         },
         remove(name: string, options: Record<string, unknown>) {
           /* Mirror the same attributes as set() so the browser actually
-             deletes the cookie — mismatched path/scope leaves it alive. */
-          cookieStore.set(name, "", {
-            ...options,
-            httpOnly: false,
-            sameSite: "lax",
-            secure: true,
-            path: "/",
-            maxAge: 0,
-          });
+             deletes the cookie — mismatched path/scope leaves it alive.
+             Same try/catch rationale as set(). */
+          try {
+            cookieStore.set(name, "", {
+              ...options,
+              httpOnly: false,
+              sameSite: "lax",
+              secure: true,
+              path: "/",
+              maxAge: 0,
+            });
+          } catch {
+            /* read-only in this context — keep the request alive */
+          }
         },
       },
     }

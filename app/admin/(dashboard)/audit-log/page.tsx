@@ -19,9 +19,14 @@ const ACTION_FILTERS = [
   "all",
   "banned_user",
   "unbanned_user",
-  "removed_content",
-  "approved_content",
+  "shadowbanned_user",
+  "unshadowbanned_user",
+  "warned_user",
+  "resolved_report",
+  "resolved_moderation",
   "grant_tokens",
+  "set_character_flag",
+  "deleted_character",
 ];
 
 export default function AdminAuditLogPage() {

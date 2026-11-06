@@ -228,3 +228,22 @@ export async function notifySubscriptionRenewalDue(
     body: `Your VIP renews on ${renewsOn}. Renew before then to keep unlimited matches, Deep Dive scenes and AI images — one payment, nothing auto-charged.`,
   });
 }
+
+/**
+ * Official message from the moderation team (warnings, notices).
+ * Used by the Phase 4 warn action — "admin_message" is in the
+ * notifications type CHECK but had no emitter before this.
+ */
+export async function notifyAdminMessage(
+  userId: string,
+  title: string,
+  body: string
+): Promise<boolean> {
+  const id = await createNotification({
+    userId,
+    type: "admin_message",
+    title,
+    body,
+  });
+  return id !== null;
+}

@@ -9,15 +9,19 @@ import {
   invalidateSetting,
   type SettingKey,
 } from "@/lib/config/settings";
+import { notifyAdminMessage } from "@/lib/notifications/dispatch";
 
 /* ════════════════════════════════════════════════════════════════════
- * Phase 10 — Admin server actions.
+ * Phase 10 — Admin server actions. Phase 4 (2026-11) adds the
+ * moderator tier: assertAdmin gates admin-only surfaces (users,
+ * settings, characters, audit log, bans); assertModerator gates
+ * moderator work (report inbox, moderation queue, warnings).
  *
  * S21: assertAdmin is the auth guard wrapper. Every function calls
- * this first. It reads the caller's profile via the user client (RLS)
- * and checks is_admin. RPCs also double-check via
- * assert_current_user_admin() SECURITY DEFINER — defense-in-depth so
- * even if a service_role key leaks, a non-admin can't invoke them.
+ * one of the guards first. It reads the caller's profile via the user
+ * client (RLS) and checks the role. RPCs also double-check via
+ * SECURITY DEFINER helpers — defense-in-depth so even if a
+ * service_role key leaks, a non-admin can't invoke them.
  * ════════════════════════════════════════════════════════════════════ */
 
 /* ── Types ── */
@@ -26,12 +30,14 @@ export type ReportRow = {
   id: string;
   reporter_id: string;
   match_id: string;
+  target_user_id: string | null;
   reason: string;
   evidence_snapshot: unknown;
   status: string;
   resolution_note: string | null;
   created_at: string;
   reporter_username: string;
+  target_username: string | null;
 };
 
 export type AdminUserRow = {
@@ -45,6 +51,8 @@ export type AdminUserRow = {
   is_banned: boolean;
   banned_until: string | null;
   created_at: string;
+  role: string;
+  is_shadowbanned: boolean;
 };
 
 export type AdminCharacterRow = {
@@ -79,6 +87,9 @@ export type AdminStatsV2 = {
   active_bans: number;
   pending_moderation: number;
   reports_last_24h: number;
+  signups_today: number;
+  dau_last_24h: number;
+  oldest_open_report_hours: number;
 };
 
 export type ModerationQueueRow = {
@@ -106,11 +117,13 @@ export type AuditLogRow = {
 
 export type BanHistoryRow = {
   id: string;
-  banned_by: string;
+  moderator_id: string | null;
   reason: string;
   banned_at: string;
   expires_at: string | null;
   active: boolean;
+  type: string;
+  appeal_state: string;
 };
 
 export type AdminUserWithEmail = {
@@ -137,9 +150,34 @@ async function assertAdmin(): Promise<string> {
   if (!user) throw new Error("Not authenticated");
 
   const { data } = await supabase.rpc("assert_current_user_admin");
-  const isAdmin = (data as unknown as boolean[] | null)?.[0];
+  /* PostgREST returns a scalar boolean directly; older snapshots of
+     the DB returned a one-row table — accept both shapes. */
+  const isAdmin =
+    (Array.isArray(data) ? data[0] === true : data === true);
 
   if (!isAdmin) throw new Error("Not authorized");
+
+  return user.id;
+}
+
+/**
+ * Moderator-tier guard: allows moderators AND admins. Used by the
+ * report inbox and moderation queue — everything else on /admin
+ * (users, settings, characters, audit log) stays admin-only.
+ */
+async function assertModerator(): Promise<string> {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const { data } = await supabase.rpc("assert_current_user_mod");
+  const isMod =
+    (Array.isArray(data) ? data[0] === true : data === true);
+
+  if (!isMod) throw new Error("Not authorized");
 
   return user.id;
 }
@@ -171,7 +209,7 @@ export async function listReports(
   offset: number = 0
 ): Promise<{ reports: ReportRow[] } | { error: string }> {
   try {
-    await assertAdmin();
+    await assertModerator();
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -194,7 +232,7 @@ export async function resolveReport(
   note: string = ""
 ): Promise<{ success: true } | { error: string }> {
   try {
-    await assertAdmin();
+    await assertModerator();
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -234,46 +272,6 @@ export async function listUsers(
   if (error) return { error: "Failed to load users" };
 
   return { users: (data ?? []) as AdminUserRow[] };
-}
-
-export async function banUser(
-  userId: string,
-  bannedUntil: string | null
-): Promise<{ success: true } | { error: string }> {
-  try {
-    await assertAdmin();
-  } catch (e) {
-    return { error: (e as Error).message };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("ban_user", {
-    p_user_id: userId,
-    p_banned_until: bannedUntil,
-  });
-
-  if (error) return { error: "Failed to ban user" };
-
-  return { success: true };
-}
-
-export async function unbanUser(
-  userId: string
-): Promise<{ success: true } | { error: string }> {
-  try {
-    await assertAdmin();
-  } catch (e) {
-    return { error: (e as Error).message };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("unban_user", {
-    p_user_id: userId,
-  });
-
-  if (error) return { error: "Failed to unban user" };
-
-  return { success: true };
 }
 
 export async function grantTokens(
@@ -599,7 +597,7 @@ export async function listModerationQueue(
   offset: number = 0
 ): Promise<{ items: ModerationQueueRow[] } | { error: string }> {
   try {
-    await assertAdmin();
+    await assertModerator();
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -622,7 +620,7 @@ export async function resolveModerationItem(
   resolution: "approved" | "removed"
 ): Promise<{ success: true } | { error: string }> {
   try {
-    await assertAdmin();
+    await assertModerator();
   } catch (e) {
     return { error: (e as Error).message };
   }
@@ -661,8 +659,9 @@ export async function listAuditLog(
   return { entries: (data ?? []) as AuditLogRow[] };
 }
 
-export async function banUserWithReason(
+export async function banUserTyped(
   userId: string,
+  type: "temp" | "permanent" | "shadow",
   reason: string,
   expiresAt: string | null
 ): Promise<{ success: true } | { error: string }> {
@@ -675,14 +674,21 @@ export async function banUserWithReason(
   if (!reason.trim()) return { error: "A reason is required" };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("ban_user_with_reason", {
+  const { error } = await supabase.rpc("ban_user_typed", {
     p_user_id: userId,
+    p_type: type,
     p_reason: reason.trim(),
     p_expires_at: expiresAt,
   });
 
   if (error) return { error: "Failed to ban user" };
 
+  /* Hard bans revoke the target's sessions inside the RPC itself —
+     ban_user_typed deletes auth.sessions rows, which cascades to
+     refresh tokens and (on current GoTrue) invalidates outstanding
+     access tokens too. The old auth.admin.signOut(userId) call was
+     removed: that endpoint takes the TARGET USER's JWT, not a user
+     id, so it silently 401'd. Shadow bans never sign anyone out. */
   return { success: true };
 }
 
@@ -699,7 +705,7 @@ export async function unbanUserWithReason(
   if (!reason.trim()) return { error: "A reason is required" };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("unban_user_with_reason", {
+  const { error } = await supabase.rpc("unban_user_typed", {
     p_user_id: userId,
     p_reason: reason.trim(),
   });
@@ -839,6 +845,61 @@ export async function flagContent(
   });
 
   if (error) return { error: "Failed to flag content" };
+
+  return { success: true };
+}
+
+/* ── Role introspection + warn (moderator tier) ── */
+
+/** Own role for the admin UI: 'admin' | 'moderator' | 'user'. */
+export async function getMyAdminRole(): Promise<
+  "admin" | "moderator" | "user"
+> {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc("get_my_admin_role");
+  const role = data as unknown;
+  if (Array.isArray(role)) {
+    return (role[0] as "admin" | "moderator" | "user") ?? "user";
+  }
+  return (role as "admin" | "moderator" | "user") ?? "user";
+}
+
+/**
+ * Sends an official warning to a user (notification type
+ * "admin_message") and records it in the audit log. Moderator-tier.
+ */
+export async function warnUser(
+  userId: string,
+  message: string
+): Promise<{ success: true } | { error: string }> {
+  let adminId: string;
+  try {
+    adminId = await assertModerator();
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+
+  if (!message.trim()) return { error: "A warning message is required" };
+
+  const notified = await notifyAdminMessage(
+    userId,
+    "Warning from the SweetScene team",
+    message.trim()
+  );
+
+  if (!notified) return { error: "Failed to send warning" };
+
+  try {
+    await createAdminClient().from("admin_audit_log").insert({
+      admin_id: adminId,
+      action: "warned_user",
+      target_id: userId,
+      target_type: "user",
+      reason: message.trim(),
+    });
+  } catch {
+    /* best-effort audit trail — the notification itself succeeded */
+  }
 
   return { success: true };
 }

@@ -14,6 +14,9 @@ type Stats = {
   active_bans: number;
   pending_moderation: number;
   reports_last_24h: number;
+  signups_today: number;
+  dau_last_24h: number;
+  oldest_open_report_hours: number;
 };
 
 export default function AdminPage() {
@@ -39,6 +42,27 @@ export default function AdminPage() {
   }
 
   const cards = [
+    {
+      label: "Signups Today",
+      value: stats?.signups_today ?? 0,
+      href: "/admin/users",
+      color: "text-emerald-400",
+    },
+    {
+      label: "Active Today (DAU)",
+      value: stats?.dau_last_24h ?? 0,
+      href: "/admin/users",
+      color: "text-cyan-400",
+    },
+    {
+      label: "Oldest Open Report",
+      value:
+        stats && stats.oldest_open_report_hours > 0
+          ? `${Math.floor(stats.oldest_open_report_hours)}h`
+          : "—",
+      href: "/admin/reports",
+      color: "text-red-400",
+    },
     {
       label: "Total Users",
       value: stats?.total_users ?? 0,

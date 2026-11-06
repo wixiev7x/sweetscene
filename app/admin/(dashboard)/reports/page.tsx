@@ -2,26 +2,43 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { listReports, resolveReport } from "@/lib/actions/admin";
+import {
+  listReports,
+  resolveReport,
+  getMyAdminRole,
+  warnUser,
+  banUserTyped,
+} from "@/lib/actions/admin";
 
 type Report = {
   id: string;
   reporter_id: string;
   match_id: string;
+  target_user_id: string | null;
   reason: string;
   evidence_snapshot: unknown;
   status: string;
   resolution_note: string | null;
   created_at: string;
   reporter_username: string;
+  target_username: string | null;
 };
 
 export default function AdminReportsPage() {
   const [loading, setLoading] = useState(true);
   const [reports, setReports] = useState<Report[]>([]);
-  const [filter, setFilter] = useState<"open" | "resolved" | "dismissed" | "all">("open");
+  const [filter, setFilter] = useState<
+    "open" | "resolved" | "dismissed" | "all"
+  >("open");
   const [actioning, setActioning] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [role, setRole] = useState<"admin" | "moderator" | "user">("user");
+
+  const [warnId, setWarnId] = useState<string | null>(null);
+  const [warnMessage, setWarnMessage] = useState("");
+
+  const [banId, setBanId] = useState<string | null>(null);
+  const [banReason, setBanReason] = useState("");
 
   async function loadReports(useFilter?: string) {
     const result = await listReports(useFilter ?? filter, 50, 0);
@@ -32,6 +49,8 @@ export default function AdminReportsPage() {
 
   useEffect(() => {
     (async () => {
+      const r = await getMyAdminRole();
+      setRole(r);
       await loadReports("open");
       setLoading(false);
     })();
@@ -46,6 +65,41 @@ export default function AdminReportsPage() {
     await resolveReport(reportId, resolution);
     setActioning(null);
     await loadReports(filter);
+  }
+
+  async function handleWarn(userId: string) {
+    if (!warnMessage.trim()) {
+      alert("A warning message is required.");
+      return;
+    }
+    setActioning(userId);
+    const result = await warnUser(userId, warnMessage);
+    setActioning(null);
+    if ("error" in result) {
+      alert(result.error);
+    } else {
+      setWarnId(null);
+      setWarnMessage("");
+      alert("Warning sent.");
+    }
+  }
+
+  async function handleBanTarget(userId: string) {
+    if (!banReason.trim()) {
+      alert("A reason is required.");
+      return;
+    }
+    setActioning(userId);
+    const expiresAt = new Date(Date.now() + 7 * 86_400_000).toISOString();
+    const result = await banUserTyped(userId, "temp", banReason, expiresAt);
+    setActioning(null);
+    if ("error" in result) {
+      alert(result.error);
+    } else {
+      setBanId(null);
+      setBanReason("");
+      alert("User restricted for 7 days and signed out.");
+    }
   }
 
   if (loading) {
@@ -71,6 +125,9 @@ export default function AdminReportsPage() {
             &larr; Dashboard
           </Link>
           <h1 className="text-2xl font-bold">Report Queue</h1>
+          <span className="text-xs text-muted-faint ml-auto">
+            {role === "admin" ? "Admin" : "Moderator"} view
+          </span>
         </div>
 
         <div className="flex gap-2 mb-6">
@@ -123,11 +180,25 @@ export default function AdminReportsPage() {
                         <span className="text-xs text-muted-faint">
                           {new Date(r.created_at).toLocaleString()}
                         </span>
+                        <Link
+                          href={`/chat/${r.match_id}`}
+                          className="text-xs text-blue-400 hover:underline"
+                        >
+                          View conversation &rarr;
+                        </Link>
                       </div>
                       <p className="text-sm text-foreground-dim mb-1">
                         <span className="text-muted">Reporter:</span>{" "}
                         {r.reporter_username}
                       </p>
+                      {r.target_username && (
+                        <p className="text-sm text-foreground-dim mb-1">
+                          <span className="text-muted">Reported user:</span>{" "}
+                          <span className="text-red-400/90">
+                            {r.target_username}
+                          </span>
+                        </p>
+                      )}
                       <p className="text-sm text-foreground-dim mb-2">
                         <span className="text-muted">Reason:</span> {r.reason}
                       </p>
@@ -141,7 +212,7 @@ export default function AdminReportsPage() {
                   </div>
 
                   {isOpen && (
-                    <div className="flex gap-2 mt-3">
+                    <div className="flex flex-wrap gap-2 mt-3">
                       <button
                         onClick={() => handleResolve(r.id, "resolved")}
                         disabled={actioning === r.id}
@@ -158,6 +229,40 @@ export default function AdminReportsPage() {
                       >
                         {actioning === r.id ? "..." : "Dismiss"}
                       </button>
+                      {r.target_user_id && (
+                        <button
+                          onClick={() => {
+                            setWarnId(
+                              warnId === r.target_user_id
+                                ? null
+                                : r.target_user_id
+                            );
+                            setWarnMessage("");
+                            setBanId(null);
+                          }}
+                          aria-label="Warn reported user"
+                          className="px-3 py-1.5 text-sm bg-amber-900/30 border border-amber-900 text-amber-400 rounded-lg hover:bg-amber-900/50"
+                        >
+                          Warn user
+                        </button>
+                      )}
+                      {r.target_user_id && role === "admin" && (
+                        <button
+                          onClick={() => {
+                            setBanId(
+                              banId === r.target_user_id
+                                ? null
+                                : r.target_user_id
+                            );
+                            setBanReason("");
+                            setWarnId(null);
+                          }}
+                          aria-label="Restrict reported user"
+                          className="px-3 py-1.5 text-sm bg-red-900/30 border border-red-900 text-red-400 rounded-lg hover:bg-red-900/50"
+                        >
+                          Restrict 7d
+                        </button>
+                      )}
                       <button
                         onClick={() => setExpanded(isExpanded ? null : r.id)}
                         aria-label="Toggle evidence"
@@ -165,6 +270,67 @@ export default function AdminReportsPage() {
                       >
                         {isExpanded ? "Hide" : "Evidence"}
                       </button>
+                    </div>
+                  )}
+
+                  {warnId && warnId === r.target_user_id && (
+                    <div className="mt-3 p-3 bg-surface-sunken border border-line rounded-lg space-y-2">
+                      <label className="text-xs text-muted block">
+                        Warning message (sent as a notification, logged)
+                      </label>
+                      <textarea
+                        value={warnMessage}
+                        onChange={(e) => setWarnMessage(e.target.value)}
+                        placeholder="Explain which rule was broken and what happens next..."
+                        rows={2}
+                        className="w-full px-3 py-2 text-sm bg-surface border border-line rounded-lg focus:border-line-focus focus:outline-none resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleWarn(r.target_user_id!)}
+                          disabled={actioning === r.target_user_id}
+                          className="px-4 py-1.5 text-sm bg-amber-900/50 border border-amber-900 text-amber-400 rounded-lg hover:bg-amber-900/70 disabled:opacity-30"
+                        >
+                          Send warning
+                        </button>
+                        <button
+                          onClick={() => setWarnId(null)}
+                          className="px-4 py-1.5 text-sm text-muted hover:text-foreground-dim"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {banId && banId === r.target_user_id && (
+                    <div className="mt-3 p-3 bg-surface-sunken border border-line rounded-lg space-y-2">
+                      <label className="text-xs text-muted block">
+                        Reason for a 7-day restriction (required, logged; the
+                        user is signed out immediately)
+                      </label>
+                      <textarea
+                        value={banReason}
+                        onChange={(e) => setBanReason(e.target.value)}
+                        placeholder="Reason for the restriction..."
+                        rows={2}
+                        className="w-full px-3 py-2 text-sm bg-surface border border-line rounded-lg focus:border-line-focus focus:outline-none resize-none"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleBanTarget(r.target_user_id!)}
+                          disabled={actioning === r.target_user_id}
+                          className="px-4 py-1.5 text-sm bg-red-900/50 border border-red-900 text-red-400 rounded-lg hover:bg-red-900/70 disabled:opacity-30"
+                        >
+                          Restrict for 7 days
+                        </button>
+                        <button
+                          onClick={() => setBanId(null)}
+                          className="px-4 py-1.5 text-sm text-muted hover:text-foreground-dim"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
                   )}
 

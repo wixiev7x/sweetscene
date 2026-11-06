@@ -194,10 +194,10 @@ export async function signOut(): Promise<{ error?: string }> {
 }
 
 /**
- * Admin-only email/password login. Same mechanism as signInWithEmail,
- * but checks is_admin after sign-in. If the user is not an admin, the
- * session is immediately signed out and an error is returned. On
- * success, redirects to /admin.
+ * Admin/moderator email/password login. Same mechanism as
+ * signInWithEmail, but checks the admin OR moderator role after
+ * sign-in. If the user is neither, the session is immediately signed
+ * out and an error is returned. On success, redirects to /admin.
  */
 export async function signInAsAdmin(
   email: string,
@@ -229,12 +229,15 @@ export async function signInAsAdmin(
   });
   if (error) return { error: error.message };
 
-  const { data } = await supabase.rpc("assert_current_user_admin");
-  const isAdmin = (data as unknown as boolean[] | null)?.[0];
+  const { data } = await supabase.rpc("assert_current_user_mod");
+  const isMod =
+    (Array.isArray(data) ? data[0] === true : data === true);
 
-  if (!isAdmin) {
+  if (!isMod) {
     await supabase.auth.signOut();
-    return { error: "Not authorized. This login is for administrators only." };
+    return {
+      error: "Not authorized. This login is for staff only.",
+    };
   }
 
   redirect("/admin");

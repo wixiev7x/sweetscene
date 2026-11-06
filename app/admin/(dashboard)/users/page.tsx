@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   listUsers,
-  banUserWithReason,
+  banUserTyped,
   unbanUserWithReason,
   grantTokens,
   expireBans,
@@ -24,22 +24,36 @@ type User = {
   is_banned: boolean;
   banned_until: string | null;
   created_at: string;
+  role?: string;
+  is_shadowbanned?: boolean;
 };
 
 type BanHistory = {
   id: string;
-  banned_by: string;
+  moderator_id: string | null;
   reason: string;
   banned_at: string;
   expires_at: string | null;
   active: boolean;
+  type?: string;
+  appeal_state?: string;
 };
 
-const RESTRICT_DURATIONS: Array<{ label: string; hours: number }> = [
-  { label: "1 hour", hours: 1 },
-  { label: "24 hours", hours: 24 },
-  { label: "7 days", hours: 24 * 7 },
-  { label: "30 days", hours: 24 * 30 },
+type BanType = "temp-7d" | "temp-30d" | "permanent" | "shadow";
+
+const BAN_PRESETS: Array<{
+  value: BanType;
+  label: string;
+  hint: string;
+}> = [
+  { value: "temp-7d", label: "7 days", hint: "Temporary restriction" },
+  { value: "temp-30d", label: "30 days", hint: "Temporary restriction" },
+  { value: "permanent", label: "Permanent", hint: "Full ban, no expiry" },
+  {
+    value: "shadow",
+    label: "Shadow",
+    hint: "Their messages become invisible to others — they are never told",
+  },
 ];
 
 export default function AdminUsersPage() {
@@ -52,9 +66,7 @@ export default function AdminUsersPage() {
   const [actioning, setActioning] = useState<string | null>(null);
   const [banReasonId, setBanReasonId] = useState<string | null>(null);
   const [banReason, setBanReason] = useState("");
-  const [banDuration, setBanDuration] = useState<"permanent" | number>(
-    "permanent"
-  );
+  const [banType, setBanType] = useState<BanType>("permanent");
   const [unbanReasonId, setUnbanReasonId] = useState<string | null>(null);
   const [unbanReason, setUnbanReason] = useState("");
   const [sweeping, setSweeping] = useState(false);
@@ -100,7 +112,7 @@ export default function AdminUsersPage() {
   function startBan(userId: string) {
     setBanReasonId(userId);
     setBanReason("");
-    setBanDuration("permanent");
+    setBanType("permanent");
   }
 
   async function handleBan(userId: string) {
@@ -108,12 +120,16 @@ export default function AdminUsersPage() {
       alert("A reason is required.");
       return;
     }
+    const type =
+      banType === "shadow" ? "shadow" : banType === "permanent" ? "permanent" : "temp";
     const expiresAt =
-      banDuration === "permanent"
-        ? null
-        : new Date(Date.now() + banDuration * 3_600_000).toISOString();
+      banType === "temp-7d"
+        ? new Date(Date.now() + 7 * 86_400_000).toISOString()
+        : banType === "temp-30d"
+          ? new Date(Date.now() + 30 * 86_400_000).toISOString()
+          : null;
     setActioning(userId);
-    const result = await banUserWithReason(userId, banReason, expiresAt);
+    const result = await banUserTyped(userId, type, banReason, expiresAt);
     setActioning(null);
     if ("error" in result) {
       alert(result.error);
@@ -288,9 +304,22 @@ export default function AdminUsersPage() {
                             Admin
                           </span>
                         )}
+                        {!u.is_admin && u.role === "moderator" && (
+                          <span className="px-1.5 py-0.5 rounded text-xs bg-blue-900/50 text-blue-400 border border-blue-900">
+                            Moderator
+                          </span>
+                        )}
                         {u.is_vip && (
                           <span className="px-1.5 py-0.5 rounded text-xs bg-amber-900/50 text-amber-400 border border-amber-900">
                             VIP
+                          </span>
+                        )}
+                        {u.is_shadowbanned && (
+                          <span
+                            className="px-1.5 py-0.5 rounded text-xs bg-purple-900/50 text-purple-400 border border-purple-900"
+                            title="Shadowbanned — their messages are invisible to other users"
+                          >
+                            Shadow
                           </span>
                         )}
                         {u.is_banned &&
@@ -316,7 +345,11 @@ export default function AdminUsersPage() {
                   <div className="flex gap-2 shrink-0 flex-wrap">
                     <button
                       onClick={() => handleGrantTokens(u.id)}
-                      disabled={actioning === u.id || u.is_admin}
+                      disabled={
+                        actioning === u.id ||
+                        u.is_admin ||
+                        u.role === "moderator"
+                      }
                       aria-label="Adjust tokens"
                       className="px-3 py-1.5 text-sm bg-blue-900/30 border border-blue-900 text-blue-400 rounded-lg hover:bg-blue-900/50 disabled:opacity-30"
                     >
@@ -329,13 +362,17 @@ export default function AdminUsersPage() {
                     >
                       {historyId === u.id ? "Hide" : "History"}
                     </button>
-                    {u.is_banned ? (
+                    {u.is_banned || u.is_shadowbanned ? (
                       <button
                         onClick={() => {
                           setUnbanReasonId(u.id);
                           setUnbanReason("");
                         }}
-                        disabled={actioning === u.id || u.is_admin}
+                        disabled={
+                          actioning === u.id ||
+                          u.is_admin ||
+                          u.role === "moderator"
+                        }
                         aria-label="Unban user"
                         className="px-3 py-1.5 text-sm bg-green-900/30 border border-green-900 text-green-400 rounded-lg hover:bg-green-900/50 disabled:opacity-30"
                       >
@@ -345,7 +382,11 @@ export default function AdminUsersPage() {
                       <>
                         <button
                           onClick={() => startBan(u.id)}
-                          disabled={actioning === u.id || u.is_admin}
+                          disabled={
+                            actioning === u.id ||
+                            u.is_admin ||
+                            u.role === "moderator"
+                          }
                           aria-label="Ban user"
                           className="px-3 py-1.5 text-sm bg-red-900/30 border border-red-900 text-red-400 rounded-lg hover:bg-red-900/50 disabled:opacity-30"
                         >
@@ -356,72 +397,79 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
 
-                {banReasonId === u.id && !u.is_banned && (
-                  <div className="mt-3 pt-3 border-t border-line space-y-3">
-                    <div>
-                      <label className="text-xs text-muted block mb-1">
-                        Reason (required)
-                      </label>
-                      <textarea
-                        value={banReason}
-                        onChange={(e) => setBanReason(e.target.value)}
-                        placeholder="Reason for this ban..."
-                        rows={2}
-                        className="w-full px-3 py-2 text-sm bg-surface-sunken border border-line rounded-lg focus:border-line-focus focus:outline-none resize-none"
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-muted mr-1">Duration:</span>
-                      <button
-                        onClick={() => setBanDuration("permanent")}
-                        className={`px-3 py-1 text-xs rounded-lg border ${
-                          banDuration === "permanent"
-                            ? "bg-red-900/50 text-red-400 border-red-900"
-                            : "bg-surface-raised border-line-strong text-muted"
-                        }`}
-                      >
-                        Permanent
-                      </button>
-                      {RESTRICT_DURATIONS.map((d) => (
+                {banReasonId === u.id &&
+                  !u.is_banned &&
+                  !u.is_shadowbanned && (
+                    <div className="mt-3 pt-3 border-t border-line space-y-3">
+                      <div>
+                        <label className="text-xs text-muted block mb-1">
+                          Reason (required, recorded in the audit log)
+                        </label>
+                        <textarea
+                          value={banReason}
+                          onChange={(e) => setBanReason(e.target.value)}
+                          placeholder="Reason for this ban..."
+                          rows={2}
+                          className="w-full px-3 py-2 text-sm bg-surface-sunken border border-line rounded-lg focus:border-line-focus focus:outline-none resize-none"
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-muted mr-1">Type:</span>
+                        {BAN_PRESETS.map((p) => (
+                          <button
+                            key={p.value}
+                            onClick={() => setBanType(p.value)}
+                            title={p.hint}
+                            className={`px-3 py-1 text-xs rounded-lg border ${
+                              banType === p.value
+                                ? p.value === "shadow"
+                                  ? "bg-purple-900/50 text-purple-400 border-purple-900"
+                                  : p.value === "permanent"
+                                    ? "bg-red-900/50 text-red-400 border-red-900"
+                                    : "bg-orange-900/50 text-orange-400 border-orange-900"
+                                : "bg-surface-raised border-line-strong text-muted"
+                            }`}
+                          >
+                            {p.label}
+                          </button>
+                        ))}
+                      </div>
+                      {banType === "shadow" && (
+                        <p className="text-xs text-purple-400/80">
+                          Shadow ban: the user is never blocked or notified —
+                          their messages simply stop being visible to everyone
+                          else.
+                        </p>
+                      )}
+                      <div className="flex gap-2">
                         <button
-                          key={d.hours}
-                          onClick={() => setBanDuration(d.hours)}
-                          className={`px-3 py-1 text-xs rounded-lg border ${
-                            banDuration === d.hours
-                              ? "bg-orange-900/50 text-orange-400 border-orange-900"
-                              : "bg-surface-raised border-line-strong text-muted"
-                          }`}
+                          onClick={() => handleBan(u.id)}
+                          disabled={actioning === u.id}
+                          className="px-4 py-1.5 text-sm bg-red-900/50 border border-red-900 text-red-400 rounded-lg hover:bg-red-900/70 disabled:opacity-30"
                         >
-                          {d.label}
+                          {actioning === u.id
+                            ? "Banning..."
+                            : banType === "shadow"
+                              ? "Apply shadow ban"
+                              : banType === "permanent"
+                                ? "Ban permanently"
+                                : `Restrict for ${banType === "temp-7d" ? "7 days" : "30 days"}`}
                         </button>
-                      ))}
+                        <button
+                          onClick={() => {
+                            setBanReasonId(null);
+                            setBanReason("");
+                          }}
+                          className="px-4 py-1.5 text-sm text-muted hover:text-foreground-dim"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleBan(u.id)}
-                        disabled={actioning === u.id}
-                        className="px-4 py-1.5 text-sm bg-red-900/50 border border-red-900 text-red-400 rounded-lg hover:bg-red-900/70 disabled:opacity-30"
-                      >
-                        {actioning === u.id
-                          ? "Banning..."
-                          : banDuration === "permanent"
-                            ? "Ban permanently"
-                            : "Restrict"}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setBanReasonId(null);
-                          setBanReason("");
-                        }}
-                        className="px-4 py-1.5 text-sm text-muted hover:text-foreground-dim"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  )}
 
-                {unbanReasonId === u.id && u.is_banned && (
+                {unbanReasonId === u.id &&
+                  (u.is_banned || u.is_shadowbanned) && (
                   <div className="mt-3 pt-3 border-t border-line space-y-3">
                     <div>
                       <label className="text-xs text-muted block mb-1">
@@ -475,12 +523,30 @@ export default function AdminUsersPage() {
                               <span
                                 className={`px-1.5 py-0.5 rounded ${
                                   b.active
-                                    ? "bg-red-900/50 text-red-400"
+                                    ? b.type === "shadow"
+                                      ? "bg-purple-900/50 text-purple-400"
+                                      : "bg-red-900/50 text-red-400"
                                     : "bg-surface-raised text-muted"
                                 }`}
                               >
-                                {b.active ? "Active" : "Lifted"}
+                                {b.active
+                                  ? b.type === "shadow"
+                                    ? "Shadow (active)"
+                                    : "Active"
+                                  : "Lifted"}
                               </span>
+                              {b.type && b.type !== "shadow" && (
+                                <span className="px-1.5 py-0.5 rounded bg-surface-raised text-muted">
+                                  {b.type === "permanent"
+                                    ? "Permanent"
+                                    : "Temporary"}
+                                </span>
+                              )}
+                              {b.appeal_state && b.appeal_state !== "none" && (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-900/40 text-amber-400">
+                                  Appeal: {b.appeal_state}
+                                </span>
+                              )}
                               <span className="text-muted-faint">
                                 {new Date(b.banned_at).toLocaleString()}
                                 {b.expires_at &&
