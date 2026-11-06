@@ -1,16 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { signOut } from "@/lib/actions/auth";
 import {
-  getNotifications,
   markNotificationAsRead,
   markAllNotificationsRead,
 } from "@/lib/actions/notifications";
 import type { NotificationRow } from "@/lib/actions/notifications";
+
+/**
+ * Phase 5.5 perf: the Supabase browser client (≈240 KB) is NOT imported
+ * here anymore. NavSession (supabase + realtime) is mounted via
+ * next/dynamic ONLY when a session cookie exists — anonymous page loads
+ * never download it. ssr:false is allowed because this is a client
+ * component; the shell renders instantly either way.
+ */
+const NavSession = dynamic(() => import("./NavSession"), { ssr: false });
 
 type NavItem = {
   href: string;
@@ -111,79 +119,46 @@ export function SiteNav({ className = "" }: { className?: string }) {
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
 
-  /* ── Auth + token balance ── */
+  /* ── Auth + token balance + realtime (lazy, only when signed in) ──
+     The `sb-*-auth-token` cookie is JS-readable (httpOnly:false by
+     design), so the shell can decide WITHOUT any library whether the
+     supabase-carrying NavSession chunk should load at all. */
+  const [hasSession, setHasSession] = useState(false);
+
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (cancelled) return;
-        if (user) {
-          setUser(user);
-          /* tokens_balance is column-REVOKE'd from direct reads — the
-             owner value comes from the get_own_profile RPC. */
-          const { data: own } = await supabase.rpc("get_own_profile");
-          const rows = (Array.isArray(own) ? own : [own]) as Array<{
-            tokens_balance?: number | null;
-          } | null>;
-          const balance = rows?.[0]?.tokens_balance;
-          if (!cancelled && balance != null) setTokens(balance);
-        }
-      } catch {
-      }
-    })();
-    return () => { cancelled = true; };
+    setHasSession(/(?:^|;\s*)sb-[a-z0-9]+-auth-token=/.test(document.cookie));
   }, []);
 
-  /* ── Real notifications: initial load + realtime (signed-in only) ── */
+  /* Keep relative timestamps fresh while the dropdown is usable. */
   useEffect(() => {
     if (!user) return;
-    let cancelled = false;
     const tick = setInterval(() => setNow(Date.now()), 30_000);
-
-    (async () => {
-      const result = await getNotifications(20);
-      if (cancelled) return;
-      if (!("error" in result)) {
-        setNotifications(result.notifications);
-        setUnreadCount(result.notifications.filter((n) => n.read_at === null).length);
-      }
-    })();
-
-    const supabase = createClient();
-    const channel = supabase
-      .channel("site-nav-notifications")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "notifications" },
-        (payload: { new: NotificationRow }) => {
-          setNotifications((prev) => [payload.new, ...prev].slice(0, 50));
-          if (payload.new.read_at === null) {
-            setUnreadCount((prev) => prev + 1);
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "notifications" },
-        (payload: { new: NotificationRow }) => {
-          setNotifications((prev) =>
-            prev.map((n) => (n.id === payload.new.id ? payload.new : n))
-          );
-          if (payload.new.read_at !== null) {
-            setUnreadCount((prev) => Math.max(0, prev - 1));
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      cancelled = true;
-      clearInterval(tick);
-      supabase.removeChannel(channel);
-    };
+    return () => clearInterval(tick);
   }, [user]);
+
+  const handleUser = useCallback((u: { id: string } | null) => setUser(u), []);
+  const handleTokens = useCallback((t: number) => setTokens(t), []);
+
+  const handleInitialNotifications = useCallback((rows: NotificationRow[]) => {
+    setNotifications(rows);
+    setUnreadCount(rows.filter((n) => n.read_at === null).length);
+  }, []);
+
+  const handleNotificationInsert = useCallback((row: NotificationRow) => {
+    setNotifications((prev) => [row, ...prev].slice(0, 50));
+    if (row.read_at === null) {
+      setUnreadCount((prev) => prev + 1);
+    }
+  }, []);
+
+  const handleNotificationUpdate = useCallback((row: NotificationRow) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === row.id ? row : n))
+    );
+    if (row.read_at !== null) {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+  }, []);
 
   /* ── Escape + outside-click dismissal; focus returns to the trigger ── */
   const closeMenus = useCallback((restoreFocus: "more" | "bell" | null) => {
@@ -266,6 +241,18 @@ export function SiteNav({ className = "" }: { className?: string }) {
 
   return (
     <>
+      {/* Headless session data — the only place supabase-js enters the
+          nav; downloaded solely when a session cookie exists. */}
+      {hasSession && (
+        <NavSession
+          onUser={handleUser}
+          onTokens={handleTokens}
+          onInitialNotifications={handleInitialNotifications}
+          onNotificationInsert={handleNotificationInsert}
+          onNotificationUpdate={handleNotificationUpdate}
+        />
+      )}
+
       {/* Top bar — candlelit frosted */}
       <header
         className={`sticky top-0 z-50 ios-frosted border-b border-[var(--ios-hairline)] ${className}`}
@@ -289,7 +276,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
           <div className="flex items-center gap-2.5">
             {/* Token pill — real balance */}
             <Link
-              href="/checkout?item=starter"
+              href="/billing"
               prefetch={false}
               aria-label={`Token balance: ${tokens ?? 0} — buy more`}
               className="ios-press relative flex items-center gap-1.5 rounded-full bg-surface-raised border border-line px-3 h-9 type-body text-foreground font-medium transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"
@@ -301,7 +288,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
 
             {/* Premium */}
             <Link
-              href="/checkout?item=vip"
+              href="/billing"
               prefetch={false}
               data-cursor="primary"
               className="ios-press hidden sm:flex items-center gap-1.5 rounded-full px-3.5 h-9 type-body font-semibold text-accent-foreground transition-all hover:opacity-90 focus-visible:ring-2 ring-line-focus"
@@ -315,7 +302,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
 
             {/* Premium icon on mobile */}
             <Link
-              href="/checkout?item=vip"
+              href="/billing"
               prefetch={false}
               aria-label="Upgrade"
               className="ios-press sm:hidden flex items-center justify-center w-9 h-9 rounded-full bg-surface-raised border border-line text-accent-candle transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"

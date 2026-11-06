@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { submitMatchRating, type Vibe as VibeType, type RatingReason } from "@/lib/actions/ratings";
 
 type FadeToBlackProps = {
@@ -232,17 +231,13 @@ export default function FadeToBlack({
     // ── Vibe Check second screen ──
     if (showVibeCheck) {
       return (
-        <AnimatePresence mode="wait">
-          <motion.div
-            key="vibe-check"
-            initial={{ opacity: 0, x: 40 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -40 }}
-            transition={{ duration: 0.3 }}
-          >
-            {renderVibeCheck()}
-          </motion.div>
-        </AnimatePresence>
+        /* Phase 5.5: framer-motion removed — CSS-only slide-in. */
+        <div
+          key="vibe-check"
+          style={{ animation: "vibeSlideIn 0.3s ease-out both" }}
+        >
+          {renderVibeCheck()}
+        </div>
       );
     }
 
@@ -421,22 +416,20 @@ export default function FadeToBlack({
   }
 
   return (
-    <motion.div
+    /* Phase 5.5: framer-motion removed — the overlay fade and content
+       rise are plain CSS keyframes (see <style jsx> below), keeping
+       /chat's bundle ~124 KB lighter. */
+    <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center min-h-screen text-center px-6 overflow-hidden"
-      style={{ background: "black" }}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 2, ease: "easeInOut" }}
+      style={{ background: "black", animation: "fadeToBlackIn 2s ease-in-out both" }}
     >
       {/* vignette */}
       <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.8)_70%)]" />
 
       {/* content */}
-      <motion.div
+      <div
         className="relative z-10 flex flex-col items-center max-w-md w-full"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 1.5, delay: 1.5, ease: "easeOut" }}
+        style={{ animation: "contentRise 1.5s ease-out 1.5s both" }}
       >
         {/* decorative diamond */}
         <span
@@ -455,7 +448,7 @@ export default function FadeToBlack({
         </p>
 
         {renderContent()}
-      </motion.div>
+      </div>
 
       {/* footer */}
       <div className="absolute bottom-4 left-0 right-0 flex justify-center opacity-30">
@@ -465,6 +458,42 @@ export default function FadeToBlack({
       </div>
 
       <style jsx>{`
+        /* Phase 5.5: replaced framer-motion entrances with CSS. Also
+           NOTE — the previous version had a stray closing brace after
+           @keyframes slowSpin, making slowSpin AND glowExpand invalid
+           CSS (silently dropped by browsers). Fixed here. */
+
+        @keyframes fadeToBlackIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes contentRise {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes vibeSlideIn {
+          from {
+            opacity: 0;
+            transform: translateX(40px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
         @keyframes breathGlow {
           0%,
           100% {
@@ -486,8 +515,6 @@ export default function FadeToBlack({
           }
         }
 
-        }
-
         @keyframes glowExpand {
           0% {
             transform: scale(0.8);
@@ -499,6 +526,6 @@ export default function FadeToBlack({
           }
         }
       `}</style>
-    </motion.div>
+    </div>
   );
 }

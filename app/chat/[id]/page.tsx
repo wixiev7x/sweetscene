@@ -210,18 +210,22 @@ export default function ChatPage() {
         partnerMovedOn: isA ? m.user_b_moved_on : m.user_a_moved_on,
       });
 
-      /* build character name map from DB */
+      /* build character name map from DB — one batched query instead of
+         a per-id round-trip (N+1 fix); iterate m.character_ids to keep
+         the original first-avatar-wins ordering. */
       if (m.character_ids && m.character_ids.length > 0) {
+        const { data: dbChars } = await supabase
+          .from("characters")
+          .select("id, name, avatar_url")
+          .in("id", m.character_ids);
+        const byId = new Map<string, { name: string | null; avatar_url: string | null } | undefined>();
+        for (const c of dbChars ?? []) byId.set(c.id, c);
         const nextMap = new Map<string, string>();
         for (const cid of m.character_ids) {
-          const { data: dbChar } = await supabase
-            .from("characters")
-            .select("name, avatar_url")
-            .eq("id", cid)
-            .single();
-          nextMap.set(cid, dbChar?.name ?? "Director");
-          if (dbChar?.avatar_url) {
-            setHeaderAvatarUrl((prev) => prev ?? dbChar.avatar_url);
+          const c = byId.get(cid);
+          nextMap.set(cid, c?.name ?? "Director");
+          if (c?.avatar_url) {
+            setHeaderAvatarUrl((prev) => prev ?? c.avatar_url);
           }
         }
         setCharacterNameMap(nextMap);

@@ -118,7 +118,7 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong className="text-foreground">Balance and payment records:</strong> your token
-              balance and, for purchases, a payment reference from our crypto payment processor.
+              balance and, for purchases, a payment reference from our card payment processor.
               We never see or store card numbers — checkout runs on the processor&rsquo;s hosted
               page.
             </li>
@@ -142,7 +142,7 @@ export default function PrivacyPage() {
             <li><strong className="text-foreground">Safety and moderation:</strong> automated screening of content, fraud and abuse prevention, enforcing the 16+/18+ age gates.</li>
             <li><strong className="text-foreground">Personalization:</strong> using your selected vibes to pair you and recommend hosts.</li>
             <li><strong className="text-foreground">Analytics and improvement:</strong> aggregate, anonymized metrics on feature use.</li>
-            <li><strong className="text-foreground">Payments:</strong> processing token pack and VIP purchases through our crypto payment processor.</li>
+            <li><strong className="text-foreground">Payments:</strong> processing token pack and VIP purchases through our card payment processor.</li>
             <li><strong className="text-foreground">Legal compliance and law-enforcement requests:</strong> as described in Section 7.</li>
           </ul>
         </section>
