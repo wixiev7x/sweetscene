@@ -58,12 +58,26 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  /* Phase 3 — DESIGN staging banner: rendered only when the env flag is
+     present (set exclusively on the DESIGN deployment), so production and
+     local dev never show it. Baked in at build time. */
+  const stagingBanner = process.env.NEXT_PUBLIC_STAGING_BANNER;
+
   return (
     <html
       lang="en"
       className={`${dmSerif.variable} ${firaSans.variable} h-full antialiased scanline-overlay noise-overlay`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        {stagingBanner ? (
+          <div
+            role="banner"
+            aria-label="Staging environment notice"
+            className="sticky top-0 z-[10002] w-full bg-amber-500/90 text-black text-center text-xs font-semibold tracking-widest uppercase py-1 px-2"
+          >
+            DESIGN — Staging environment · not production · data here is for testing only
+          </div>
+        ) : null}
         <a
           href="#site-main"
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[10001] focus:px-4 focus:py-2 focus:rounded-full focus:bg-surface-raised focus:border focus:border-line-strong focus:text-foreground focus:text-sm"

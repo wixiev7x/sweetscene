@@ -45,3 +45,4 @@ supabase/.temp/
 
 # Local audit artifacts (kept out of the repo)
 payment-audit/
+.env*

@@ -46,6 +46,10 @@ alter table public.stripe_customers enable row level security;
 
 -- A signed-in user can see their own billing profile (subscription
 -- status on /billing). No select policy on stripe_events.
+-- (drop-if-exists first: this migration must be safely re-runnable on a
+-- database where the schema.sql mirror already created the policy.)
+drop policy if exists "users can read own stripe profile"
+  on public.stripe_customers;
 create policy "users can read own stripe profile"
   on public.stripe_customers
   for select

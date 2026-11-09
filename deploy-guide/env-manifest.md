@@ -114,6 +114,17 @@ DB row wins over env var, 30 s cache, rotated from the admin dashboard. **Phase 
 
 ## 11. DESIGN deployment checklist (Phase 3 — condensed)
 
-1. Create/identify DESIGN Vercel project (none exists today — see phase0.md).
-2. Set every ⬜ above with **DESIGN-scope values** (separate Stripe TEST keys, separate Supabase DESIGN project URL/keys, `NEXT_PUBLIC_SITE_URL=https://design.sweetscene.love`).
+1. ~~Create/identify DESIGN Vercel project~~ ✅ DONE 2026-11-06: `sweetscene-design`
+   `prj_M0lMNeWOlPjcerhyNGrfrPsySE77` (corruptnb account, team "sweet", created via API).
+2. Supabase DESIGN project: `ss design` rcgxcxygoatdmpxnvnbu UNPAUSED 2026-11-06 (was
+   INACTIVE/paused since before Phase 0). Dev data REST-copied from runjhpkyqcdbiijrqmfl;
+   schema applied via management API SQL. DDL path problem (phase0.md §8) RESOLVED.
+3. Set every ⬜ above with **DESIGN-scope values** (separate Stripe TEST keys, DESIGN
+   Supabase URL/keys, `NEXT_PUBLIC_SITE_URL` = DESIGN origin).
+   **NEW: `NEXT_PUBLIC_STAGING_BANNER`** (any non-empty value, e.g. `design`) — shows the
+   "DESIGN — Staging environment" ribbon on every page (app/layout.tsx, Phase 3). MUST
+   stay unset on MAIN/production. Also documented in .env.example.
+4. Deploy via `vercel` CLI direct upload (DESIGN Vercel account has no git link to
+   wixiev7x/sweetscene): `vercel link --project sweetscene-design` → `vercel deploy --prod`;
+   `.vercel/` is gitignored.
 3. Do NOT copy `SUPABASE_SERVICE_ROLE_KEY` or any MAIN secret into any client-visible surface; after build, grep the client bundle for every secret (Phase 3 verification step).

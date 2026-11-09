@@ -1023,26 +1023,6 @@ REVOKE EXECUTE ON FUNCTION unclaim_match(UUID, UUID) FROM anon;
 REVOKE UPDATE (tokens_used, messages) ON solo_sessions FROM authenticated;
 REVOKE UPDATE (tokens_used, messages) ON solo_sessions FROM anon;
 
--- ── Tighten messages INSERT RLS: require status IN ('active','revealed') ──
--- The 4.5/5 block already added this policy, but DROP + recreate ensures
--- idempotency. Messages can only be inserted into active (in-scene) or
--- revealed (post-reveal DM) matches. Closes M6.
-DROP POLICY IF EXISTS "Participants can insert human messages" ON messages;
-DROP POLICY IF EXISTS "Participants can insert human messages into active matches" ON messages;
-CREATE POLICY "Participants can insert human messages into active matches"
-  ON messages FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM matches m
-      WHERE m.id = messages.match_id
-        AND (m.user_a = auth.uid() OR m.user_b = auth.uid())
-        AND (m.status = 'active' OR m.status = 'revealed')
-    )
-    AND sender_type = 'human'
-    AND sender_id = auth.uid()
-    AND NOT public.is_current_user_banned()
-  );
-
 -- Note: AI messages (sender_type='ai') are inserted via the
 -- apply_ai_turn SECURITY DEFINER RPC which bypasses RLS — the INSERT
 -- policy above correctly allows only human messages from clients.
@@ -2989,6 +2969,30 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 REVOKE EXECUTE ON FUNCTION is_current_user_banned() FROM anon;
 GRANT  EXECUTE ON FUNCTION is_current_user_banned() TO authenticated;
 
+-- ── Tighten messages INSERT RLS: require status IN ('active','revealed') ──
+-- The 4.5/5 block already added this policy, but DROP + recreate ensures
+-- idempotency. Messages can only be inserted into active (in-scene) or
+-- revealed (post-reveal DM) matches. Closes M6.
+-- NOTE: this block lives HERE (after is_current_user_banned's definition)
+-- because Postgres resolves policy body function references at CREATE
+-- time — the old position (before the function existed) broke fresh
+-- single-transaction replays of this file.
+DROP POLICY IF EXISTS "Participants can insert human messages" ON messages;
+DROP POLICY IF EXISTS "Participants can insert human messages into active matches" ON messages;
+CREATE POLICY "Participants can insert human messages into active matches"
+  ON messages FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM matches m
+      WHERE m.id = messages.match_id
+        AND (m.user_a = auth.uid() OR m.user_b = auth.uid())
+        AND (m.status = 'active' OR m.status = 'revealed')
+    )
+    AND sender_type = 'human'
+    AND sender_id = auth.uid()
+    AND NOT public.is_current_user_banned()
+  );
+
 -- Supports the ban sweep below.
 CREATE INDEX IF NOT EXISTS idx_profiles_banned_until
   ON profiles(banned_until) WHERE banned_until IS NOT NULL;
@@ -4114,6 +4118,8 @@ create table if not exists public.stripe_customers (
 alter table public.stripe_events    enable row level security;
 alter table public.stripe_customers enable row level security;
 
+drop policy if exists "users can read own stripe profile"
+  on public.stripe_customers;
 create policy "users can read own stripe profile"
   on public.stripe_customers
   for select
