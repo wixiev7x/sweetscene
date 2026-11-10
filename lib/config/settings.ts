@@ -53,6 +53,10 @@ export const SETTING_KEYS = {
   moderationApiKey: "moderation_api_key",
   moderationEndpoint: "moderation_endpoint",
   moderationFailClosed: "moderation_fail_closed",
+  /* Re-added 2026-11-11: NOWPayments rail restored per user request
+     (crypto checkout beside Stripe until Stripe activation lands). */
+  nowpaymentsApiKey: "nowpayments_api_key",
+  nowpaymentsIpnSecret: "nowpayments_ipn_secret",
 } as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[keyof typeof SETTING_KEYS];
@@ -155,6 +159,20 @@ export const MANAGED_SETTINGS: readonly SettingDescriptor[] = [
     env: "MODERATION_FAIL_CLOSED",
     secret: false,
     hint: "true blocks messages when the classifier is unreachable. Default false — an outage at the provider should not take chat down, and the blocked-term floor still applies.",
+  },
+  {
+    key: SETTING_KEYS.nowpaymentsApiKey,
+    label: "NOWPayments API key",
+    env: "NOWPAYMENTS_API_KEY",
+    secret: true,
+    hint: "Crypto checkout rail (re-added 2026-11-11 beside Stripe). Creates hosted invoices; rotate here without a redeploy.",
+  },
+  {
+    key: SETTING_KEYS.nowpaymentsIpnSecret,
+    label: "NOWPayments IPN secret",
+    env: "NOWPAYMENTS_IPN_SECRET",
+    secret: true,
+    hint: "Verifies the signed IPN webhook that credits crypto purchases. Must match the secret in the NOWPayments account.",
   },
 ] as const;
 

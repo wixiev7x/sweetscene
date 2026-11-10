@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import Link from "next/link";
 import { pageMeta } from "@/lib/seo";
 
@@ -10,7 +11,7 @@ export const metadata: Metadata = pageMeta({
 });
 
 /* Adapted from a reference privacy notice structure for SweetScene —
- * a 16+ anonymous AI matchmaking platform. Marked placeholders must be
+ * an 18+ anonymous AI matchmaking platform. Marked placeholders must be
  * confirmed by the operator before launch; lawyer review is the
  * operator's responsibility. */
 export default function PrivacyPage() {
@@ -60,10 +61,10 @@ export default function PrivacyPage() {
         <section className="space-y-3">
           <h2 className="text-xl text-white font-medium">2. Our Policy Towards Minors</h2>
           <p className="type-body">
-            SweetScene is a 16+ platform. You must be at least 16 years old to create an account.
-            Adult (NSFW) content is restricted to accounts verified as 18+; unverified and
-            minor accounts cannot access it. Some users may be asked to complete third-party age
-            verification before accessing adult content or certain features — see Section 12.
+            SweetScene is an 18+ platform. You must be at least 18 years old to create an account.{" "}
+            {SFW_MODE
+              ? "All content is moderated and rated safe-for-work. Some users may be asked to complete third-party age verification before accessing certain features — see Section 12."
+              : "Adult (NSFW) content is restricted to accounts verified as 18+; unverified and minor accounts cannot access it. Some users may be asked to complete third-party age verification before accessing adult content or certain features — see Section 12."}
             We do not knowingly process personal information from anyone under 16. If you are the
             parent or legal guardian of a child who has provided us personal information, contact
             us at [SUPPORT EMAIL GOES HERE — CONFIRM BEFORE LAUNCH] to have that information deleted.
@@ -106,14 +107,17 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong className="text-foreground">Age and verification data:</strong> your age
-              cohort (16+ / 18+) and, where you complete ID verification, only the
+              cohort (18+) and, where you complete ID verification, only the
               provider&rsquo;s pass/fail result and a verification reference ID. We never receive
               or store ID document images or biometric data — those remain with the verification
               provider (Section 12).
             </li>
             <li>
               <strong className="text-foreground">Sensitive preferences:</strong> depending on how
-              you use the platform, your NSFW opt-in status and the nature of the scenes you play
+              you use the platform,{" "}
+              {SFW_MODE
+                ? "the nature of the scenes you play"
+                : "your NSFW opt-in status and the nature of the scenes you play"}{" "}
               may reveal special-category information about you.
             </li>
             <li>
@@ -139,7 +143,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-6 space-y-2 type-body">
             <li><strong className="text-foreground">Providing the service:</strong> matchmaking, AI-hosted scenes, solo play, confessions, and the features you request.</li>
             <li><strong className="text-foreground">Account management:</strong> creating and securing your account, and sending you service notifications (matches, invites, purchases).</li>
-            <li><strong className="text-foreground">Safety and moderation:</strong> automated screening of content, fraud and abuse prevention, enforcing the 16+/18+ age gates.</li>
+            <li><strong className="text-foreground">Safety and moderation:</strong> automated screening of content, fraud and abuse prevention, enforcing the 18+ age gates.</li>
             <li><strong className="text-foreground">Personalization:</strong> using your selected vibes to pair you and recommend hosts.</li>
             <li><strong className="text-foreground">Analytics and improvement:</strong> aggregate, anonymized metrics on feature use.</li>
             <li><strong className="text-foreground">Payments:</strong> processing token pack and VIP purchases through our card payment processor.</li>
@@ -153,7 +157,7 @@ export default function PrivacyPage() {
           </h2>
           <p className="type-body">Where required by applicable law, we process personal data only when:</p>
           <ul className="list-disc pl-6 space-y-2 type-body">
-            <li>You consent — for example to NSFW opt-in or biometric processing by the verification provider. Consent can be withdrawn at any time.</li>
+            <li>You consent — for example to {SFW_MODE ? "biometric processing by the verification provider" : "NSFW opt-in or biometric processing by the verification provider"}. Consent can be withdrawn at any time.</li>
             <li>It is necessary to perform our contract with you — for example to create and operate your account.</li>
             <li>It is necessary to comply with legal obligations.</li>
             <li>It satisfies a legitimate interest not overridden by your data-protection interests — for example keeping SweetScene safe from fraud and illegal activity.</li>
@@ -195,7 +199,7 @@ export default function PrivacyPage() {
           <h2 className="text-xl text-white font-medium">9. Your Choices</h2>
           <ul className="list-disc pl-6 space-y-2 type-body">
             <li>Remain anonymous: we never ask for your real name or face; profile pictures are optional generated/anonymous art.</li>
-            <li>Turn NSFW content on or off from your profile at any time.</li>
+            {!SFW_MODE && <li>Turn NSFW content on or off from your profile at any time.</li>}
             <li>Revoke matchmaking preferences at any time — they only live for the current pairing.</li>
             <li>Delete your account from your profile page; this removes access to your content and starts deletion of your account data.</li>
           </ul>
@@ -228,7 +232,7 @@ export default function PrivacyPage() {
         <section className="space-y-3">
           <h2 className="text-xl text-white font-medium">12. Age Verification and Biometric Information</h2>
           <p className="type-body">
-            Where required — to access NSFW content or certain gated features — age and identity
+            Where required — to access {SFW_MODE ? "certain gated features" : "NSFW content or certain gated features"} — age and identity
             verification is performed by an independent third-party provider. Depending on the
             provider, verification may involve government-issued ID and facial-recognition
             technology. That process runs entirely on the provider&rsquo;s infrastructure:

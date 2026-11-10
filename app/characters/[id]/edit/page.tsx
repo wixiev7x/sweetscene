@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getCharacter, updateCharacter, publishMyCharacter } from "@/lib/actions/characters";
@@ -547,6 +548,7 @@ export default function EditCharacterPage({
           </select>
         </div>
 
+        {!SFW_MODE && (
         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
           <label className="flex items-start gap-3 cursor-pointer">
             <input
@@ -566,6 +568,7 @@ export default function EditCharacterPage({
             </span>
           </label>
         </div>
+        )}
 
         {error && (
           <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-danger">

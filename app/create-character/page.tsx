@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -130,6 +131,7 @@ export default function CreateCharacterPage() {
   }
 
   function toggleNsfw() {
+    if (SFW_MODE) return;
     if (!profile?.is_vip) {
       setError("NSFW characters require VIP");
       return;
@@ -790,7 +792,8 @@ export default function CreateCharacterPage() {
             <p className="text-xs text-muted-faint mt-2">({selectedTags.length}/5 selected)</p>
           </Field>
 
-          {/* ── NSFW ── */}
+          {/* ── NSFW ── (hidden while NEXT_PUBLIC_SFW_MODE=1) ── */}
+          {!SFW_MODE && (
           <Field label="NSFW Content" hint={profile?.is_vip ? "Enable for uncensored roleplay." : "NSFW requires VIP."}>
             <button
               type="button"
@@ -808,6 +811,7 @@ export default function CreateCharacterPage() {
               <span aria-hidden="true" className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-300 ${isNsfw ? "left-7" : "left-0.5"}`} />
             </button>
           </Field>
+          )}
 
           {/* ── VISIBILITY ── */}
           <Field label="Visibility" hint="Private = only you. Unlisted = link-only. Public = appears in Browse.">

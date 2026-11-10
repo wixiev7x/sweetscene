@@ -8,12 +8,18 @@ import {
   createStripeTokenPackageOrder,
   openStripeCustomerPortal,
 } from "@/lib/actions/stripe-billing";
+import {
+  createVipPlanOrder,
+  createTokenPackageOrder,
+} from "@/lib/actions/billing";
 
-/* Card checkout via Stripe Payment Links. The client only sends
- * product ids — prices render from lib/billing/constants and the
- * server re-derives them before writing the order; the redirect URL
- * carries our order reference (?client_reference_id=…) which the
- * webhook matches back to the payments row before granting. */
+/* Card checkout via Stripe Payment Links, plus an optional crypto rail
+ * via NOWPayments (rendered only when the server confirms it is
+ * configured end-to-end). The client only sends product ids — prices
+ * render from lib/billing/constants and the server re-derives them
+ * before writing the order; the redirect URL carries our order
+ * reference (?client_reference_id=… / NOWPayments order_id) which the
+ * webhooks match back to the payments row before granting. */
 
 type Availability = {
   vipMonthly: boolean;
@@ -38,14 +44,22 @@ const PLAN_AVAILABILITY: Record<string, keyof Availability> = {
 
 export default function BillingClient({
   availability,
+  crypto,
 }: {
   availability: Availability;
+  /** NOWPayments configured end-to-end (server-verified). */
+  crypto: boolean;
 }) {
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  function run(action: () => Promise<{ url: string } | { error: string }>, id: string) {
+  function run(
+    action: () => Promise<
+      { url: string } | { invoiceUrl: string } | { error: string }
+    >,
+    id: string
+  ) {
     playSound("click");
     setError(null);
     setPending(id);
@@ -53,6 +67,8 @@ export default function BillingClient({
       const result = await action();
       if ("url" in result) {
         window.location.assign(result.url);
+      } else if ("invoiceUrl" in result) {
+        window.location.assign(result.invoiceUrl);
       } else {
         setError(result.error);
         setPending(null);
@@ -169,6 +185,52 @@ export default function BillingClient({
           })}
         </div>
 
+        {/* ── Crypto rail (NOWPayments) ── */}
+        {crypto && (
+          <div className="bg-surface border border-line rounded-[var(--radius-card)] p-6 mb-10 max-w-xl">
+            <p className="type-eyebrow text-muted-faint mb-1">Prefer crypto?</p>
+            <p className="type-meta text-muted mb-5 leading-relaxed">
+              Same plans and packs, paid in 200+ coins via NOWPayments.
+              Each purchase is one invoice — nothing auto-charges, tokens
+              and VIP land the moment payment confirms.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {VIP_PLANS.filter((p) => p.subscription).map((plan) => {
+                const id = `np-${plan.id}`;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    disabled={busy}
+                    data-cursor="primary"
+                    onClick={() => run(() => createVipPlanOrder(plan.id), id)}
+                    className="inline-flex h-10 items-center rounded-full border border-line hover:border-accent-candle/50 px-5 text-sm font-semibold text-foreground ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {pending === id ? "Opening…" : `${plan.name} · $${plan.priceUsd.toFixed(2)}`}
+                  </button>
+                );
+              })}
+              {TOKEN_PACKAGES.map((pkg) => {
+                const id = `np-${pkg.id}`;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    disabled={busy}
+                    data-cursor="primary"
+                    onClick={() => run(() => createTokenPackageOrder(pkg.id), id)}
+                    className="inline-flex h-10 items-center rounded-full border border-line hover:border-accent-candle/50 px-5 text-sm font-semibold text-foreground ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {pending === id
+                      ? "Opening…"
+                      : `${pkg.tokens.toLocaleString("en-US")} tokens · $${pkg.priceUsd.toFixed(2)}`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* ── Manage subscription ── */}
         {availability.portal && (
           <div className="bg-surface border border-line rounded-[var(--radius-card)] p-5 mb-8 max-w-xl">
@@ -196,9 +258,9 @@ export default function BillingClient({
         )}
 
         <p className="type-meta text-muted-faint text-center leading-relaxed">
-          Checkout is hosted by Stripe — card details never touch
-          SweetScene. Tokens are credited automatically the moment
-          payment completes.
+          Card checkout is hosted by Stripe; crypto checkout by
+          NOWPayments — payment details never touch SweetScene. Tokens
+          are credited automatically the moment payment completes.
         </p>
       </div>
     </div>

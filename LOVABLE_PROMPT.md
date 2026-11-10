@@ -39,8 +39,8 @@ owned by hand-written server actions and are explicitly off-limits (see
 - **SFW floor by default.** **NSFW mode gated to `age_cohort='adult'` users
   only — gate is enforced SERVER-SIDE in `AgeCohortGate` + RPCs; the UI toggle
   only narrows what the user sees, it cannot widen beyond their cohort.**
-- Floor 16+ (the To-Do.md still says 13+ in places — that's a bug to reconcile;
-  treat 16+ as the truth)
+- Floor 18+ (older planning docs referenced 13+/16+;
+  treat 18+ as the truth)
 - Stack-built reference sites for vibe:
   - **ourdream.ai** — AI roleplay with character cards (tagged MILF / teen / RPG
     / dominant / group etc.), end-to-end encrypted chat, **"dreamcoins"** token

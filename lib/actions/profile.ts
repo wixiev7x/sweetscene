@@ -158,7 +158,7 @@ export async function submitBirthdate(
     switch (row.reason) {
       case "underage":
         return {
-          error: "You must be at least 16 to use sweetscene.",
+          error: "You must be at least 18 to use sweetscene.",
           reason: "underage",
         };
       case "already_set":

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import { useState, useEffect } from "react";
 import { playSound } from "@/lib/utils/sound";
 import { createClient } from "@/lib/supabase/client";
@@ -81,10 +82,12 @@ export default function ExplorePage() {
         <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <input type="text" placeholder="Search characters..." value={search} onChange={(e) => setSearch(e.target.value)}
             className="flex-1 bg-surface/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:ring-2 focus:ring-neon-magenta/50" />
-          <button onClick={() => { setNsfwEnabled(!nsfwEnabled); playSound("click"); }}
-            className={`px-4 py-3 rounded-xl text-sm border transition-all whitespace-nowrap ${nsfwEnabled ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-surface/50 border-white/10 text-muted"}`}>
-            {nsfwEnabled ? "Adult content enabled" : "Only safe-for-work content is shown"}
-          </button>
+          {!SFW_MODE && (
+            <button onClick={() => { setNsfwEnabled(!nsfwEnabled); playSound("click"); }}
+              className={`px-4 py-3 rounded-xl text-sm border transition-all whitespace-nowrap ${nsfwEnabled ? "bg-crimson-500/20 border-crimson-500/40 text-crimson-400" : "bg-surface/50 border-white/10 text-muted"}`}>
+              {nsfwEnabled ? "Adult content enabled" : "Only safe-for-work content is shown"}
+            </button>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-2 mb-8">

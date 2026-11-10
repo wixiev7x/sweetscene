@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import {
   Avatar,
   Badge,
@@ -264,7 +265,7 @@ export default function StyleGuidePage() {
 
       <Section title="Badge" description="Status pills. Tone carries the meaning; never pick one for colour alone.">
         <Row label="tone">
-          {BADGE_TONES.map((tone) => (
+          {BADGE_TONES.filter((tone) => !SFW_MODE || tone !== "nsfw").map((tone) => (
             <Badge key={tone} tone={tone}>
               {tone}
             </Badge>

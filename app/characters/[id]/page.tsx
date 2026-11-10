@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Spinner } from "@/components/ui";
@@ -149,9 +150,11 @@ export default function CharacterDetailPage() {
           <div className="flex-1 min-w-0 text-center sm:text-left">
             <div className="flex items-center justify-center sm:justify-start gap-3 flex-wrap">
               <h1 className="text-2xl font-medium text-white">{character.name}</h1>
-              <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${character.is_nsfw ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}>
-                {character.is_nsfw ? "NSFW" : "SFW"}
-              </span>
+              {!SFW_MODE && (
+                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${character.is_nsfw ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}>
+                  {character.is_nsfw ? "NSFW" : "SFW"}
+                </span>
+              )}
               {character.visibility !== "private" && (
                 <span className="text-[10px] uppercase px-2 py-0.5 rounded-full bg-brand/10 text-brand-light border border-brand/20">
                   {character.visibility}

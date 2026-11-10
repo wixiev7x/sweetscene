@@ -4,7 +4,7 @@
 > enter a shared scene with 1–3 AI characters (the "third wheel /
 > director"), roleplay until a token pool depletes, then a "Fade to
 > Black" dual-consent reveal decides whether they unlock DMs or part
-> ways. 13+. SFW + NSFW modes (NSFW adult-opt-in only).
+> ways. 18+. SFW + NSFW modes (NSFW adult-opt-in only).
 
 **Stack:** Next.js 16.2.9 (NOT 15 — `proxy.ts` not `middleware.ts`),
 React 19, Tailwind v4, Supabase (Postgres + Realtime + RLS + OAuth),
@@ -508,10 +508,10 @@ billing via Stripe Payment Links + webhook is the current plan.
 ### Phase 9 — Safety & legal final pass (0.5 day)
 **Goal:** Launchable on safety grounds.
 
-- 9.1 `app/legal/terms/page.tsx` — real ToS copy (13+, NSFW opt-in, automated moderation, law-enforcement, no-media-in-DMs, refund policy). Get lawyer to review.
+- 9.1 `app/legal/terms/page.tsx` — real ToS copy (18+, NSFW opt-in, automated moderation, law-enforcement, no-media-in-DMs, refund policy). Get lawyer to review.
 - 9.2 `app/legal/privacy/page.tsx` — real Privacy Policy.
 - 9.3 `app/login/page.tsx` — required ToS checkbox before OAuth. Store `profiles.tos_accepted_at`.
-- 9.4 Birthday picker (13+ floor) replacing the 18+ yes/no gate in `app/page.tsx`. `profiles.age_cohort` column.
+- 9.4 Birthday picker (18+ floor) replacing the 18+ yes/no gate in `app/page.tsx`. `profiles.age_cohort` column.
 - 9.5 NSFW opt-in popup — `setNsfwOptIn(true)` server action, RPC re-validates `age_cohort='adult'`. `profiles.nsfw_opt_in` column.
 - 9.6 "Leave scene" button in chat header — calls `unmatch(matchId, 'instant_disconnect')` with confirmation popup ("tokens will be deducted and rating will be down").
 - 9.7 Fix deferred: M7 (solo JSONB race via RPC), S21 (admin-client auth guard), S22 (realtime subscription rate-limit equivalent).

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { SFW_MODE } from "@/lib/utils/sfw";
 
 const SAFETY_POINTS = [
   { title: "Mutual Consent Reveal", desc: "Reveal is 100% mutual consent. Both users must click Unmask for the blur to drop." },
   { title: "Encrypted Messages", desc: "Your scenes stay in the dark. Messages are encrypted at rest." },
   { title: "Anonymous by Default", desc: "No pictures. No names. No real identities. You stay anonymous until you choose otherwise." },
   { title: "Report & Block", desc: "Report any conversation or block any user at any time from the chat menu." },
-  { title: "Age Confirmation", desc: "Everyone confirms they are 16+ when joining. Adult (18+) content is restricted to accounts confirmed as adults." },
+  { title: "Age Confirmation", desc: SFW_MODE ? "Everyone confirms they are 18+ when joining. All content is moderated and rated safe-for-work." : "Everyone confirms they are 18+ when joining. Adult content is restricted to accounts confirmed as adults." },
 ];
 
 export default function SafetyPage() {

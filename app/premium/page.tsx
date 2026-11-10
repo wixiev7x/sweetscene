@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import { playSound } from "@/lib/utils/sound";
 import { VIP_PLANS } from "@/lib/billing/constants";
 
@@ -45,7 +46,7 @@ export default function PremiumPage() {
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4 mb-10">
-          {BENEFITS.map((b) => (
+          {BENEFITS.filter((b) => !SFW_MODE || b.title !== "NSFW creation").map((b) => (
             <div key={b.title} className="bg-surface border border-line rounded-[var(--radius-card)] p-5">
               <div className="w-9 h-9 rounded-full bg-accent-candle/10 flex items-center justify-center text-accent-candle mb-3" aria-hidden="true">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

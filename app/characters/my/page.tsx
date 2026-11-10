@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import Link from "next/link";
 import { Spinner } from "@/components/ui";
 import { getUserCharacters, deleteCharacter, publishMyCharacter, type CharacterOwned } from "@/lib/actions/characters";
@@ -181,7 +182,7 @@ export default function MyCharactersPage() {
                     )}
                     <h3 className="text-lg font-medium text-white mt-3 truncate">{c.name}</h3>
                     <p className="text-xs text-muted mt-1">
-                      {c.is_nsfw ? "NSFW" : "SFW"} · ◆ {c.connection_score} · v{c.version}
+                      {!SFW_MODE && (<>{c.is_nsfw ? "NSFW" : "SFW"} · </>)}◆ {c.connection_score} · v{c.version}
                     </p>
                     <p className="text-xs text-muted-strong mt-3 line-clamp-2">{c.user_prompt}</p>
                   </Link>

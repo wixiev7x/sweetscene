@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import Link from "next/link";
 import { Spinner } from "@/components/ui";
 import { getPublicCharacters } from "@/lib/actions/characters";
@@ -119,7 +120,9 @@ export default function CharactersPage() {
       result = result.filter((c) => c.category === selectedCategory);
     }
 
-    if (nsfwFilter === "sfw") {
+    if (SFW_MODE) {
+      result = result.filter((c) => !c.is_nsfw);
+    } else if (nsfwFilter === "sfw") {
       result = result.filter((c) => !c.is_nsfw);
     } else if (nsfwFilter === "nsfw") {
       result = result.filter((c) => c.is_nsfw);
@@ -345,7 +348,7 @@ export default function CharactersPage() {
 
           {/* NSFW toggle */}
           <div className="flex border border-white/10 rounded-lg overflow-hidden ml-auto">
-            {(["all", "sfw", "nsfw"] as const).map((opt) => (
+            {((SFW_MODE ? (["all", "sfw"] as const) : (["all", "sfw", "nsfw"] as const))).map((opt) => (
               <button
                 key={opt}
                 type="button"
@@ -425,7 +428,7 @@ export default function CharactersPage() {
                   className="relative bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-brand/30 hover:bg-white/[0.07] transition-all duration-300 group text-left w-full block"
                 >
                   {/* NSFW badge */}
-                  {char.is_nsfw ? (
+                  {!SFW_MODE && (char.is_nsfw ? (
                     <span className="absolute top-3 right-3 text-[10px] font-bold uppercase bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full">
                       NSFW
                     </span>
@@ -433,7 +436,7 @@ export default function CharactersPage() {
                     <span className="absolute top-3 right-3 text-[10px] font-bold uppercase bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full">
                       SFW
                     </span>
-                  )}
+                  ))}
 
                   {/* avatar */}
                   {char.avatar_url ? (

@@ -12,12 +12,12 @@ reintroduce them.
 
 ## What this app is
 
-A 16+ AI roleplay matchmaking platform. Two people are matched into a scene
+An 18+ AI roleplay matchmaking platform. Two people are matched into a scene
 hosted by an AI character. Users create characters, chat 1:1 with them, DM
 each other after a mutual reveal, and buy tokens to spend on turns.
 
 Content has two ratings. **SFW is the floor and the default.** NSFW is gated
-to accounts verified as adult (`age_cohort = 'adult'`), never to the 16+
+to accounts verified as adult (`age_cohort = 'adult'`), never to the 18+
 platform minimum. That gate is not a styling concern and must not be moved
 into the UI layer.
 

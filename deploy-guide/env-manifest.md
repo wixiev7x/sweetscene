@@ -42,15 +42,15 @@ Legend for **Scope** column:
 
 ## 4. Payments
 
-### 4a. Legacy (REMOVE in Phase 1 — user directive 2026-11-06)
+### 4a. Legacy — **status update 2026-11-11: NOWPayments RE-ADDED as the crypto rail beside Stripe (user directive).** Payram stays REMOVED.
 
 | Var | MAIN today | Action |
 |---|---|---|
-| `PAYRAM_API_BASE` | ✅ | Phase 1: delete from Vercel + code |
-| `PAYRAM_API_KEY` | ✅ | Phase 1: delete + `[NEEDS ME]` revoke at gateway |
-| `NOWPAYMENTS_API_BASE` | ✅ | Phase 1: delete (also set in `.env.local`) |
-| `NOWPAYMENTS_API_KEY` | ✅ | Phase 1: delete + revoke in NOWPayments dashboard + **check `platform_settings.nowpayments_api_key` row** |
-| `NOWPAYMENTS_IPN_SECRET` | ✅ | Phase 1: delete + revoke + **check `platform_settings.nowpayments_ipn_secret` row** + delete IPN webhook endpoint |
+| `PAYRAM_API_BASE` | ✅ | Phase 1: delete from Vercel + code — REMOVED, stays removed |
+| `PAYRAM_API_KEY` | ✅ | Phase 1: delete + `[NEEDS ME]` revoke at gateway — REMOVED, stays removed |
+| `NOWPAYMENTS_API_BASE` | ✅ | ~~Phase 1: delete~~ **RE-ADDED 2026-11-11** — crypto rail env (set on DESIGN; keep on MAIN until Phase 6 review) |
+| `NOWPAYMENTS_API_KEY` | ✅ | ~~Phase 1: delete + revoke~~ **RE-ADDED 2026-11-11** — dashboard-manageable (`platform_settings.nowpayments_api_key` row also valid again); values from the existing account, never printed |
+| `NOWPAYMENTS_IPN_SECRET` | ✅ | ~~Phase 1: delete + revoke~~ **RE-ADDED 2026-11-11** — verifies `/api/nowpayments/webhook` IPN signatures; dashboard-manageable |
 
 ### 4b. Stripe (ADD in Phase 2)
 
@@ -128,3 +128,13 @@ DB row wins over env var, 30 s cache, rotated from the admin dashboard. **Phase 
    wixiev7x/sweetscene): `vercel link --project sweetscene-design` → `vercel deploy --prod`;
    `.vercel/` is gitignored.
 3. Do NOT copy `SUPABASE_SERVICE_ROLE_KEY` or any MAIN secret into any client-visible surface; after build, grep the client bundle for every secret (Phase 3 verification step).
+
+## §12 SFW repositioning flag (added 2026-11-10, decision A)
+
+`NEXT_PUBLIC_SFW_MODE` — set to `1` on DESIGN (and later MAIN) for as long as
+Stripe is the payment processor. Effect: NSFW creation rejected server-side
+(`lib/actions/characters.ts`), NSFW characters excluded from public browse,
+NSFW toggles/badges/adult copy removed from all pages (see `lib/utils/sfw.ts`
+for the full list of surfaces). Historical NSFW rows in the DB are untouched —
+they are simply not listed. This is a real product state, not a review-time
+trick; flip only when switching away from Stripe (docs/RESTORE-CRYPTO.md).

@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import Link from "next/link";
 import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
   title: "Terms of Service",
   description:
-    "The rules of the scene — age requirements, anonymity, NSFW policy, moderation, payments, and refunds.",
+    SFW_MODE
+      ? "The rules of the scene — age requirements, anonymity, content standards, moderation, payments, and refunds."
+      : "The rules of the scene — age requirements, anonymity, NSFW policy, moderation, payments, and refunds.",
   path: "/terms",
 });
 
@@ -21,11 +24,21 @@ export default function TermsPage() {
         <section className="space-y-3">
           <h2 className="text-xl text-white font-medium">1. Age Requirement</h2>
           <p className="type-body">
-            You must be at least <strong>16 years of age</strong> to use SweetScene. By creating an
-            account, you confirm that you meet this requirement. Users under 18 are classified as
-            minors and are restricted from accessing NSFW (Not Safe For Work) content. NSFW
-            content requires explicit opt-in and is only accessible to accounts verified as adults
-            (18+).
+            {SFW_MODE ? (
+              <>
+                You must be at least <strong>18 years of age</strong> to use SweetScene. By
+                creating an account, you confirm that you meet this requirement. All content on
+                the platform is moderated and rated safe-for-work.
+              </>
+            ) : (
+              <>
+                You must be at least <strong>18 years of age</strong> to use SweetScene. By creating an
+                account, you confirm that you meet this requirement. Users under 18 are classified as
+                minors and are restricted from accessing NSFW (Not Safe For Work) content. NSFW
+                content requires explicit opt-in and is only accessible to accounts verified as adults
+                (18+).
+              </>
+            )}
           </p>
         </section>
 
@@ -40,16 +53,32 @@ export default function TermsPage() {
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-xl text-white font-medium">3. NSFW Content &amp; Opt-In</h2>
-          <p className="type-body">
-            The platform includes user-generated and AI-generated content that may be sexual or
-            explicit in nature. NSFW content is gated behind an explicit opt-in mechanism and is
-            only available to accounts whose age has been verified as 18+. By opting in, you
-            acknowledge that you are of legal age in your jurisdiction to access adult content.
-          </p>
-          <p className="type-body">
-            You may revoke your NSFW opt-in at any time from your profile settings.
-          </p>
+          {SFW_MODE ? (
+            <>
+              <h2 className="text-xl text-white font-medium">3. Content Standards</h2>
+              <p className="type-body">
+                The platform offers moderated, safe-for-work roleplay content only. All
+                user-generated and AI-generated content is subject to automated and human
+                moderation, and content that violates our standards is removed.
+              </p>
+              <p className="type-body">
+                You can report any content that violates these standards from any conversation.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl text-white font-medium">3. NSFW Content &amp; Opt-In</h2>
+              <p className="type-body">
+                The platform includes user-generated and AI-generated content that may be sexual or
+                explicit in nature. NSFW content is gated behind an explicit opt-in mechanism and is
+                only available to accounts whose age has been verified as 18+. By opting in, you
+                acknowledge that you are of legal age in your jurisdiction to access adult content.
+              </p>
+              <p className="type-body">
+                You may revoke your NSFW opt-in at any time from your profile settings.
+              </p>
+            </>
+          )}
         </section>
 
         <section className="space-y-3">

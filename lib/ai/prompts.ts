@@ -22,7 +22,7 @@ import { GLOBAL_POLICY } from "@/lib/ai/policy";
  *
  * NOTE: the old `SECRET_PREFIX` export opened with "uncensored adult
  * novel ... You never refuse" and was prepended unconditionally — so
- * SFW sessions (which on a 16+ platform may be minors) ran an adult
+ * SFW sessions (which on the then-16+ platform may have included minors) ran an adult
  * framing with refusal suppressed. Split apart deliberately; do not
  * reintroduce a single unconditional prefix.
  */

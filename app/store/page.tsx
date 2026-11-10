@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { playSound } from "@/lib/utils/sound";
@@ -199,7 +200,7 @@ export default function StorePage() {
                   <span className="type-meta text-muted"> / {plan.period}</span>
                 </p>
                 <div className="space-y-2 my-5">
-                  {plan.features.map((f) => (
+                  {plan.features.filter((f) => !SFW_MODE || f !== "NSFW character creation (18+)").map((f) => (
                     <p key={f} className="flex items-start gap-2 type-meta text-muted-strong">
                       <span className="text-success flex-shrink-0" aria-hidden="true">&#x2713;</span> {f}
                     </p>
@@ -303,7 +304,7 @@ export default function StorePage() {
           Tokens power AI responses in your scenes. Each match draws from a shared pool.
         </p>
         <p className="type-eyebrow text-muted-faint text-center">
-          16+ platform to join
+          18+ platform to join
         </p>
       </div>
     </div>

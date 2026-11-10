@@ -684,7 +684,7 @@ BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
 
   IF NOT FOUND THEN RETURN; END IF;
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF auth.uid() IS DISTINCT FROM m_row.user_a AND auth.uid() IS DISTINCT FROM m_row.user_b THEN RETURN; END IF;
   IF m_row.status <> 'active' THEN RETURN; END IF;
   IF m_row.ai_turn_due = true THEN RETURN; END IF;
 
@@ -721,7 +721,7 @@ BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
 
   IF NOT FOUND THEN RETURN; END IF;
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF auth.uid() IS DISTINCT FROM m_row.user_a AND auth.uid() IS DISTINCT FROM m_row.user_b THEN RETURN; END IF;
   IF m_row.status <> 'active' THEN RETURN; END IF;
   IF m_row.ai_turn_due = false THEN RETURN; END IF;
 
@@ -806,7 +806,7 @@ BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
 
   IF NOT FOUND THEN RETURN; END IF;
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF auth.uid() IS DISTINCT FROM m_row.user_a AND auth.uid() IS DISTINCT FROM m_row.user_b THEN RETURN; END IF;
   IF m_row.status <> 'active' THEN RETURN; END IF;
   IF m_row.ai_turn_due = true THEN RETURN; END IF;
 
@@ -891,7 +891,7 @@ BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
 
   IF NOT FOUND THEN RETURN; END IF;
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF auth.uid() IS DISTINCT FROM m_row.user_a AND auth.uid() IS DISTINCT FROM m_row.user_b THEN RETURN; END IF;
   IF m_row.status <> 'active' THEN RETURN; END IF;
   IF m_row.ai_turn_due = true THEN RETURN; END IF;
 
@@ -914,7 +914,7 @@ BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
 
   IF NOT FOUND THEN RETURN; END IF;
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF auth.uid() IS DISTINCT FROM m_row.user_a AND auth.uid() IS DISTINCT FROM m_row.user_b THEN RETURN; END IF;
   IF m_row.status <> 'active' THEN RETURN; END IF;
   IF m_row.ai_turn_due = true THEN RETURN; END IF;
   IF m_row.last_human_message_at IS NULL THEN RETURN; END IF;
@@ -942,7 +942,7 @@ BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id;
 
   IF NOT FOUND THEN RETURN; END IF;
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF auth.uid() IS DISTINCT FROM m_row.user_a AND auth.uid() IS DISTINCT FROM m_row.user_b THEN RETURN; END IF;
 
   IF p_reason IS NULL OR length(trim(p_reason)) = 0 THEN RETURN; END IF;
 
@@ -1325,7 +1325,7 @@ BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
   IF NOT FOUND THEN RETURN; END IF;
 
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF auth.uid() IS DISTINCT FROM m_row.user_a AND auth.uid() IS DISTINCT FROM m_row.user_b THEN RETURN; END IF;
   IF m_row.status NOT IN ('ended', 'revealed') THEN RETURN; END IF;
 
   -- Already rated?
@@ -1776,7 +1776,10 @@ CREATE TABLE IF NOT EXISTS payments (
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN ('vip', 'tokens')),
   status TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'confirmed', 'failed', 'expired')),
+    -- 'refunded' is written by the NOWPayments webhook when a payment is
+    -- refunded after granting (2026-11-11-01 migration extends the CHECK
+    -- on databases where the original constraint already exists).
+    CHECK (status IN ('pending', 'confirmed', 'failed', 'expired', 'refunded')),
   amount NUMERIC(10, 2) NOT NULL,
   currency TEXT NOT NULL DEFAULT 'usd',
   token_quantity INT,
@@ -2749,7 +2752,7 @@ $$;
 REVOKE EXECUTE ON FUNCTION derived_age_cohort(UUID) FROM anon, authenticated;
 
 -- ── set_own_age_cohort: authenticated, write-once birthdate capture ──
--- Computes age server-side. Rejects under-16 outright (platform floor)
+-- Computes age server-side. Rejects under-18 outright (platform floor)
 -- and refuses to overwrite an existing birthdate, so a user who
 -- truthfully entered a minor DOB cannot resubmit as an adult.
 CREATE OR REPLACE FUNCTION set_own_age_cohort(p_birthdate DATE)
@@ -2786,7 +2789,7 @@ BEGIN
 
   v_age := date_part('year', age(CURRENT_DATE, p_birthdate))::INT;
 
-  IF v_age < 16 THEN
+  IF v_age < 18 THEN
     RETURN QUERY SELECT false, NULL::TEXT, 'underage'::TEXT;
     RETURN;
   END IF;
@@ -3230,7 +3233,7 @@ ALTER TABLE payments ADD CONSTRAINT payments_user_id_fkey
 -- ════════════════════════════════════════════════════════════════════
 -- Phase 15 — Cohort-segregated matchmaking
 --
--- The platform floor is 16+ and NSFW is gated separately to
+-- The platform floor is 18+ and NSFW is gated separately to
 -- age_cohort = 'adult'. That gate governed what a user could SEE —
 -- NSFW characters, the NSFW toggle — but not who they could be PAIRED
 -- WITH. The queue query in lib/actions/matchmaking.ts filtered on
@@ -3358,7 +3361,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- the publishable anon key. That included add_tokens, credit_tokens
 -- and grant_vip (mint balance and VIP for any user id) and
 -- set_age_cohort (promote any account to 'adult', which is the single
--- gate standing between the 16+ floor and NSFW content).
+-- gate standing between the 18+ floor and NSFW content).
 --
 -- Keep this block at the end of the file: it revokes across the whole
 -- schema, so anything created after it stays open.
@@ -4338,7 +4341,7 @@ BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id;
 
   IF NOT FOUND THEN RETURN; END IF;
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF auth.uid() IS DISTINCT FROM m_row.user_a AND auth.uid() IS DISTINCT FROM m_row.user_b THEN RETURN; END IF;
   IF p_reason IS NULL OR length(trim(p_reason)) = 0 THEN RETURN; END IF;
 
   v_target := CASE WHEN m_row.user_a = auth.uid() THEN m_row.user_b ELSE m_row.user_a END;
@@ -4957,7 +4960,7 @@ BEGIN
   SELECT * INTO m_row FROM matches WHERE id = p_match_id FOR UPDATE;
 
   IF NOT FOUND THEN RETURN; END IF;
-  IF m_row.user_a <> auth.uid() AND m_row.user_b <> auth.uid() THEN RETURN; END IF;
+  IF auth.uid() IS DISTINCT FROM m_row.user_a AND auth.uid() IS DISTINCT FROM m_row.user_b THEN RETURN; END IF;
   IF m_row.status <> 'active' THEN RETURN; END IF;
   IF m_row.ai_turn_due = true THEN RETURN; END IF;
   -- Phase 17: hard-banned users cannot send, even calling the RPC

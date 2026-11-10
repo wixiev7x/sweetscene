@@ -1,6 +1,7 @@
 "use server";
 
 import "server-only";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/ratelimit";
 import { wrapSystemPrompt } from "@/lib/ai/prompts";
@@ -337,6 +338,12 @@ export async function createCharacter(
      Also fails closed on age: creating NSFW content requires an
      adult-confirmed account (+ passed ID verification once a
      provider is configured). */
+  /* SFW repositioning (decision A, 2026-11-10): while NEXT_PUBLIC_SFW_MODE=1
+     the platform genuinely does not offer NSFW — reject here so a hidden
+     client toggle cannot be bypassed by calling the action directly. */
+  if (SFW_MODE && params.is_nsfw) {
+    return { error: "NSFW content is currently disabled on this platform." };
+  }
   if (params.is_nsfw) {
     const admin = createAdminClient();
     const { data: profileRow } = (await admin
@@ -520,6 +527,9 @@ export async function updateCharacter(
   /* E6: VIP check for NSFW toggle on update. If the patch flips
      is_nsfw to true and the character wasn't already NSFW, the
      caller must be VIP — same gate as createCharacter. */
+  if (SFW_MODE && patch.is_nsfw === true) {
+    return { error: "NSFW content is currently disabled on this platform." };
+  }
   if (patch.is_nsfw === true && !(existing.is_nsfw as boolean)) {
     const admin = createAdminClient();
     const { data: profileRow } = (await admin
@@ -829,8 +839,8 @@ export async function getPublicCharacters(
     if (options?.category) {
       query = query.eq("category", options.category);
     }
-    if (options?.nsfw === "sfw") query = query.eq("is_nsfw", false);
-    if (options?.nsfw === "nsfw") query = query.eq("is_nsfw", true);
+    if (SFW_MODE || options?.nsfw === "sfw") query = query.eq("is_nsfw", false);
+    if (!SFW_MODE && options?.nsfw === "nsfw") query = query.eq("is_nsfw", true);
 
     if (options?.sort === "popular") {
       query = query.order("connection_score", { ascending: false });

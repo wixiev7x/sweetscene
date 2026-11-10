@@ -51,7 +51,7 @@ already correct: the user's own data cascades, and the other
 participant's match and message history is `SET NULL` so it survives.
 
 **Block 3153 closes an age-mixing hole and is the most urgent of the
-seven.** The platform floor is 16+ and NSFW is gated to
+seven.** The platform floor is 18+ and NSFW is gated to
 `age_cohort = 'adult'`, but that gate only ever governed what a user
 could *see*. Nothing governed who they could be *paired with*: the queue
 query filtered on tier and scenario tags, and `claim_match` checked only
@@ -259,7 +259,7 @@ launch.
 redeploy, and `MESSAGE_ENCRYPTION_KEY` cannot be rotated at all without
 losing history.
 
-**Age policy.** The platform floor is 16+. NSFW content is gated
+**Age policy.** The platform floor is 18+. NSFW content is gated
 separately to `age_cohort = 'adult'` (18+) and is enforced server-side.
 The SFW/NSFW toggle only ever narrows what a user sees; it cannot widen
 access beyond their cohort. Since block 3153, matchmaking is also
@@ -305,5 +305,5 @@ conversation on the platform and the floor has already run. Set
 `MODERATION_FAIL_CLOSED=true` to take the downtime instead.
 
 **Before accepting public signups**, configure the classifier and apply
-block 3153. Those two together are what make the 16+ floor real rather
+block 3153. Those two together are what make the 18+ floor real rather
 than stated.
