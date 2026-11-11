@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "sweetscene — anonymous AI roleplay dating",
+    name: "sweetscene — SFW AI roleplay",
     short_name: "sweetscene",
     description:
-      "Match anonymously, roleplay inside a shared scene with an AI director, and decide if the fog lifts. 16+.",
+      "Match anonymously, roleplay inside a shared scene with an AI director, and decide if the fog lifts. 18+.",
     start_url: "/",
     display: "standalone",
     background_color: "#150f1d",

@@ -249,8 +249,12 @@ export default function Home() {
     return () => document.removeEventListener("keydown", onKey);
   }, [showNsfwConfirm]);
 
-  const pills = ["All", "SFW Only", ...(nsfwBlocked ? [] : (["NSFW Only"] as string[]))];
-  const categories = nsfwMode && !nsfwBlocked ? [...FILTER_CATEGORIES, ...NSFW_CATEGORIES] : FILTER_CATEGORIES;
+  /* TEMPORARY hide (until payment-gateway approval): NSFW pill and
+   * NSFW categories removed from the front page. Revert this block to
+   * restore. Fresh visitors can no longer enable nsfwMode, so NSFW
+   * cards, the 18+ badge and the confirm sheet are all unreachable. */
+  const pills = ["All", "SFW Only"];
+  const categories = FILTER_CATEGORIES;
 
   return (
     <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 pt-12 md:pt-14">
@@ -521,7 +525,7 @@ export default function Home() {
 
       <footer className="mx-auto mt-16 max-w-6xl border-t border-line pt-6 pb-4">
         <p className="type-eyebrow text-muted-faint">
-          16+ platform to join
+          18+ platform to join
         </p>
         <div className="mt-2 flex items-center justify-between">
           <p className="type-meta text-muted">&copy; 2026 SweetScene</p>

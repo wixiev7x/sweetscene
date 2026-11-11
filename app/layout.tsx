@@ -30,7 +30,7 @@ export const metadata: Metadata = {
     template: "%s · SweetScene",
   },
   description:
-    "Anonymous matchmaking. Match first. Build connection. Reveal only when both sides agree. 16+ platform to join.",
+    "SFW AI roleplay matchmaking. Match first. Build connection. Reveal only when both sides agree. Moderated 18+ platform.",
   icons: {
     icon: [
       { url: "/favicon.ico", type: "image/x-icon" },
