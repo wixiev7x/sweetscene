@@ -513,7 +513,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
             <p className="type-meta text-muted-faint leading-relaxed">
               SweetScene &copy; 2026<br />
               Anonymous AI Matchmaking<br />
-              <span className="type-eyebrow text-muted-faint">16+ platform to join</span>
+              <span className="type-eyebrow text-muted-faint">18+ platform to join</span>
             </p>
           </div>
         </div>
