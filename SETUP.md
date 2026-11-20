@@ -76,8 +76,8 @@ that RPC with any match id it can name.
    region in the same country as the server that will run the app** — a
    page render makes several sequential queries, so app↔database distance
    multiplies, while visitor↔app distance is one round trip that
-   Cloudflare's edge largely absorbs. Self-hosting from India means
-   **South Asia (Mumbai)**. The region cannot be changed later.
+   Cloudflare's edge largely absorbs. Match the Vercel function region
+   (`vercel.json` → `regions`). The region cannot be changed later.
 2. Save the database password somewhere durable. Supabase shows it once.
 3. **SQL Editor** → paste `lib/supabase/schema.sql` and run it. On a
    fresh project run the whole file top to bottom; on an existing one
