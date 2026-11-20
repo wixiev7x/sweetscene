@@ -1,10 +1,13 @@
 "use server";
 
+import { requireAdmin } from "@/lib/auth";
+
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AdminUser, BanRecord } from "@/lib/types";
 
 export async function searchUsers(query: string): Promise<AdminUser[]> {
+  await requireAdmin();
   const supabase = await createClient();
 
   /* profiles has no "username" column — the app-facing handle is
@@ -29,6 +32,7 @@ export async function searchUsers(query: string): Promise<AdminUser[]> {
 export async function searchUsersByEmail(
   email: string
 ): Promise<AdminUser[]> {
+  await requireAdmin();
   const adminClient = createAdminClient();
 
   const {
@@ -69,6 +73,7 @@ export async function banUser(
   reason: string,
   expiresAt: string | null
 ): Promise<{ error?: string }> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("admin_ban_user", {
@@ -85,6 +90,7 @@ export async function unbanUser(
   userId: string,
   reason: string
 ): Promise<{ error?: string }> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("admin_unban_user", {
@@ -97,6 +103,7 @@ export async function unbanUser(
 }
 
 export async function getBanHistory(userId: string): Promise<BanRecord[]> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { data } = await supabase.rpc("list_ban_history", {

@@ -1,9 +1,12 @@
 "use server";
 
+import { requireSuperAdmin } from "@/lib/auth";
+
 import { createClient } from "@/lib/supabase/server";
 import type { AppSetting } from "@/lib/types";
 
 export async function getSettings(): Promise<AppSetting[]> {
+  await requireSuperAdmin();
   const supabase = await createClient();
 
   const { data } = await supabase
@@ -21,6 +24,7 @@ export async function setSetting(
   isSecret: boolean,
   category: string
 ): Promise<{ error?: string }> {
+  await requireSuperAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("admin_set_setting", {
@@ -38,6 +42,7 @@ export async function setSetting(
 export async function getSecretSetting(
   key: string
 ): Promise<{ value?: string; error?: string }> {
+  await requireSuperAdmin();
   const supabase = await createClient();
 
   const { data, error } = await supabase.rpc("get_secret_setting", {

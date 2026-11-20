@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/auth";
+
 import { createClient } from "@/lib/supabase/server";
 import type { ReportRecord } from "@/lib/types";
 
@@ -8,6 +10,7 @@ export async function listReports(
   page: number = 0,
   limit: number = 50
 ): Promise<ReportRecord[]> {
+  await requireAdmin();
   const supabase = await createClient();
 
   let query = supabase
@@ -30,6 +33,7 @@ export async function setReportStatus(
   reportId: string,
   status: string
 ): Promise<{ error?: string }> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.rpc("admin_set_report_status", {
@@ -46,6 +50,7 @@ export async function createReport(
   targetId: string,
   reason: string
 ): Promise<{ error?: string }> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { error } = await supabase.from("reports").insert({

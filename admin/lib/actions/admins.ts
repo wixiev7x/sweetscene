@@ -1,10 +1,13 @@
 "use server";
 
+import { requireSuperAdmin } from "@/lib/auth";
+
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { AdminUser } from "@/lib/types";
 
 export async function listAdmins(): Promise<AdminUser[]> {
+  await requireSuperAdmin();
   const supabase = await createClient();
 
   const { data } = await supabase
@@ -20,6 +23,7 @@ export async function inviteModerator(
   email: string,
   password: string
 ): Promise<{ error?: string; userId?: string }> {
+  await requireSuperAdmin();
   const adminClient = createAdminClient();
 
   const {
@@ -47,6 +51,7 @@ export async function inviteModerator(
 export async function demoteModerator(
   userId: string
 ): Promise<{ error?: string }> {
+  await requireSuperAdmin();
   const supabase = await createClient();
 
   const { data: role } = await supabase.rpc("get_my_role");

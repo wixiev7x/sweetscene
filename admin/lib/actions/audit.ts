@@ -1,5 +1,7 @@
 "use server";
 
+import { requireAdmin } from "@/lib/auth";
+
 import { createClient } from "@/lib/supabase/server";
 import type { AuditLogRecord } from "@/lib/types";
 
@@ -8,6 +10,7 @@ export async function listAuditLogs(
   page: number = 0,
   limit: number = 50
 ): Promise<AuditLogRecord[]> {
+  await requireAdmin();
   const supabase = await createClient();
 
   const { data } = await supabase.rpc("list_audit_logs", {
