@@ -114,12 +114,12 @@ function withSecurityHeaders(res: NextResponse, req: NextRequest): NextResponse 
   const supabaseWs = supabaseUrl ? ` wss://${supabaseUrl.replace(/^https?:\/\//, "")}` : "";
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
-    `img-src 'self' data: blob: ${supabaseUrl} https://image.pollinations.ai https://images.unsplash.com`,
-    `connect-src 'self'${supabaseUrl ? ` ${supabaseUrl}` : ""}${supabaseWs} https://challenges.cloudflare.com`,
+    "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://cdn.paddle.com",
+    `img-src 'self' data: blob: ${supabaseUrl} https://image.pollinations.ai https://images.unsplash.com https://cdn.paddle.com`,
+    `connect-src 'self'${supabaseUrl ? ` ${supabaseUrl}` : ""}${supabaseWs} https://challenges.cloudflare.com https://*.paddle.com`,
     "style-src 'self' 'unsafe-inline'",
     "font-src 'self'",
-    "frame-src https://challenges.cloudflare.com",
+    "frame-src https://challenges.cloudflare.com https://buy.paddle.com https://sandbox-buy.paddle.com",
     "worker-src 'self' blob:",
     "object-src 'none'",
     "frame-ancestors 'none'",

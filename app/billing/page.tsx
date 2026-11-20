@@ -1,9 +1,9 @@
-import { getStripeBillingAvailability } from "@/lib/stripe/links";
+import { getPaddleBillingAvailability } from "@/lib/paddle/config";
 import { isNowPaymentsConfigured } from "@/lib/nowpayments/server";
 import BillingClient from "./billing-client";
 
 /* ════════════════════════════════════════════════════════════════════
- * /billing — checkout (Phase 2: Stripe Payment Links; crypto rail
+ * /billing — checkout (Paddle Billing; crypto rail
  * re-added 2026-11-11 via NOWPayments).
  *
  * Server component: reads Payment Link + NOWPayments availability from
@@ -14,12 +14,14 @@ import BillingClient from "./billing-client";
  * where a rail isn't configured (see SETUP.md).
  * ════════════════════════════════════════════════════════════════════ */
 
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "Billing — SweetScene",
 };
 
 export default async function BillingPage() {
-  const availability = getStripeBillingAvailability();
+  const availability = getPaddleBillingAvailability();
   const crypto = await isNowPaymentsConfigured();
   return <BillingClient availability={availability} crypto={crypto} />;
 }

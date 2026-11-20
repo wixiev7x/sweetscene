@@ -6,7 +6,7 @@ import { logger } from "@/lib/utils/logger";
 /* ════════════════════════════════════════════════════════════════════
  * Subscription renewal reminders — daily cron (vercel.json).
  *
- * Stripe subscriptions renew automatically on the card, but the
+ * Paddle subscriptions renew automatically on the card, but the
  * renewal can fail (expired card, dunning) — so the app still nudges
  * the member a few days before their VIP period ends. If the charge
  * succeeded, vip_expires_at has already been extended by then and no

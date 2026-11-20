@@ -208,6 +208,7 @@ async function nsfwGateError(
   if (!isNsfw) return null;
   const verdict = await isNsfwAccessAllowed(userId);
   if (verdict.allowed) return null;
+  if (verdict.reason === "disabled") return "This scene is not available.";
   if (verdict.reason === "minor") {
     return "This scene is 18+ — your account isn't confirmed as an adult.";
   }

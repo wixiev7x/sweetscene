@@ -4,21 +4,21 @@ import { useState, useTransition } from "react";
 import { playSound } from "@/lib/utils/sound";
 import { TOKEN_PACKAGES, VIP_PLANS } from "@/lib/billing/constants";
 import {
-  createStripeVipOrder,
-  createStripeTokenPackageOrder,
-  openStripeCustomerPortal,
-} from "@/lib/actions/stripe-billing";
+  createPaddleVipOrder,
+  createPaddleTokenPackageOrder,
+  openPaddleCustomerPortal,
+} from "@/lib/actions/paddle-billing";
 import {
   createVipPlanOrder,
   createTokenPackageOrder,
 } from "@/lib/actions/billing";
 
-/* Card checkout via Stripe Payment Links, plus an optional crypto rail
+/* Card checkout via Paddle (merchant of record), plus an optional crypto rail
  * via NOWPayments (rendered only when the server confirms it is
  * configured end-to-end). The client only sends product ids — prices
  * render from lib/billing/constants and the server re-derives them
  * before writing the order; the redirect URL carries our order
- * reference (?client_reference_id=… / NOWPayments order_id) which the
+ * reference (Paddle custom_data.order_ref / NOWPayments order_id) which the
  * webhooks match back to the payments row before granting. */
 
 type Availability = {
@@ -86,9 +86,8 @@ export default function BillingClient({
           Pay by <span className="gradient-text">card.</span>
         </h1>
         <p className="type-body text-muted mb-10">
-          Card, Apple Pay or Google Pay via Stripe — checkout opens on
-          Stripe&apos;s page, and your purchase lands the moment it
-          completes.
+          Card, Apple Pay, Google Pay or PayPal — secure checkout by
+          Paddle, and your purchase lands the moment it completes.
         </p>
 
         {error && (
@@ -133,7 +132,7 @@ export default function BillingClient({
                     type="button"
                     disabled={busy}
                     data-cursor="primary"
-                    onClick={() => run(() => createStripeVipOrder(id), id)}
+                    onClick={() => run(() => createPaddleVipOrder(id), id)}
                     className="inline-flex h-11 items-center rounded-full bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light px-8 text-sm font-semibold text-accent-foreground ios-press shadow-lg shadow-brand/20 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {pending === id ? "Opening checkout…" : "Subscribe →"}
@@ -172,7 +171,7 @@ export default function BillingClient({
                     type="button"
                     disabled={busy}
                     data-cursor="primary"
-                    onClick={() => run(() => createStripeTokenPackageOrder(id), id)}
+                    onClick={() => run(() => createPaddleTokenPackageOrder(id), id)}
                     className="inline-flex h-10 items-center rounded-full border border-line hover:border-accent-candle/50 px-6 text-sm font-semibold text-foreground ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {pending === id ? "Opening…" : "Buy pack"}
@@ -241,14 +240,14 @@ export default function BillingClient({
                 </h2>
                 <p className="type-meta text-muted leading-relaxed">
                   Update your card, download invoices, or cancel — opens
-                  Stripe&apos;s secure portal.
+                  Paddle&apos;s secure portal.
                 </p>
               </div>
               <button
                 type="button"
                 disabled={busy}
                 data-cursor="primary"
-                onClick={() => run(() => openStripeCustomerPortal(), "portal")}
+                onClick={() => run(() => openPaddleCustomerPortal(), "portal")}
                 className="inline-flex h-11 items-center rounded-full border border-line hover:border-accent-candle/50 px-6 text-sm font-semibold text-foreground ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {pending === "portal" ? "Opening…" : "Manage →"}
@@ -258,7 +257,7 @@ export default function BillingClient({
         )}
 
         <p className="type-meta text-muted-faint text-center leading-relaxed">
-          Card checkout is hosted by Stripe; crypto checkout by
+          Card checkout is handled by Paddle, our reseller and merchant of record; crypto checkout by
           NOWPayments — payment details never touch SweetScene. Tokens
           are credited automatically the moment payment completes.
         </p>

@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { isVerificationConfigured } from "./config";
+import { SFW_MODE } from "@/lib/utils/sfw";
 
 /* ════════════════════════════════════════════════════════════════════
  * Age/ID verification — server-side gate.
@@ -66,8 +67,9 @@ export async function getVerificationState(
  */
 export async function isNsfwAccessAllowed(userId: string): Promise<{
   allowed: boolean;
-  reason?: "minor" | "unverified" | "unavailable";
+  reason?: "minor" | "unverified" | "unavailable" | "disabled";
 }> {
+  if (SFW_MODE) return { allowed: false, reason: "disabled" };
   try {
     const admin = createAdminClient();
     const { data, error } = await admin

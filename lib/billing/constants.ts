@@ -84,7 +84,7 @@ export function getVipPlan(id: string) {
  * to the one-time pass.
  */
 export function vipPlanFromOrderRef(orderRef: string) {
-  const ref = orderRef.replace(/^(stripe-|pr-)/, "");
+  const ref = orderRef.replace(/^(pdl-|stripe-|pr-)/, "");
   const plan = VIP_PLANS.find((p) => ref.startsWith(`${p.id}-`));
   return plan ?? VIP_PLANS.find((p) => p.id === "vip")!;
 }

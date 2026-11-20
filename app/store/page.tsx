@@ -61,7 +61,7 @@ const FAQS = [
   },
   {
     q: "How do I pay?",
-    a: "Card, Apple Pay, Google Pay (via Stripe). Your balance updates the moment the payment confirms.",
+    a: "Card, Apple Pay, Google Pay or PayPal (via Paddle). Your balance updates the moment the payment confirms.",
   },
 ];
 

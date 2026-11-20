@@ -2,6 +2,7 @@ import "server-only";
 import { containsBlockedTerm } from "@/lib/utils/safety";
 import { getSetting, SETTING_KEYS } from "@/lib/config/settings";
 import { logger } from "@/lib/utils/logger";
+import { effectiveNsfw } from "@/lib/utils/sfw";
 
 /* ════════════════════════════════════════════════════════════════════
  * Content moderation — the semantic layer above the keyword floor.
@@ -222,7 +223,8 @@ export async function moderateText(
   text: string,
   options: ModerationOptions = {}
 ): Promise<ModerationVerdict> {
-  const { nsfwAllowed = false, surface = "unknown" } = options;
+  const { surface = "unknown" } = options;
+  const nsfwAllowed = effectiveNsfw(options.nsfwAllowed);
 
   if (containsBlockedTerm(text)) {
     return { allowed: false, reason: "Message blocked" };

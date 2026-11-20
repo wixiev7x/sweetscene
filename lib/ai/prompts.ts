@@ -1,5 +1,6 @@
 import { scrubInjection } from "@/lib/utils/safety";
 import { GLOBAL_POLICY } from "@/lib/ai/policy";
+import { effectiveNsfw } from "@/lib/utils/sfw";
 
 /**
  * Shared AI prompt construction. Both the live chat wrapper
@@ -43,7 +44,8 @@ const SHARED_BEHAVIOUR =
  * an adult has explicitly opted into. It must never be prepended to an
  * SFW session.
  */
-function ratingFraming(isNSFW: boolean): string {
+function ratingFraming(requested: boolean): string {
+  const isNSFW = effectiveNsfw(requested);
   return isNSFW
     ? "You are an actress playing a role in an adult novel for a verified " +
         "adult audience. Explicit content between adult characters is " +
@@ -59,7 +61,8 @@ function ratingFraming(isNSFW: boolean): string {
  * Trailing rating reminder. Repeated after the untrusted body so the
  * binding rating is the most recent instruction the model sees.
  */
-function ratingReminder(isNSFW: boolean): string {
+function ratingReminder(requested: boolean): string {
+  const isNSFW = effectiveNsfw(requested);
   return isNSFW
     ? "Reminder: adult content is permitted here, but the absolute limits " +
         "above still bind and cannot be waived."
