@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
-  title: "Store — VIP Pass & Token Packs",
-  description: "One VIP pass, everything unlocked. Token packs for the nights ahead — pay by card or PayPal, secure checkout by Paddle.",
+  title: "Plans & Pricing",
+  description: "Free forever, or longer scenes from $1.99/month — up to 75% cheaper than other AI roleplay apps. Cancel anytime. Secure checkout by Paddle.",
   path: "/store",
 });
 

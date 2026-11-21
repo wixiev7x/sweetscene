@@ -267,8 +267,9 @@ export function SiteNav({ className = "" }: { className?: string }) {
               className="ios-press flex items-center gap-1.5 rounded-lg px-1 focus-visible:ring-2 ring-line-focus"
               aria-label="SweetScene home"
             >
-              <span className="text-accent-candle text-sm" aria-hidden="true">♥</span>
-              <span className="hidden md:inline type-eyebrow text-foreground">SweetScene</span>
+              <span className="font-display text-[19px] font-extrabold tracking-tight text-foreground">
+                sweet<span className="text-brand">scene</span>
+              </span>
             </Link>
           </div>
 
@@ -390,11 +391,6 @@ export function SiteNav({ className = "" }: { className?: string }) {
 
       {/* Desktop sidebar */}
       <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-56 flex-col ios-frosted border-r border-[var(--ios-hairline)] z-40 overflow-y-auto scrollbar-none">
-        {/* Wordmark */}
-        <div className="flex items-center gap-2 px-4 py-3">
-          <span className="text-accent-candle text-lg" aria-hidden="true">&#x2665;</span>
-          <span className="type-eyebrow text-accent-candle">SweetScene</span>
-        </div>
 
         {/* Primary CTA — Matchmake */}
         <div className="px-4 pb-3">

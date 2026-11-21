@@ -1,23 +1,20 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Manrope } from "next/font/google";
+import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SiteNav from "@/components/SiteNav";
-import HeartCursor from "@/components/HeartCursor";
-import ScrollProgress from "@/components/ui/ScrollProgress";
 import SiteFooter from "@/components/SiteFooter";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-display-face",
   subsets: ["latin"],
-  axes: ["SOFT", "opsz"],
-  style: ["normal", "italic"],
+  weight: ["500", "600", "700", "800"],
   display: "swap",
 });
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const inter = Inter({
+  variable: "--font-ui",
   subsets: ["latin"],
   display: "swap",
 });
@@ -51,7 +48,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#150f1d",
+  themeColor: "#0B0709",
 };
 
 export default function RootLayout({
@@ -67,7 +64,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fraunces.variable} ${manrope.variable} h-full antialiased scanline-overlay noise-overlay`}
+      className={`${jakarta.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {stagingBanner ? (
@@ -86,8 +83,6 @@ export default function RootLayout({
           Skip to content
         </a>
         <SiteNav />
-        <HeartCursor />
-        <ScrollProgress />
         <main
           id="site-main"
           className="flex-1 w-full md:pl-56 pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0"

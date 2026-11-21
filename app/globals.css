@@ -1,67 +1,67 @@
 @import "tailwindcss";
 
 /* ════════════════════════════════════════════════════════════════════
- * SweetScene Design System — Candlelit Noir
+ * SweetScene Design System — Velvet Noir
  *
- * Deep violet-ink base, warm candlelight amber + rose accents,
- * brand pink reserved for primary CTAs. Fraunces for
- * display, Manrope for UI and body. Raw values on :root,
+ * Wine-black base, lipstick red as the single hot accent, champagne
+ * gold reserved for premium/featured highlights. Plus Jakarta Sans for
+ * display, Inter for UI and body. Raw values on :root,
  * mapped to Tailwind utilities via @theme inline.
  * ════════════════════════════════════════════════════════════════════ */
 
 :root {
   /* ── Void (violet-ink depths) ── */
-  --void-950: oklch(0.12 0.02 285);
-  --void-900: oklch(0.14 0.02 285);
-  --void-700: oklch(0.18 0.025 285);
-  --void-500: oklch(0.22 0.03 285);
-  --void-400: oklch(0.27 0.03 285);
+  --void-950: #0B0709;
+  --void-900: #0F0A0D;
+  --void-700: #161014;
+  --void-500: #1E161B;
+  --void-400: #2A1F25;
 
   /* ── Surfaces ── */
-  --background: oklch(0.14 0.02 285);
-  --surface-sunken: oklch(0.12 0.025 285);
-  --surface: oklch(0.19 0.03 285);
-  --surface-raised: oklch(0.23 0.03 285);
-  --surface-800: oklch(0.19 0.03 285);
-  --surface-700: oklch(0.22 0.03 285);
-  --surface-600: oklch(0.25 0.032 285);
-  --surface-500: oklch(0.28 0.035 285);
-  --surface-300: oklch(0.33 0.04 285);
-  --surface-200: oklch(0.42 0.04 285);
-  --surface-100: oklch(0.55 0.03 285);
+  --background: #0B0709;
+  --surface-sunken: #080506;
+  --surface: #161014;
+  --surface-raised: #1E161B;
+  --surface-800: #161014;
+  --surface-700: #1B1418;
+  --surface-600: #22191E;
+  --surface-500: #2A1F25;
+  --surface-300: #3A2C33;
+  --surface-200: #57454E;
+  --surface-100: #7C6A72;
 
   /* ── Lines (borders, dividers) ── */
-  --line: oklch(1 0 0 / 8%);
-  --line-strong: oklch(1 0 0 / 14%);
-  --line-focus: oklch(0.62 0.22 350 / 50%);
+  --line: rgb(244 236 232 / 7%);
+  --line-strong: rgb(244 236 232 / 13%);
+  --line-focus: rgb(225 36 92 / 55%);
 
   /* ── Text, brightest to faintest (warm off-white) ── */
-  --foreground: oklch(0.95 0.01 60);
-  --foreground-dim: oklch(0.88 0.012 60);
-  --muted-strong: oklch(0.75 0.02 280);
-  --muted: oklch(0.65 0.02 280);
-  --muted-faint: oklch(0.52 0.02 280);
+  --foreground: #F4ECE8;
+  --foreground-dim: #E3D8D3;
+  --muted-strong: #BFAFAE;
+  --muted: #9C8B8C;
+  --muted-faint: #75666A;
 
   /* ── Brand (CTA pink — reserved for primary actions) ── */
-  --brand: oklch(0.62 0.22 350);
-  --brand-light: oklch(0.68 0.2 350);
-  --brand-lighter: oklch(0.74 0.18 350);
-  --brand-dark: oklch(0.56 0.21 350);
-  --brand-deep: oklch(0.48 0.2 350);
-  --brand-deepest: oklch(0.38 0.17 350);
+  --brand: #E1245C;
+  --brand-light: #FF5C87;
+  --brand-lighter: #FF8AA8;
+  --brand-dark: #C41A4E;
+  --brand-deep: #9E1440;
+  --brand-deepest: #6E0E2D;
 
   /* ── Candlelight accents ── */
-  --accent-candle: oklch(0.82 0.14 75);
-  --accent-candle-deep: oklch(0.74 0.13 70);
-  --accent-rose: oklch(0.72 0.16 10);
+  --accent-candle: #D9B37A;
+  --accent-candle-deep: #B8925A;
+  --accent-rose: #FF7A9A;
 
   /* ── Semantic accents ── */
-  --accent: oklch(0.95 0.01 60);
-  --accent-foreground: oklch(0.14 0.02 285);
+  --accent: #F4ECE8;
+  --accent-foreground: #0B0709;
   --danger: oklch(0.65 0.2 25);
-  --warning: oklch(0.82 0.14 75);
+  --warning: #D9B37A;
   --success: oklch(0.75 0.15 155);
-  --info: oklch(0.72 0.11 270);
+  --info: #B9A3C9;
   --restricted: oklch(0.75 0.14 45);
 
   /* ── iOS tokens — aliases of the semantic set (one source of truth) ── */
@@ -85,15 +85,15 @@
   --ios-radius-row: 10px;
 
   /* ── Gold → amber family ── */
-  --gold-700: oklch(0.68 0.12 72);
-  --gold-600: oklch(0.74 0.13 72);
-  --gold-500: oklch(0.82 0.14 75);
-  --gold-400: oklch(0.88 0.11 78);
+  --gold-700: #A88550;
+  --gold-600: #C29F68;
+  --gold-500: #D9B37A;
+  --gold-400: #EACB98;
 
   /* ── Crimson → rose family ── */
-  --crimson-600: oklch(0.55 0.17 12);
-  --crimson-500: oklch(0.62 0.19 12);
-  --crimson-400: oklch(0.7 0.16 12);
+  --crimson-600: #B5163F;
+  --crimson-500: #E1245C;
+  --crimson-400: #FF5C87;
 
   /* ── Shape ── */
   --radius-card: 1rem;
@@ -158,9 +158,9 @@
   --color-info: var(--info);
   --color-restricted: var(--restricted);
 
-  --font-sans: var(--font-manrope), "Manrope", system-ui, sans-serif;
-  --font-mono: var(--font-manrope), "Manrope", system-ui, sans-serif;
-  --font-display: var(--font-fraunces), "Fraunces", Georgia, serif;
+  --font-sans: var(--font-ui), "Inter", system-ui, sans-serif;
+  --font-mono: var(--font-ui), "Inter", system-ui, sans-serif;
+  --font-display: var(--font-display-face), "Plus Jakarta Sans", system-ui, sans-serif;
 
   --color-ios-bg: var(--ios-bg);
   --color-ios-elevated: var(--ios-elevated);
@@ -184,24 +184,24 @@ body {
 }
 
 body {
-  font-family: var(--font-manrope), "Manrope", system-ui, sans-serif;
+  font-family: var(--font-ui), "Inter", system-ui, sans-serif;
 }
 
 /* ════════════════════════════════════════════════════════════════
- * Type scale — Fraunces for display, Manrope elsewhere.
+ * Type scale — Plus Jakarta Sans for display, Inter elsewhere.
  * No negative letter-spacing anywhere in the system.
  * ════════════════════════════════════════════════════════════════ */
 .type-display-xl {
-  font-family: var(--font-fraunces), Georgia, serif;
-  font-size: clamp(2.5rem, 6vw, 4rem);
-  line-height: 1.04;
-  font-weight: 400;
+  font-family: var(--font-display-face), system-ui, sans-serif;
+  font-size: clamp(2.25rem, 5.5vw, 3.75rem);
+  line-height: 1.05;
+  font-weight: 800;
 }
 .type-display {
-  font-family: var(--font-fraunces), Georgia, serif;
-  font-size: clamp(1.875rem, 4vw, 2.75rem);
-  line-height: 1.08;
-  font-weight: 400;
+  font-family: var(--font-display-face), system-ui, sans-serif;
+  font-size: clamp(1.75rem, 3.6vw, 2.5rem);
+  line-height: 1.1;
+  font-weight: 700;
 }
 .type-title {
   font-size: 1.25rem;
@@ -257,7 +257,7 @@ body {
   background-image:
     radial-gradient(
       640px 420px at 50% -10%,
-      color-mix(in srgb, var(--accent-candle) 7%, transparent),
+      color-mix(in srgb, var(--brand) 6%, transparent),
       transparent 70%
     ),
     radial-gradient(
@@ -268,9 +268,9 @@ body {
   background-repeat: no-repeat;
 }
 
-/* ── Gradient text (candlelight → rose) ── */
+/* ── Gradient text (lipstick → rose) ── */
 .gradient-text {
-  background: linear-gradient(135deg, var(--accent-candle), var(--accent-rose));
+  background: linear-gradient(120deg, var(--brand), var(--accent-rose) 70%, var(--brand-lighter));
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -337,83 +337,7 @@ body {
   100% { transform: scale(1); }
 }
 
-/* ════════════════════════════════════════════════════════════════
- * Heart cursor — crisp silhouette, instant tracking, zero glow.
- * Fine-pointer only; native cursor everywhere else.
- * ════════════════════════════════════════════════════════════════ */
-.heart-cursor {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 10000;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 120ms ease;
-  will-change: transform;
-}
-.heart-cursor[data-visible="1"] {
-  opacity: 1;
-}
-/* Over text-entry regions the heart yields to the native text caret. */
-.heart-cursor[data-state="text"] {
-  opacity: 0;
-}
-body.heart-cursor-on,
-body.heart-cursor-on * {
-  cursor: none !important;
-}
-body.heart-cursor-on input,
-body.heart-cursor-on textarea,
-body.heart-cursor-on [contenteditable="true"] {
-  cursor: auto !important;
-}
-.heart-cursor-inner {
-  position: absolute;
-  top: -10px;
-  left: -10px;
-  width: 20px;
-  height: 20px;
-  transform: scale(1);
-  transition: transform 90ms ease;
-}
-.heart-cursor-path {
-  fill: var(--accent-rose);
-  transition: fill 90ms ease;
-}
-.heart-cursor[data-state="hot"] .heart-cursor-inner {
-  transform: scale(1.22);
-}
-.heart-cursor[data-state="hot"] .heart-cursor-path {
-  fill: var(--accent-candle);
-}
-.heart-cursor[data-state="primary"] .heart-cursor-inner {
-  transform: scale(1.38);
-}
-.heart-cursor[data-state="primary"] .heart-cursor-path {
-  fill: var(--accent-candle);
-}
-.heart-cursor[data-state="destructive"] .heart-cursor-inner {
-  transform: scale(1.15);
-}
-.heart-cursor[data-state="destructive"] .heart-cursor-path {
-  fill: var(--danger);
-}
-.heart-cursor[data-pressed="1"] .heart-cursor-inner {
-  transform: scale(0.82);
-}
-@media (pointer: coarse) {
-  .heart-cursor {
-    display: none;
-  }
-}
 @media (prefers-reduced-motion: reduce) {
-  .heart-cursor {
-    display: none;
-  }
-  body.heart-cursor-on,
-  body.heart-cursor-on * {
-    cursor: auto !important;
-  }
   .hb-heart {
     display: none;
   }
@@ -551,7 +475,8 @@ body.heart-cursor-on [contenteditable="true"] {
 }
 .ss-prose > * + * { margin-top: 1.1em; }
 .ss-prose h2 {
-  font-family: var(--font-fraunces), Georgia, serif;
+  font-family: var(--font-display-face), system-ui, sans-serif;
+  font-weight: 700;
   color: var(--foreground);
   font-size: 1.6rem;
   line-height: 1.2;
@@ -580,3 +505,6 @@ body.heart-cursor-on [contenteditable="true"] {
 .ss-prose table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
 .ss-prose th, .ss-prose td { border-bottom: 1px solid var(--line); padding: 0.6em 0.4em; text-align: left; vertical-align: top; }
 .ss-prose th { color: var(--foreground); font-weight: 600; }
+
+/* Display face is a sans: give it weight wherever the utility is used. */
+.font-display { font-weight: 700; }
