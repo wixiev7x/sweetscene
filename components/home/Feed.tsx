@@ -104,16 +104,16 @@ function MatchTile() {
   return (
     <Link
       href="/matchmake"
-      className="group relative col-span-3 flex items-center justify-between gap-3 overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-r from-brand/25 via-surface to-surface p-4 sm:col-span-4 sm:p-5 lg:col-span-6 xl:col-span-7"
+      className="group relative col-span-full flex items-center justify-between gap-3 overflow-hidden rounded-2xl border border-brand/30 bg-gradient-to-r from-brand/25 via-surface to-surface px-4 py-3.5 sm:p-5"
     >
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-brand-light">Someone&rsquo;s waiting</p>
-        <p className="mt-1 font-display text-lg font-bold leading-snug text-foreground sm:text-xl">
+        <p className="mt-1 font-display text-[15px] font-bold leading-snug text-foreground sm:text-xl">
           Two strangers. One scene. No names.
         </p>
-        <p className="mt-1 text-[13px] text-muted-strong">Match with a real person — reveal only if you both want to.</p>
+        <p className="mt-1 hidden text-[13px] text-muted-strong sm:block">Match with a real person — reveal only if you both want to.</p>
       </div>
-      <span className="ss-pulse flex h-11 shrink-0 items-center gap-2 rounded-full bg-brand px-5 text-sm font-semibold text-white transition-transform group-active:scale-95">
+      <span className="ss-pulse flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-brand px-4 text-sm font-semibold text-white transition-transform group-active:scale-95 sm:h-11 sm:px-5">
         Match
         <span aria-hidden="true">→</span>
       </span>
@@ -125,11 +125,11 @@ function PlanTile() {
   return (
     <Link
       href="/store"
-      className="col-span-3 flex items-center justify-between gap-3 rounded-2xl border border-accent-candle/25 bg-gradient-to-r from-accent-candle/10 to-surface p-4 sm:col-span-4 sm:p-5 lg:col-span-6 xl:col-span-7"
+      className="col-span-full flex items-center justify-between gap-3 rounded-2xl border border-accent-candle/25 bg-gradient-to-r from-accent-candle/10 to-surface px-4 py-3.5 sm:p-5"
     >
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent-candle">Up to 75% cheaper</p>
-        <p className="mt-1 font-display text-lg font-bold text-foreground">Longer scenes from $1.99/month</p>
+        <p className="mt-1 font-display text-[15px] font-bold text-foreground sm:text-lg">Longer scenes from $1.99/month</p>
       </div>
       <span className="shrink-0 text-sm font-semibold text-accent-candle">See plans →</span>
     </Link>
@@ -311,7 +311,7 @@ export default function Feed({
         </div>
       </div>
 
-      <div className={`mt-1 grid grid-cols-3 gap-1.5 transition-opacity sm:grid-cols-4 sm:gap-2.5 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 ${pending ? "opacity-50" : ""}`}>
+      <div className={`mt-1 grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-1.5 transition-opacity sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:gap-2.5 2xl:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] ${pending ? "opacity-50" : ""}`}>
         {cells}
       </div>
       {items.length === 0 && (
