@@ -81,7 +81,7 @@ export default function QuizPage() {
       .map(([tag]) => tag)
       .slice(0, 3);
   })();
-  const matchmakeHref = `/matchmake?mode=kink${moodTags.length > 0 ? `&tags=${encodeURIComponent(moodTags.join(","))}` : ""}`;
+  const matchmakeHref = `/matchmake?mode=vibe${moodTags.length > 0 ? `&tags=${encodeURIComponent(moodTags.join(","))}` : ""}`;
 
   useEffect(() => {
     let cancelled = false;

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { DM_Serif_Display, Fira_Sans } from "next/font/google";
+import { Fraunces, Manrope } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
@@ -7,17 +7,17 @@ import SiteNav from "@/components/SiteNav";
 import HeartCursor from "@/components/HeartCursor";
 import ScrollProgress from "@/components/ui/ScrollProgress";
 
-const dmSerif = DM_Serif_Display({
-  variable: "--font-dm-serif",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
-  weight: "400",
+  axes: ["SOFT", "opsz"],
+  style: ["normal", "italic"],
   display: "swap",
 });
 
-const firaSans = Fira_Sans({
-  variable: "--font-fira",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -66,7 +66,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSerif.variable} ${firaSans.variable} h-full antialiased scanline-overlay noise-overlay`}
+      className={`${fraunces.variable} ${manrope.variable} h-full antialiased scanline-overlay noise-overlay`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {stagingBanner ? (

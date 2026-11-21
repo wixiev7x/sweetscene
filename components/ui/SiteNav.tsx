@@ -48,7 +48,7 @@ const MORE_GROUP: NavItem[] = [
 ];
 
 const MOBILE_TABS: NavItem[] = [
-  { href: "/", label: "Explore", icon: "M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10" },
+  { href: "/", label: "Home", icon: "M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10" },
   { href: "/lobby", label: "Scenes", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
   { href: "/matchmake", label: "Match", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" },
   { href: "/store", label: "Store", icon: "M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 8h18" },
@@ -512,7 +512,31 @@ export function SiteNav({ className = "" }: { className?: string }) {
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 ios-frosted border-t border-[var(--ios-hairline)] flex items-center justify-around"
         style={{ height: "calc(52px + env(safe-area-inset-bottom))", paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        {MOBILE_TABS.map((tab) => (
+        {MOBILE_TABS.map((tab) =>
+          tab.href === "/matchmake" ? (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              prefetch={false}
+              aria-current={isActive(tab.href) ? "page" : undefined}
+              onClick={() => closeMenus(null)}
+              className="ios-press relative flex flex-col items-center justify-end flex-1 h-[52px] focus-visible:outline-none group"
+            >
+              <span
+                aria-hidden="true"
+                className={`absolute -top-4 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-brand-light via-brand to-accent-rose text-white shadow-[0_8px_24px_-6px_var(--brand)] ring-4 ring-background transition-transform duration-300 group-active:scale-95 ${
+                  isActive(tab.href) ? "scale-105" : ""
+                }`}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z" />
+                </svg>
+              </span>
+              <span className={`mb-1 text-[10px] font-semibold ${isActive(tab.href) ? "text-accent-candle" : "text-foreground-dim"}`}>
+                {tab.label}
+              </span>
+            </Link>
+          ) : (
           <Link
             key={tab.href + tab.label}
             href={tab.href}
@@ -528,7 +552,8 @@ export function SiteNav({ className = "" }: { className?: string }) {
             </svg>
             <span className="text-[10px] font-medium">{tab.label}</span>
           </Link>
-        ))}
+          )
+        )}
       </nav>
     </>
   );

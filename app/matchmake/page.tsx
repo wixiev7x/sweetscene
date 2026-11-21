@@ -225,16 +225,19 @@ function formatElapsed(seconds: number) {
 
 function MatchmakePageInner() {
   const searchParams = useSearchParams();
-  /* Deep links: /matchmake?mode=kink&tags=Romance,Fantasy (used by the
+  /* Deep links: /matchmake?mode=vibe&tags=Romance,Fantasy (used by the
    * vibe quiz and shareable entry points). */
   const [state, dispatch] = useReducer(reducer, initialState);
   const [mode, setMode] = useState<MatchMode | "invite" | null>(() => {
-    const m = searchParams.get("mode");
-    return m === "quick" || m === "kink" || m === "invite" ? m : null;
+    /* Public aliases: "vibe" → internal "kink", "blind" → "blind_date". */
+    const raw = searchParams.get("mode");
+    const m = raw === "vibe" ? "kink" : raw === "blind" ? "blind_date" : raw;
+    return m === "quick" || m === "kink" || m === "blind_date" || m === "invite" ? m : null;
   });
   const [genderPref, setGenderPref] = useState<GenderPref | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>(() => {
-    if (searchParams.get("mode") !== "kink") return [];
+    const rawMode = searchParams.get("mode");
+    if (rawMode !== "kink" && rawMode !== "vibe") return [];
     return (searchParams.get("tags") ?? "")
       .split(",")
       .map((t) => t.trim())

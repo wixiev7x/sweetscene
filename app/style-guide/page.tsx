@@ -234,12 +234,12 @@ export default function StyleGuidePage() {
         </div>
       </Section>
 
-      <Section title="Typography" description="DM Serif Display for display, Fira Sans for everything else.">
+      <Section title="Typography" description="Fraunces for display, Manrope for everything else.">
         <div className="space-y-3">
-          <p className="type-display text-foreground">Display — DM Serif Display</p>
+          <p className="type-display text-foreground">Display — Fraunces</p>
           <p className="text-3xl font-bold text-foreground">Heading 1 — 3xl bold</p>
           <p className="text-xl font-semibold text-foreground">Heading 2 — xl semibold</p>
-          <p className="type-body text-foreground">Body — Fira Sans</p>
+          <p className="type-body text-foreground">Body — Manrope</p>
           <p className="type-meta text-muted">Meta — small, muted</p>
           <p className="type-eyebrow text-accent-candle">Eyebrow — uppercase, tracked</p>
         </div>

@@ -4,8 +4,8 @@
  * SweetScene Design System — Candlelit Noir
  *
  * Deep violet-ink base, warm candlelight amber + rose accents,
- * brand pink reserved for primary CTAs. DM Serif Display for
- * display, Fira Sans for UI and body. Raw values on :root,
+ * brand pink reserved for primary CTAs. Fraunces for
+ * display, Manrope for UI and body. Raw values on :root,
  * mapped to Tailwind utilities via @theme inline.
  * ════════════════════════════════════════════════════════════════════ */
 
@@ -158,9 +158,9 @@
   --color-info: var(--info);
   --color-restricted: var(--restricted);
 
-  --font-sans: var(--font-fira), "Fira Sans", system-ui, sans-serif;
-  --font-mono: var(--font-fira), "Fira Sans", system-ui, sans-serif;
-  --font-display: var(--font-dm-serif), "DM Serif Display", Georgia, serif;
+  --font-sans: var(--font-manrope), "Manrope", system-ui, sans-serif;
+  --font-mono: var(--font-manrope), "Manrope", system-ui, sans-serif;
+  --font-display: var(--font-fraunces), "Fraunces", Georgia, serif;
 
   --color-ios-bg: var(--ios-bg);
   --color-ios-elevated: var(--ios-elevated);
@@ -184,21 +184,21 @@ body {
 }
 
 body {
-  font-family: var(--font-fira), "Fira Sans", system-ui, sans-serif;
+  font-family: var(--font-manrope), "Manrope", system-ui, sans-serif;
 }
 
 /* ════════════════════════════════════════════════════════════════
- * Type scale — DM Serif Display for display, Fira Sans elsewhere.
+ * Type scale — Fraunces for display, Manrope elsewhere.
  * No negative letter-spacing anywhere in the system.
  * ════════════════════════════════════════════════════════════════ */
 .type-display-xl {
-  font-family: var(--font-dm-serif), Georgia, serif;
+  font-family: var(--font-fraunces), Georgia, serif;
   font-size: clamp(2.5rem, 6vw, 4rem);
   line-height: 1.04;
   font-weight: 400;
 }
 .type-display {
-  font-family: var(--font-dm-serif), Georgia, serif;
+  font-family: var(--font-fraunces), Georgia, serif;
   font-size: clamp(1.875rem, 4vw, 2.75rem);
   line-height: 1.08;
   font-weight: 400;
@@ -501,4 +501,42 @@ body.heart-cursor-on [contenteditable="true"] {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ════════════════════════════════════════════════════════════════
+ * Landing motion — staggered rise, ambient glow, match pulse.
+ * All disabled under prefers-reduced-motion.
+ * ════════════════════════════════════════════════════════════════ */
+@keyframes ssRise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+.ss-rise {
+  animation: ssRise 0.7s var(--ios-ease) both;
+  animation-delay: calc(var(--d, 0) * 90ms);
+}
+@keyframes ssGlow {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.55; }
+  50% { transform: translate3d(2%, -3%, 0) scale(1.08); opacity: 0.8; }
+}
+.ss-glow {
+  animation: ssGlow 12s ease-in-out infinite;
+}
+@keyframes ssPulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--brand) 55%, transparent); }
+  70% { box-shadow: 0 0 0 18px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.ss-pulse {
+  animation: ssPulse 2.4s ease-out infinite;
+}
+@keyframes ssFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.ss-float {
+  animation: ssFloat 5s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ss-rise, .ss-glow, .ss-pulse, .ss-float { animation: none !important; }
 }
