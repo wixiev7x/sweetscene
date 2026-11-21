@@ -100,7 +100,7 @@ function SignupPageInner() {
             No faces. No names. Just vibes — match first, reveal only when both sides agree.
           </p>
           <p className="text-xs font-mono text-muted-faint mt-6 uppercase tracking-wider">
-            18+ platform to join
+            16+ · Free to join
           </p>
         </div>
       </div>

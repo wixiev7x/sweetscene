@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import Link from "next/link";
 import { Spinner, Badge, ProgressBar } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
@@ -612,7 +613,8 @@ export default function ProfilePage() {
         )}
       </section>
 
-      {/* ── NSFW OPT-IN ── */}
+      {/* ── NSFW OPT-IN ── (hidden while NEXT_PUBLIC_SFW_MODE=1) */}
+      {!SFW_MODE && (
       <section className="max-w-3xl mx-auto px-6 mb-8">
         <h2 className="text-xl font-light text-foreground-dim mb-4">
           Content Preferences
@@ -662,6 +664,7 @@ export default function ProfilePage() {
           )}
         </div>
       </section>
+      )}
 
       {/* ── REPUTATION ── */}
       {profile && (

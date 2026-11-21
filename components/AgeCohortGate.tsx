@@ -129,8 +129,8 @@ export default function AgeCohortGate() {
         </h2>
         <p className="text-sm text-muted-strong mt-3 leading-relaxed">
           Confirm your date of birth to finish setting up your account.
-          You must be {MIN_PLATFORM_AGE} or older to use sweetscene. Adult
-          ({ADULT_AGE}+) content stays off unless you turn it on later.
+          You must be {MIN_PLATFORM_AGE} or older to use SweetScene. Members
+          under {ADULT_AGE} are only ever matched with other members under {ADULT_AGE}.
         </p>
         <p className="text-xs text-muted-faint mt-2">
           This is recorded once and can&apos;t be changed here.

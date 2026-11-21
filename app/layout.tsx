@@ -6,6 +6,7 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SiteNav from "@/components/SiteNav";
 import HeartCursor from "@/components/HeartCursor";
 import ScrollProgress from "@/components/ui/ScrollProgress";
+import SiteFooter from "@/components/SiteFooter";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -30,7 +31,7 @@ export const metadata: Metadata = {
     template: "%s · SweetScene",
   },
   description:
-    "Anonymous matchmaking. Match first. Build connection. Reveal only when both sides agree. 18+ platform to join.",
+    "Get matched anonymously with a real person, play an AI-directed roleplay scene together, then reveal — or skip. Free to start. 16+.",
   icons: {
     icon: [
       { url: "/favicon.ico", type: "image/x-icon" },
@@ -40,9 +41,9 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "SweetScene — Anonymous AI Matchmaking",
+    title: "SweetScene — Anonymous Matchmaking for AI Roleplay",
     description:
-      "Match anonymously. Build connection in an AI-guided scene. Reveal only when both sides agree.",
+      "Match anonymously. Play an AI-directed scene together. Reveal only when both sides agree.",
     siteName: "SweetScene",
     type: "website",
     images: [{ url: "/og-image.png", width: 1200, height: 630, type: "image/png" }],
@@ -92,6 +93,7 @@ export default function RootLayout({
           className="flex-1 w-full md:pl-56 pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0"
         >
           {children}
+          <SiteFooter />
         </main>
         <ServiceWorkerRegister />
         <Toaster

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { playSound } from "@/lib/utils/sound";
@@ -247,10 +248,12 @@ export default function CreatePage() {
             </div>
           </div>
 
+          {!SFW_MODE && (
           <label className="flex items-center gap-3 cursor-pointer">
             <input type="checkbox" checked={isNsfw} onChange={(e) => setIsNsfw(e.target.checked)} className="accent-accent-rose w-4 h-4" />
             <span className="text-sm text-muted">This character contains adult content (18+)</span>
           </label>
+          )}
 
           <button type="submit" disabled={!name || !tagline || !personality || !openingLine || submitting}
             className="w-full px-6 py-3.5 rounded-full font-medium text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light active:scale-[0.98] transform transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none flex items-center justify-center gap-2">

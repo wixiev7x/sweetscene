@@ -89,7 +89,7 @@ function LoginPageInner() {
             Anonymous AI matchmaking. Reveal only when both sides agree.
           </p>
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-faint">
-            18+ platform to join
+            16+ · Free to join
           </p>
         </div>
       </div>

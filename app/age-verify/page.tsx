@@ -52,7 +52,7 @@ export default function AgeVerifyPage() {
                 Confirming…
               </>
             ) : (
-              "I am 18 or older"
+              "I am 16 or older"
             )}
           </button>
 

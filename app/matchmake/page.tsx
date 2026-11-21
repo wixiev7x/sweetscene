@@ -1283,7 +1283,7 @@ function MatchmakePageInner() {
             {mode === "blind_date" && (
               <p className="type-body text-muted text-center mb-4 max-w-xs leading-relaxed">
                 Nothing is revealed on a blind date — not vibes, not names.
-                When the scene ends, it ends. Nobody has to know.
+                When the scene ends, it ends — no strings attached.
               </p>
             )}
 

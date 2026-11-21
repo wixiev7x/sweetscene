@@ -540,3 +540,43 @@ body.heart-cursor-on [contenteditable="true"] {
 @media (prefers-reduced-motion: reduce) {
   .ss-rise, .ss-glow, .ss-pulse, .ss-float { animation: none !important; }
 }
+
+/* ════════════════════════════════════════════════════════════════
+ * Long-form prose (legal pages, blog posts).
+ * ════════════════════════════════════════════════════════════════ */
+.ss-prose {
+  color: var(--foreground-dim);
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.ss-prose > * + * { margin-top: 1.1em; }
+.ss-prose h2 {
+  font-family: var(--font-fraunces), Georgia, serif;
+  color: var(--foreground);
+  font-size: 1.6rem;
+  line-height: 1.2;
+  margin-top: 2.2em;
+  scroll-margin-top: 5rem;
+}
+.ss-prose h3 {
+  color: var(--foreground);
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-top: 1.8em;
+}
+.ss-prose a { color: var(--accent-candle); text-decoration: underline; text-underline-offset: 3px; }
+.ss-prose strong { color: var(--foreground); font-weight: 600; }
+.ss-prose ul, .ss-prose ol { padding-left: 1.3em; }
+.ss-prose ul { list-style: disc; }
+.ss-prose ol { list-style: decimal; }
+.ss-prose li + li { margin-top: 0.4em; }
+.ss-prose li::marker { color: var(--accent-rose); }
+.ss-prose blockquote {
+  border-left: 2px solid var(--accent-candle);
+  padding-left: 1em;
+  font-style: italic;
+  color: var(--muted-strong);
+}
+.ss-prose table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.ss-prose th, .ss-prose td { border-bottom: 1px solid var(--line); padding: 0.6em 0.4em; text-align: left; vertical-align: top; }
+.ss-prose th { color: var(--foreground); font-weight: 600; }
