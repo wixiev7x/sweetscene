@@ -59,29 +59,51 @@ function CoinIcon({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function SidebarRow({ item, active, onNavigate }: { item: NavItem; active: boolean; onNavigate?: () => void }) {
+function SidebarRow({ item, active, rail, onNavigate }: { item: NavItem; active: boolean; rail: boolean; onNavigate?: () => void }) {
   return (
     <Link
       href={item.href}
       prefetch={false}
       aria-current={active ? "page" : undefined}
+      aria-label={rail ? item.label : undefined}
+      title={rail ? item.label : undefined}
       onClick={onNavigate}
-      className={`relative flex h-12 items-center gap-4 px-3 text-[17px] transition-colors focus-visible:outline-none focus-visible:text-foreground ${
-        active ? "text-foreground" : "text-muted-strong hover:text-foreground"
-      }`}
+      className={`group relative flex h-12 items-center gap-4 text-[17px] transition-colors focus-visible:outline-none focus-visible:text-foreground ${
+        rail ? "justify-center px-0" : "px-3"
+      } ${active ? "text-foreground" : "text-muted-strong hover:text-foreground"}`}
     >
       {active && <span aria-hidden="true" className="absolute -left-4 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand" />}
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-brand-light" : ""} aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 transition-transform group-hover:scale-110 ${active ? "text-brand-light" : ""}`} aria-hidden="true">
         <path d={item.icon} />
       </svg>
-      {item.label}
+      {!rail && item.label}
     </Link>
   );
 }
 
+const FLAME_PATH = "M12 22c4 0 7-2.8 7-6.8 0-3.6-2.6-5.4-3.4-8.7-.2.9-.9 2.6-2.3 3.2.3-3.1-1.4-6.2-4.2-7.7.4 3-1.7 5.3-2.8 7C5.4 10.3 5 11.7 5 13.3 5 18.4 8 22 12 22z";
+const HEART_PATH = "M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z";
+
 export function SiteNav({ className = "" }: { className?: string }) {
   const pathname = usePathname();
   const { openAuth } = useAuthModal();
+  const [rail, setRail] = useState(false);
+  useEffect(() => {
+    try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRail(localStorage.getItem("ss-nav") === "rail");
+    } catch {}
+  }, []);
+  const toggleRail = () => {
+    setRail((r) => {
+      const next = !r;
+      try {
+        localStorage.setItem("ss-nav", next ? "rail" : "full");
+      } catch {}
+      document.documentElement.dataset.nav = next ? "rail" : "full";
+      return next;
+    });
+  };
   const [notifOpen, setNotifOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [tokens, setTokens] = useState<number | null>(null);
@@ -236,7 +258,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
 
       {/* Top bar, sits right of the sidebar on desktop */}
       <header
-        className={`sticky top-0 z-40 bg-background/80 backdrop-blur-xl md:pl-60 ${className}`}
+        className={`sticky top-0 z-40 bg-background/80 backdrop-blur-xl md:pl-[var(--nav-w)] transition-[padding] duration-300 ${className}`}
         style={{ height: "64px" }}
       >
         <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-6">
@@ -345,83 +367,117 @@ export function SiteNav({ className = "" }: { className?: string }) {
         )}
       </header>
 
-      {/* Desktop sidebar */}
-      <aside className="fixed bottom-0 left-0 top-0 z-50 hidden w-60 flex-col border-r border-line bg-background md:flex">
-        <Link href="/" prefetch={false} aria-label="SweetScene home" className="flex h-16 items-center px-6">
-          <span className="font-display text-[24px] text-foreground">sweet<span className="text-brand">scene</span></span>
-        </Link>
+      {/* Desktop sidebar, collapsible to an icon rail */}
+      <aside
+        className="fixed bottom-0 left-0 top-0 z-50 hidden flex-col border-r border-line bg-background transition-[width] duration-300 ease-out md:flex"
+        style={{ width: "var(--nav-w)" }}
+      >
+        <div className={`flex h-16 shrink-0 items-center ${rail ? "justify-center" : "justify-between pl-6 pr-3"}`}>
+          {!rail && (
+            <Link href="/" prefetch={false} aria-label="SweetScene home">
+              <span className="font-display text-[24px] text-foreground">sweet<span className="text-brand">scene</span></span>
+            </Link>
+          )}
+          <button
+            type="button"
+            onClick={toggleRail}
+            aria-label={rail ? "Expand sidebar" : "Collapse sidebar"}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/[.06] hover:text-foreground"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="4" width="18" height="16" rx="4" />
+              <path d="M9 4v16" />
+            </svg>
+          </button>
+        </div>
 
-        <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-4 pt-2 scrollbar-none">
+        <div className={`flex min-h-0 flex-1 flex-col overflow-y-auto pb-3 pt-2 scrollbar-none ${rail ? "px-3" : "px-4"}`}>
           <Link
             href="/matchmake"
             prefetch={false}
             onClick={() => closeMenus(null)}
-            className="group relative flex h-14 items-center gap-3 overflow-hidden rounded-full px-6 text-lg text-white shadow-[0_10px_40px_-12px_var(--brand)] transition-transform active:scale-[0.98]"
+            aria-label="Desire"
+            title={rail ? "Desire" : undefined}
+            className={`group relative flex shrink-0 items-center gap-3 overflow-hidden rounded-full text-lg text-white shadow-[0_10px_40px_-12px_var(--brand)] transition-transform active:scale-[0.97] ${
+              rail ? "mx-auto h-12 w-12 justify-center" : "h-14 px-6"
+            }`}
             style={{ background: "linear-gradient(120deg, #B5163F, #E1245C 55%, #FF5C87)" }}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ animation: "ssBeat 1.6s ease-in-out infinite" }}>
-              <path d="M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z" />
+              <path d={HEART_PATH} />
             </svg>
-            Desire
+            {!rail && "Desire"}
           </Link>
 
           <nav aria-label="Main" className="mt-5 space-y-1">
             {NAV.map((item) => (
-              <SidebarRow key={item.href} item={item} active={isActive(item.href)} onNavigate={() => closeMenus(null)} />
+              <SidebarRow key={item.href} item={item} rail={rail} active={isActive(item.href)} onNavigate={() => closeMenus(null)} />
             ))}
           </nav>
 
-          <div className="mt-auto pt-5" />
-          <Link
-            href="/store"
-            prefetch={false}
-            className="group relative overflow-hidden rounded-[1.75rem] p-4"
-            style={{ background: "radial-gradient(120% 120% at 0% 100%, rgba(225,36,92,.55), rgba(60,8,24,.6) 45%, #0c0c0e 80%)" }}
-          >
-            <span aria-hidden="true" className="absolute -right-4 -top-6 h-24 w-24 rounded-full bg-brand/40 blur-2xl transition-opacity group-hover:opacity-100 opacity-60" />
-            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" className="relative">
-              <defs>
-                <radialGradient id="emberGlow" cx="50%" cy="70%" r="60%">
-                  <stop offset="0%" stopColor="#FFD3A0" />
-                  <stop offset="55%" stopColor="#FF5C87" />
-                  <stop offset="100%" stopColor="#B5163F" />
-                </radialGradient>
-              </defs>
-              <path d="M12 22c4 0 7-2.8 7-6.8 0-3.6-2.6-5.4-3.4-8.7-.2.9-.9 2.6-2.3 3.2.3-3.1-1.4-6.2-4.2-7.7.4 3-1.7 5.3-2.8 7C5.4 10.3 5 11.7 5 13.3 5 18.4 8 22 12 22z" fill="url(#emberGlow)" />
-            </svg>
-            <span className="relative mt-3 block text-[17px] text-foreground">Turn up the heat</span>
-            <span className="relative mt-0.5 block text-xs text-foreground-dim/80">Longer nights, deeper scenes</span>
-          </Link>
-
-        </div>
-
-        <div className="space-y-1 border-t border-line p-4">
-          <div className="flex h-11 items-center gap-3.5 px-3 text-[15px] text-muted-strong">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" /></svg>
-            <span className="flex-1">English</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Link
-              href={hasSession ? "/profile" : "#"}
-              onClick={(e) => { if (!hasSession) { e.preventDefault(); openAuth("signup"); } }}
-              prefetch={false}
-              aria-current={isActive("/profile") ? "page" : undefined}
-              className="flex h-12 flex-1 items-center gap-3 px-1 transition-colors hover:text-foreground"
+          {/* Bottom block: language, profile, ember (pinned last) */}
+          <div className="mt-auto space-y-1 pt-6">
+            <button
+              type="button"
+              title={rail ? "Language" : undefined}
+              aria-label="Language"
+              className={`flex h-12 w-full items-center gap-4 text-[16px] text-muted-strong transition-colors hover:text-foreground ${rail ? "justify-center" : "px-3"}`}
             >
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent-candle text-white" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" /></svg>
-              </span>
-              <span className="text-[15px] text-foreground">{hasSession ? "Profile" : "Sign in"}</span>
-            </Link>
-            {user && (
-              <button
-                onClick={handleLogout}
-                aria-label="Log out"
-                className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className="shrink-0"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" /></svg>
+              {!rail && <span className="flex-1 text-left">English</span>}
+            </button>
+
+            <div className={`flex items-center ${rail ? "justify-center" : "gap-1"}`}>
+              <Link
+                href={hasSession ? "/profile" : "#"}
+                onClick={(e) => { if (!hasSession) { e.preventDefault(); openAuth("signup"); } }}
+                prefetch={false}
+                title={rail ? (hasSession ? "Profile" : "Sign in") : undefined}
+                aria-current={isActive("/profile") ? "page" : undefined}
+                className={`flex h-12 items-center gap-3 transition-colors hover:text-foreground ${rail ? "" : "flex-1 px-2"}`}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-              </button>
-            )}
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent-candle text-white" aria-hidden="true">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" /></svg>
+                </span>
+                {!rail && <span className="text-[16px] text-foreground">{hasSession ? "Profile" : "Sign in"}</span>}
+              </Link>
+              {user && !rail && (
+                <button
+                  onClick={handleLogout}
+                  aria-label="Log out"
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/[.06] hover:text-foreground"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+                </button>
+              )}
+            </div>
+
+            <Link
+              href="/store"
+              prefetch={false}
+              title={rail ? "Turn up the heat" : undefined}
+              aria-label="Turn up the heat"
+              className={`group relative mt-2 block overflow-hidden ${rail ? "mx-auto h-12 w-12 rounded-full" : "rounded-[1.75rem] p-4"}`}
+              style={{ background: "radial-gradient(120% 120% at 0% 100%, rgba(225,36,92,.6), rgba(60,8,24,.65) 45%, #0c0c0e 85%)" }}
+            >
+              <span aria-hidden="true" className="absolute -right-4 -top-6 h-24 w-24 rounded-full bg-brand/40 opacity-60 blur-2xl transition-opacity group-hover:opacity-100" />
+              <svg width={rail ? 22 : 26} height={rail ? 22 : 26} viewBox="0 0 24 24" aria-hidden="true" className={`relative ${rail ? "absolute inset-0 m-auto" : ""}`}>
+                <defs>
+                  <radialGradient id="emberGlow" cx="50%" cy="70%" r="60%">
+                    <stop offset="0%" stopColor="#FFD3A0" />
+                    <stop offset="55%" stopColor="#FF5C87" />
+                    <stop offset="100%" stopColor="#B5163F" />
+                  </radialGradient>
+                </defs>
+                <path d={FLAME_PATH} fill="url(#emberGlow)" />
+              </svg>
+              {!rail && (
+                <>
+                  <span className="relative mt-3 block text-[17px] text-foreground">Turn up the heat</span>
+                  <span className="relative mt-0.5 block text-xs text-foreground-dim/80">Longer nights, deeper scenes</span>
+                </>
+              )}
+            </Link>
           </div>
         </div>
       </aside>

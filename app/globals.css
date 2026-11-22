@@ -526,3 +526,7 @@ body { letter-spacing: 0.005em; }
 @media (prefers-reduced-motion: reduce) {
   [style*="ssCall"], [style*="ssBeat"] { animation: none !important; }
 }
+
+/* Sidebar width: full 240px, rail 76px (set pre-paint from localStorage). */
+:root { --nav-w: 240px; }
+html[data-nav="rail"] { --nav-w: 76px; }

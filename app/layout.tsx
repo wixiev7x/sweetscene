@@ -60,8 +60,16 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${varela.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "try{document.documentElement.dataset.nav=localStorage.getItem('ss-nav')==='rail'?'rail':'full'}catch(e){}",
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {stagingBanner ? (
           <div
@@ -83,7 +91,7 @@ export default function RootLayout({
         <SiteNav />
         <main
           id="site-main"
-          className="flex-1 w-full md:pl-60 pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0"
+          className="flex-1 w-full md:pl-[var(--nav-w)] transition-[padding] duration-300 pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0"
         >
           {children}
           <SiteFooter />
