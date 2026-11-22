@@ -40,12 +40,6 @@ export default function StorePage() {
   const { openAuth } = useAuthModal();
   const [period, setPeriod] = useState<BillingPeriod>("yearly");
   const [pick, setPick] = useState<TierId>("flame");
-  const tier = TIERS.find((t) => t.id === pick)!;
-
-  function proceed() {
-    if (pick === "spark") return openAuth("signup", "/");
-    router.push(`/billing?plan=${pick}&period=${period}`);
-  }
 
   return (
     <div className="relative min-h-screen bg-background px-4 pb-24 pt-8 text-foreground sm:px-6 md:pt-12">
@@ -74,69 +68,69 @@ export default function StorePage() {
           ))}
         </div>
 
-        {/* Plans list */}
-        <div className="mt-6 space-y-2.5" role="radiogroup" aria-label="Plan">
-          {TIERS.map((t) => {
-            const on = pick === t.id;
-            const m = MOOD[t.id];
-            const price = period === "monthly" ? t.monthlyUsd : t.yearlyUsd;
-            return (
+      </div>
+
+      {/* Plans: four tall, narrow cards side by side */}
+      <div className="relative mx-auto mt-8 grid max-w-[1040px] grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-4" role="radiogroup" aria-label="Plan">
+        {TIERS.map((t) => {
+          const on = pick === t.id;
+          const m = MOOD[t.id];
+          const price = period === "monthly" ? t.monthlyUsd : t.yearlyUsd;
+          return (
+            <div
+              key={t.id}
+              role="radio"
+              aria-checked={on}
+              tabIndex={0}
+              onClick={() => setPick(t.id)}
+              onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setPick(t.id)}
+              className={`relative flex min-h-[440px] cursor-pointer flex-col overflow-hidden rounded-[1.75rem] p-5 transition-all duration-300 ${
+                on ? "-translate-y-1 ring-2 ring-brand" : "ring-1 ring-white/[.08] hover:ring-white/20"
+              }`}
+              style={{ background: `radial-gradient(130% 70% at 50% 0%, ${m.glow}, transparent 70%), #0d0d0f` }}
+            >
+              {t.highlight && (
+                <span className="absolute right-4 top-4 rounded-full bg-brand px-2 py-0.5 text-[10px] uppercase tracking-wider text-white">Most loved</span>
+              )}
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/[.07]">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill={t.id === "spark" ? "none" : "currentColor"} stroke={t.id === "spark" ? "currentColor" : "none"} strokeWidth="2" className={t.id === "inferno" ? "text-accent-candle" : t.id === "spark" ? "text-foreground-dim" : "text-brand-light"} aria-hidden="true">
+                  <path d={m.icon} />
+                </svg>
+              </span>
+              <h2 className="mt-4 font-display text-[26px] leading-none text-foreground">{t.name}</h2>
+              <p className="mt-1.5 text-[13px] text-muted">{m.line}</p>
+              {SHOW_PRICES && <p className="mt-3 text-2xl text-foreground">{formatUsd(price)}</p>}
+              <ul className="mt-5 flex-1 space-y-2.5">
+                {t.perks.map((p) => (
+                  <li key={p} className="flex gap-2 text-[13.5px] leading-snug text-foreground-dim">
+                    <svg className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
+                    {p}
+                  </li>
+                ))}
+              </ul>
               <button
-                key={t.id}
                 type="button"
-                role="radio"
-                aria-checked={on}
-                onClick={() => setPick(t.id)}
-                className={`relative w-full overflow-hidden rounded-[1.5rem] p-4 text-left transition-all duration-300 ${on ? "ring-2 ring-brand" : "ring-1 ring-white/[.08] hover:ring-white/20"}`}
-                style={{ background: `radial-gradient(120% 140% at 0% 0%, ${m.glow}, transparent 60%), #0d0d0f` }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPick(t.id);
+                  if (t.id === "spark") openAuth("signup", "/");
+                  else router.push(`/billing?plan=${t.id}&period=${period}`);
+                }}
+                className={`mt-5 h-12 w-full rounded-full text-[15px] transition-transform active:scale-[0.97] ${
+                  on ? "bg-brand text-white shadow-[0_12px_36px_-12px_var(--brand)]" : "bg-white/[.08] text-foreground hover:bg-white/[.14]"
+                }`}
               >
-                <div className="flex items-center gap-3.5">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/[.07]">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill={t.id === "spark" ? "none" : "currentColor"} stroke={t.id === "spark" ? "currentColor" : "none"} strokeWidth="2" className={t.id === "inferno" ? "text-accent-candle" : t.id === "spark" ? "text-foreground-dim" : "text-brand-light"} aria-hidden="true">
-                      <path d={m.icon} />
-                    </svg>
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="text-[19px] text-foreground">{t.name}</span>
-                      {t.highlight && <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] uppercase tracking-wider text-white">Most loved</span>}
-                    </span>
-                    <span className="block text-[13px] text-muted">{m.line}</span>
-                  </span>
-                  {SHOW_PRICES && <span className="text-right text-[15px] text-foreground">{formatUsd(price)}</span>}
-                  <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${on ? "border-brand bg-brand" : "border-white/25"}`} aria-hidden="true">
-                    {on && <span className="h-2 w-2 rounded-full bg-white" />}
-                  </span>
-                </div>
-                <div className={`grid transition-[grid-template-rows] duration-300 ${on ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}>
-                  <ul className="overflow-hidden">
-                    <div className="space-y-1.5 pl-[58px] pt-3">
-                      {t.perks.map((p) => (
-                        <li key={p} className="flex gap-2 text-[14px] text-foreground-dim">
-                          <svg className="mt-1 h-3.5 w-3.5 shrink-0 text-brand-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7" /></svg>
-                          {p}
-                        </li>
-                      ))}
-                    </div>
-                  </ul>
-                </div>
+                {t.id === "spark" ? "Start free" : `Get ${t.name}`}
               </button>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
+      </div>
+      <p className="relative mt-4 text-center text-[13px] text-muted">
+        Your price appears in your currency at checkout. Cancel anytime. Discreet billing by Paddle.
+      </p>
 
-        {/* Continue */}
-        <button
-          type="button"
-          onClick={proceed}
-          className="mt-5 h-14 w-full rounded-full bg-brand text-[17px] text-white shadow-[0_16px_44px_-14px_var(--brand)] transition-transform active:scale-[0.98]"
-        >
-          {pick === "spark" ? "Start free" : `Continue with ${tier.name}`}
-        </button>
-        <p className="mt-3 text-center text-[13px] text-muted">
-          Your price appears in your currency at checkout. Cancel anytime. Discreet billing by Paddle.
-        </p>
-
+      <div className="relative mx-auto max-w-[560px]">
         {/* Finish the scene */}
         <Link
           href={`/billing?plan=${FINISH_THE_SCENE.id}`}
