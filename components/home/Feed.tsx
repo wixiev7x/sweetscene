@@ -121,23 +121,49 @@ function Card({ c, onOpen }: { c: FeedCharacter; onOpen: (c: FeedCharacter) => v
 const FLAME = "M12 22c4 0 7-2.8 7-6.8 0-3.6-2.6-5.4-3.4-8.7-.2.9-.9 2.6-2.3 3.2.3-3.1-1.4-6.2-4.2-7.7.4 3-1.7 5.3-2.8 7C5.4 10.3 5 11.7 5 13.3 5 18.4 8 22 12 22z";
 
 function Flames({ value, size = 16, onPick }: { value: number; size?: number; onPick?: (n: number) => void }) {
+  const [hover, setHover] = useState(0);
+  const shown = onPick && hover ? hover : value;
   return (
-    <span className="inline-flex items-center gap-0.5" role={onPick ? "radiogroup" : "img"} aria-label={`${value} out of 5`}>
+    <span
+      className="inline-flex items-center gap-0.5"
+      role={onPick ? "radiogroup" : "img"}
+      aria-label={`${value} out of 5`}
+      onMouseLeave={() => setHover(0)}
+    >
       {[1, 2, 3, 4, 5].map((n) => {
-        const on = value >= n - 0.25;
+        const on = shown >= n - 0.25;
         const icon = (
-          <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className="transition-transform">
+          <svg
+            width={size}
+            height={size}
+            viewBox="0 0 24 24"
+            aria-hidden="true"
+            className="transition-all duration-150"
+            style={{ transform: onPick && hover >= n ? "scale(1.18) translateY(-1px)" : undefined, filter: on ? "drop-shadow(0 0 6px rgba(255,46,106,.55))" : undefined }}
+          >
             <path d={FLAME} fill={on ? "url(#ss-flame)" : "rgba(255,255,255,.14)"} />
           </svg>
         );
         return onPick ? (
-          <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n}`} onClick={() => onPick(n)} className="p-0.5 hover:scale-110 active:scale-90">
+          <button
+            key={n}
+            type="button"
+            role="radio"
+            aria-checked={value === n}
+            aria-label={`${n} of 5`}
+            onMouseEnter={() => setHover(n)}
+            onFocus={() => setHover(n)}
+            onBlur={() => setHover(0)}
+            onClick={() => onPick(n)}
+            className="p-0.5 active:scale-90"
+          >
             {icon}
           </button>
         ) : (
           <span key={n}>{icon}</span>
         );
       })}
+      {onPick && <span className="ml-2 w-16 text-xs text-muted" aria-live="polite">{shown ? `${shown} of 5` : "Rate"}</span>}
     </span>
   );
 }
@@ -353,6 +379,15 @@ export default function Feed({
   const [pending, startTransition] = useTransition();
   const loading = useRef(false);
   const sentinel = useRef<HTMLDivElement | null>(null);
+  const stickRef = useRef<HTMLDivElement | null>(null);
+  const [stuck, setStuck] = useState(false);
+  useEffect(() => {
+    const node = stickRef.current;
+    if (!node) return;
+    const io = new IntersectionObserver(([e]) => setStuck(!e.isIntersecting), { rootMargin: "-65px 0px 0px 0px" });
+    io.observe(node);
+    return () => io.disconnect();
+  }, []);
 
   const go = (next: { a?: string; s?: string; m?: string | null }) => {
     const p = new URLSearchParams();
@@ -394,56 +429,70 @@ export default function Feed({
           if (c) setOpen(c);
         }}
       />
-      <div className="h-6" />
-      {/* Tabs + sort */}
-      <div className="sticky top-16 z-30 -mx-4 bg-background/95 px-4 pt-1 backdrop-blur-xl sm:-mx-6 sm:px-6">
-        <div className="flex items-center justify-between gap-3 border-b border-line">
-          <div className="flex gap-5" role="tablist" aria-label="Browse">
+      <div className="h-4" />
+      {/* Category bar: plain text, sticks under the header while scrolling */}
+      <div ref={stickRef} aria-hidden="true" className="h-px" />
+      <div
+        className={`sticky top-16 z-30 -mx-4 px-4 pb-1 pt-2 transition-[background,box-shadow] duration-300 sm:-mx-6 sm:px-6 ${
+          stuck ? "bg-black/75 shadow-[0_1px_0_rgba(255,255,255,.06)] backdrop-blur-xl" : "bg-transparent"
+        }`}
+      >
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex gap-7" role="tablist" aria-label="Browse">
             {TABS.map((t) => (
               <button
                 key={t.key}
                 role="tab"
                 aria-selected={audience === t.key}
                 onClick={() => go({ a: t.key, m: null })}
-                className={`relative pb-3 pt-1 font-display text-[17px] transition-colors ${
+                className={`relative pb-2.5 pt-1 font-display text-[20px] transition-colors ${
                   audience === t.key ? "text-foreground" : "text-muted hover:text-foreground-dim"
                 }`}
               >
                 {t.label}
-                {audience === t.key && <span className="absolute inset-x-0 -bottom-px h-[2px] rounded-full bg-brand" />}
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-x-0 bottom-0 h-[2px] origin-left rounded-full bg-brand transition-transform duration-300 ${audience === t.key ? "scale-x-100" : "scale-x-0"}`}
+                />
               </button>
             ))}
           </div>
-          <label className="relative mb-2">
+          <label className="relative flex items-center gap-1 text-[15px] text-muted-strong">
             <span className="sr-only">Sort</span>
             <select
               value={sort}
               onChange={(e) => go({ s: e.target.value })}
-              className="h-8 appearance-none rounded-full border border-line bg-surface pl-3 pr-7 text-[13px] font-medium text-foreground-dim focus:outline-none"
+              className="cursor-pointer appearance-none bg-transparent pr-5 text-right text-foreground-dim focus:outline-none"
             >
               {SORTS.map((s) => (
-                <option key={s.key} value={s.key}>{s.label}</option>
+                <option key={s.key} value={s.key} className="bg-surface">{s.label}</option>
               ))}
             </select>
-            <svg className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+            <svg className="pointer-events-none absolute right-0 h-3.5 w-3.5 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
               <path d="M6 9l6 6 6-6" />
             </svg>
           </label>
         </div>
-        <div className="-mx-4 flex gap-2 overflow-x-auto px-4 py-3 scrollbar-none sm:-mx-6 sm:px-6">
-          {MOODS.map((m) => (
-            <button
-              key={m}
-              type="button"
-              aria-pressed={mood === m}
-              onClick={() => go({ m: mood === m ? null : m })}
-              className={`h-8 shrink-0 rounded-full px-3.5 text-[13px] font-medium transition-colors ${
-                mood === m ? "bg-foreground text-background" : "bg-surface text-muted-strong hover:text-foreground"
-              }`}
-            >
-              {m}
-            </button>
-          ))}
+        <div className="relative -mx-4 sm:-mx-6">
+          <div
+            className="flex gap-6 overflow-x-auto px-4 pb-2 pt-2.5 scrollbar-none sm:px-6"
+            style={{ maskImage: "linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 32px), transparent)" }}
+          >
+            {MOODS.map((m) => (
+              <button
+                key={m}
+                type="button"
+                aria-pressed={mood === m}
+                onClick={() => go({ m: mood === m ? null : m })}
+                className={`relative shrink-0 pb-1.5 text-[16px] transition-colors ${
+                  mood === m ? "text-foreground" : "text-muted hover:text-foreground-dim"
+                }`}
+              >
+                {m}
+                <span aria-hidden="true" className={`absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-brand transition-opacity ${mood === m ? "opacity-100" : "opacity-0"}`} />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
