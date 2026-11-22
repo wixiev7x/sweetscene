@@ -94,3 +94,27 @@ export async function getRecommendations(id: string): Promise<{ byCreator: FeedC
     .map((x) => x.c);
   return { byCreator, similar };
 }
+
+const REPORT_REASONS = ["minor", "real_person", "stolen_image", "explicit_unmarked", "hate_or_harm", "spam", "other"] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+/** Signed-in members report a character into the moderation queue (1 open report per user/character). */
+export async function reportCharacter(id: string, reason: string, note: string): Promise<{ ok: true } | { error: string }> {
+  if (typeof id !== "string" || !UUID.test(id)) return { error: "invalid" };
+  if (!REPORT_REASONS.includes(reason as ReportReason)) return { error: "Pick a reason" };
+  const uid = await currentUserId();
+  if (!uid) return { error: "auth" };
+  const admin = createAdminClient();
+  const { data: exists } = await admin
+    .from("moderation_queue")
+    .select("id")
+    .eq("content_type", "character")
+    .eq("content_id", id)
+    .eq("reported_by", uid)
+    .eq("status", "pending")
+    .maybeSingle();
+  if (exists) return { ok: true };
+  const text = `${reason}${note ? `: ${String(note).replace(/[\u0000-\u001F]/g, " ").slice(0, 500)}` : ""}`;
+  const { error } = await admin.from("moderation_queue").insert({ content_type: "character", content_id: id, reported_by: uid, reason: text, status: "pending" });
+  return error ? { error: "Couldn't send report" } : { ok: true };
+}

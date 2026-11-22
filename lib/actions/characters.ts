@@ -654,10 +654,12 @@ export async function updateCharacter(
     patch.avatar_url !== undefined &&
     patch.avatar_url !== ((existing as Record<string, unknown>).avatar_url as string | null);
 
+  /* Public characters stay live; an image change is queued for
+     moderator review by the characters_status_update_guard trigger
+     (2026-11-23-01) instead of hiding the character. */
+  void avatarChanged;
   if (existingStatus === "pending_review" && patchTouchesAuthoredContent(patch)) {
     update.status = "draft";
-  } else if (existingStatus === "published" && avatarChanged) {
-    update.status = "pending_review";
   }
 
   const { error: updateError } = await supabase

@@ -9,7 +9,7 @@ import {
   createCharacter,
   importCharacterCardAction,
 } from "@/lib/actions/characters";
-import { generateCharacterAvatar } from "@/lib/actions/avatars";
+import { cleanImage } from "@/lib/images/clean-upload";
 import { getMyProfile } from "@/lib/actions/profile";
 import HoverCardEditor from "@/components/hover-card/HoverCardEditor";
 import { saveHoverCard } from "@/lib/actions/hover-card";
@@ -82,7 +82,6 @@ export default function CreateCharacterPage() {
   const [category, setCategory] = useState<
     "companion" | "roleplay" | "adventure" | "romance" | "assistant" | "other"
   >("other");
-  const [avatarPrompt, setAvatarPrompt] = useState("");
   /* Phase 5 — review workflow + behavioural fields. */
   const [tagline, setTagline] = useState("");
   const [triggersText, setTriggersText] = useState("");
@@ -90,7 +89,6 @@ export default function CreateCharacterPage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
-  const [generatingAvatar, setGeneratingAvatar] = useState(false);
   const [importing, setImporting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -167,29 +165,6 @@ export default function CreateCharacterPage() {
     setAlternateGreetings((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  async function handleGenerateAvatar() {
-    /* Phase 8A: use the free-form avatar prompt field if the user
-       filled it in; otherwise fall back to the character prompt. */
-    const promptSource = avatarPrompt.trim() || fullPersonality.trim() || userPrompt.trim();
-    if (!name.trim() || !promptSource) {
-      setError("Fill in name and a description or avatar prompt first.");
-      return;
-    }
-    setGeneratingAvatar(true);
-    setError("");
-    const result = await generateCharacterAvatar(
-      name.trim(),
-      promptSource,
-      isNsfw
-    );
-    if ("error" in result) {
-      setError(result.error);
-    } else {
-      setAvatarUrl(result.url);
-    }
-    setGeneratingAvatar(false);
-  }
-
   /* Phase 5 — upload own avatar to Supabase Storage ("avatars" public
      bucket, owner-scoped folder `{userId}/`). 2MB, PNG/JPEG/WebP/GIF.
      The public URL then flows into the character row via avatar_url and
@@ -199,13 +174,11 @@ export default function CreateCharacterPage() {
     /* Reset the input so re-selecting the same file re-fires onChange. */
     e.target.value = "";
     if (!file) return;
-    const ALLOWED = ["image/png", "image/jpeg", "image/webp", "image/gif"];
-    if (!ALLOWED.includes(file.type)) {
-      setError("Avatar must be a PNG, JPEG, WebP, or GIF image");
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Avatar image must be 2MB or smaller");
+    let cleaned: Blob;
+    try {
+      cleaned = await cleanImage(file);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't use that image");
       return;
     }
     const supabase = createClient();
@@ -218,10 +191,11 @@ export default function CreateCharacterPage() {
     }
     setUploadingAvatar(true);
     setError("");
-    const path = `${user.id}/${crypto.randomUUID()}`;
+    const ext = cleaned.type === "image/webp" ? "webp" : "jpg";
+    const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
     const { error: uploadError } = await supabase.storage
       .from("avatars")
-      .upload(path, file, { contentType: file.type, upsert: false });
+      .upload(path, cleaned, { contentType: cleaned.type, upsert: false });
     if (uploadError) {
       setError(uploadError.message);
       setUploadingAvatar(false);
@@ -369,7 +343,6 @@ export default function CreateCharacterPage() {
     setCustomTags([]);
     setCustomTagInput("");
     setCategory("other");
-    setAvatarPrompt("");
     /* Phase 5 — reset new fields. */
     setTagline("");
     setTriggersText("");
@@ -845,7 +818,7 @@ export default function CreateCharacterPage() {
           {/* ── AVATAR ── */}
           <Field
             label="Avatar"
-            hint="Upload your own (PNG/JPEG/WebP/GIF, ≤2MB) or AI-generate a tasteful SFW portrait. Characters with avatars get a quick review before going public."
+            hint="Upload an image you made or have rights to (JPG/PNG/WebP, up to 2 MB). No real people. Public characters go live right away and may be removed if they break our rules."
           >
             <div className="flex items-center gap-4 flex-wrap">
               {avatarUrl ? (
@@ -867,20 +840,13 @@ export default function CreateCharacterPage() {
                 {uploadingAvatar ? "Uploading…" : "⬆ Upload Image"}
                 <input
                   type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  accept="image/png,image/jpeg,image/webp"
                   className="hidden"
                   onChange={handleUploadAvatar}
                   disabled={uploadingAvatar}
                 />
               </label>
-              <button
-                type="button"
-                onClick={handleGenerateAvatar}
-                disabled={generatingAvatar || !name.trim()}
-                className="px-5 py-2.5 rounded-xl text-sm bg-white/5 border border-white/10 text-foreground-dim hover:bg-white/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {generatingAvatar ? "Painting…" : "🎨 Generate Avatar"}
-              </button>
+
               {avatarUrl && (
                 <button
                   type="button"
@@ -891,15 +857,7 @@ export default function CreateCharacterPage() {
                 </button>
               )}
             </div>
-            {/* Phase 8A: free-form avatar prompt. */}
-            <input
-              type="text"
-              value={avatarPrompt}
-              onChange={(e) => setAvatarPrompt(e.target.value)}
-              maxLength={300}
-              placeholder="Avatar prompt: e.g. 'red haired anime girl, green eyes, shy smile'"
-              className="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-muted focus:outline-none focus:ring-1 focus:ring-brand/50"
-            />
+
           </Field>
 
           {/* ── HOVER CARD ── */}

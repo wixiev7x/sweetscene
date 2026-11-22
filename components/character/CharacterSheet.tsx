@@ -7,6 +7,7 @@ import { getCharacterDetails, submitCharacterReview, type CharacterDetails } fro
 import { getMySocial, getRecommendations, toggleFavorite, toggleLike } from "@/lib/actions/character-social";
 import { useAuthModal } from "@/components/auth/AuthModal";
 import HoverCardView from "@/components/hover-card/HoverCardView";
+import ReportDialog from "./ReportDialog";
 import { resolveCard } from "@/components/hover-card/CardHoverPreview";
 import { compact, Portrait, Flames, FlameDefs, HEART } from "./bits";
 
@@ -68,6 +69,7 @@ export default function CharacterSheet({ c, onClose, onOpen }: { c: FeedCharacte
   const [msg, setMsg] = useState<string | null>(null);
   const [reply, setReply] = useState("");
   const [more, setMore] = useState(false);
+  const [reporting, setReporting] = useState(false);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -137,6 +139,7 @@ export default function CharacterSheet({ c, onClose, onOpen }: { c: FeedCharacte
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-8 md:p-12" role="dialog" aria-modal="true" aria-label={c.name}>
       <FlameDefs />
+      {reporting && <ReportDialog characterId={c.id} onClose={() => setReporting(false)} />}
       <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/55 backdrop-blur-[3px]" />
 
       <div
@@ -210,6 +213,13 @@ export default function CharacterSheet({ c, onClose, onOpen }: { c: FeedCharacte
               </div>
             </div>
 
+            <button
+              type="button"
+              onClick={() => setReporting(true)}
+              className="float-right mr-12 mt-2 text-sm text-muted transition-colors hover:text-danger"
+            >
+              Report
+            </button>
             <h2 className="pr-12 font-display text-[clamp(2rem,4vw,3.2rem)] leading-[1.05] text-foreground">
               {c.name}
               {c.age ? <span className="ml-3 text-muted">{c.age}</span> : null}
