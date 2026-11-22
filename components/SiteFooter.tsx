@@ -28,6 +28,7 @@ const COLS: { title: string; links: [string, string][] }[] = [
   {
     title: "Support",
     links: [
+      ["/how", "Help"],
       ["/safety", "Safety Center"],
       ["/guidelines", "Community Guidelines"],
       ["/contact", "Contact"],

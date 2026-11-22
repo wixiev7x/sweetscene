@@ -53,7 +53,7 @@ function Portrait({ c, sizes }: { c: FeedCharacter; sizes?: string }) {
       className="absolute inset-0 flex items-center justify-center"
       style={{ background: `radial-gradient(120% 90% at 30% 15%, hsl(${340 + hue(c.name)} 70% 32%), #0B0709 75%)` }}
     >
-      <span className="font-display text-4xl text-white/60">{c.name.charAt(0)}</span>
+      <span className="font-display text-7xl text-white/60">{c.name.charAt(0)}</span>
     </div>
   );
 }
@@ -63,38 +63,38 @@ function Card({ c, onOpen }: { c: FeedCharacter; onOpen: (c: FeedCharacter) => v
     <button
       type="button"
       onClick={() => onOpen(c)}
-      className="group relative block aspect-[5/8] w-full overflow-hidden rounded-xl bg-surface text-left ring-1 ring-line transition-[transform,box-shadow] duration-300 hover:ring-line-strong active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
+      className="group relative block aspect-[3/4] w-full overflow-hidden rounded-[1.5rem] bg-surface text-left ring-1 ring-line transition-[transform,box-shadow] duration-300 hover:ring-line-strong active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
       aria-label={`Open ${c.name}`}
     >
       <Portrait c={c} />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0B0709] via-[#0B0709]/35 to-transparent" />
-      <div className="absolute left-1.5 right-1.5 top-1.5 flex items-start justify-between">
+      <div className="absolute left-3 right-3 top-3 flex items-start justify-between">
         {c.is_featured ? (
-          <span className="rounded-full bg-[#0B0709]/70 px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-wider text-accent-candle backdrop-blur">
+          <span className="rounded-full bg-[#0B0709]/70 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-accent-candle backdrop-blur">
             Featured
           </span>
         ) : isNew(c.created_at) ? (
-          <span className="rounded-full bg-brand px-1.5 py-0.5 text-[8.5px] font-semibold uppercase tracking-wider text-white">New</span>
+          <span className="rounded-full bg-brand px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">New</span>
         ) : (
           <span />
         )}
         {c.is_nsfw && (
-          <span className="rounded-full bg-[#0B0709]/70 px-1.5 py-0.5 text-[8.5px] font-bold text-brand-light backdrop-blur">18+</span>
+          <span className="rounded-full bg-[#0B0709]/70 px-2.5 py-1 text-[10px] font-bold text-brand-light backdrop-blur">18+</span>
         )}
       </div>
-      <div className="absolute inset-x-0 bottom-0 p-2 sm:p-2.5">
+      <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4">
         <div className="flex items-end justify-between gap-2">
-          <p className="truncate font-display text-[12.5px] font-bold leading-tight text-white sm:text-[14px]">{c.name}</p>
+          <p className="truncate font-display text-lg leading-tight text-white sm:text-xl">{c.name}</p>
           {c.chat_count > 0 && (
-            <span className="flex shrink-0 items-center gap-0.5 text-[9.5px] text-white/70">
-              <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <span className="flex shrink-0 items-center gap-1 text-xs text-white/75">
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
               </svg>
               {compact(c.chat_count)}
             </span>
           )}
         </div>
-        {c.tagline && <p className="mt-0.5 line-clamp-2 text-[10px] leading-snug text-white/70 sm:text-[11.5px]">{c.tagline}</p>}
+        {c.tagline && <p className="mt-1 line-clamp-2 text-[13px] leading-snug text-white/75 sm:text-sm">{c.tagline}</p>}
       </div>
     </button>
   );
@@ -195,43 +195,33 @@ function QuickView({ c, onClose }: { c: FeedCharacter; onClose: () => void }) {
           </div>
 
           <div className="px-5 pb-6 sm:px-7">
-            <div className="flex flex-col items-center gap-1 pt-3">
+            <div className="flex items-center gap-2 pt-3">
               <Lips value={d?.rating ?? 0} size={20} />
-              <span className="text-[11px] text-muted">
-                {d?.rating ? `${d.rating.toFixed(1)} · ${d.ratingCount} ${d.ratingCount === 1 ? "rating" : "ratings"}` : "No ratings yet"}
+              <span className="text-xs text-muted">
+                {d?.rating ? `${d.rating.toFixed(1)} · ${d.ratingCount}` : "No ratings yet"}
               </span>
             </div>
 
-            <h2 className="mt-3 text-center font-display text-3xl text-foreground">{c.name}</h2>
-            <div className="mt-2 flex items-center justify-center gap-4 text-sm text-muted-strong">
-              <span className="flex items-center gap-1.5">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent-candle text-[11px] text-white">
-                  {(d?.creator ?? "S").charAt(0).toUpperCase()}
-                </span>
-                @{d?.creator ?? "…"}
-              </span>
-              {c.chat_count > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 01-12.3 7.4L3 21l2-5.4A8.4 8.4 0 1121 11.5z" /></svg>
-                  {compact(c.chat_count)}
-                </span>
-              )}
+            <h2 className="mt-2 font-display text-3xl text-foreground">{c.name}</h2>
+            <div className="mt-1.5 flex items-center gap-4 text-sm text-muted-strong">
+              <span>by <span className="text-foreground-dim">@{d?.creator ?? "…"}</span></span>
+              {c.chat_count > 0 && <span>{compact(c.chat_count)} chats</span>}
             </div>
 
-            <Link href={`/play/${c.id}`} className="mt-5 flex h-13 min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-foreground text-base text-background transition-transform active:scale-[0.98]">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 01-12.3 7.4L3 21l2-5.4A8.4 8.4 0 1121 11.5z" /></svg>
-              Chat
+            <Link href={`/play/${c.id}`} className="mt-5 flex min-h-[60px] w-full items-center justify-center gap-3 rounded-full bg-brand text-xl text-white shadow-[0_12px_40px_-12px_var(--brand)] transition-transform active:scale-[0.98]">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 01-12.3 7.4L3 21l2-5.4A8.4 8.4 0 1121 11.5z" /></svg>
+              Start chatting
             </Link>
 
             {c.tagline && <p className="mt-5 text-[15px] leading-relaxed text-foreground-dim">{c.tagline}</p>}
 
             {c.tags.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-x-3 gap-y-1">
                 {tags.map((t) => (
-                  <span key={t} className="rounded-full border border-line-strong px-3.5 py-1.5 text-sm text-foreground-dim">{t}</span>
+                  <span key={t} className="text-sm text-brand-lighter">#{t.toLowerCase().replace(/\s+/g, "")}</span>
                 ))}
                 {!allTags && c.tags.length > 3 && (
-                  <button type="button" onClick={() => setAllTags(true)} className="rounded-full border border-line-strong px-3.5 py-1.5 text-sm text-muted hover:text-foreground">
+                  <button type="button" onClick={() => setAllTags(true)} className="text-sm text-muted underline-offset-4 hover:underline">
                     +{c.tags.length - 3} more
                   </button>
                 )}
@@ -255,9 +245,9 @@ function QuickView({ c, onClose }: { c: FeedCharacter; onClose: () => void }) {
             <section className="mt-6">
               <h3 className="text-[11px] uppercase tracking-[0.16em] text-muted">What people say</h3>
               {d && d.reviews.length === 0 && <p className="mt-2 text-sm text-muted">No whispers yet. Be the first.</p>}
-              <ul className="mt-2 space-y-2.5">
+              <ul className="mt-2 divide-y divide-line">
                 {d?.reviews.map((r, i) => (
-                  <li key={i} className="rounded-3xl bg-surface-raised/60 p-3.5">
+                  <li key={i} className="py-3">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs text-foreground-dim">@{r.name}</span>
                       <Lips value={r.rating} size={12} />
@@ -266,7 +256,7 @@ function QuickView({ c, onClose }: { c: FeedCharacter; onClose: () => void }) {
                   </li>
                 ))}
               </ul>
-              <div className="mt-3 rounded-3xl border border-line p-3.5">
+              <div className="mt-4 border-t border-line pt-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted">Your rating</span>
                   <Lips value={mine} size={22} onPick={setMine} />
@@ -396,7 +386,7 @@ export default function Feed({
         </div>
       </div>
 
-      <div className={`mt-1 grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-1.5 transition-opacity sm:grid-cols-[repeat(auto-fill,minmax(150px,1fr))] sm:gap-2.5 2xl:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] ${pending ? "opacity-50" : ""}`}>
+      <div className={`mt-1 grid grid-cols-2 gap-3 transition-opacity sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 2xl:grid-cols-5 ${pending ? "opacity-50" : ""}`}>
         {cells}
       </div>
       {items.length === 0 && (

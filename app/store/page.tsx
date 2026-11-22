@@ -13,7 +13,7 @@ const FAQS = [
 ] as const;
 
 export default function StorePage() {
-  const [period, setPeriod] = useState<BillingPeriod>("monthly");
+  const [period, setPeriod] = useState<BillingPeriod>("yearly");
 
   return (
     <div className="min-h-screen bg-background px-4 pb-24 pt-8 text-foreground sm:px-6 md:pt-12">
@@ -26,7 +26,7 @@ export default function StorePage() {
           <p className="mx-auto mt-3 max-w-md text-sm text-muted-strong">No daily match limit on any plan. Upgrade only when you want more time in the scene.</p>
 
           <div className="mt-7 inline-flex rounded-full border border-line bg-surface p-1" role="radiogroup" aria-label="Billing period">
-            {(["monthly", "yearly"] as const).map((p) => (
+            {(["yearly", "monthly"] as const).map((p) => (
               <button
                 key={p}
                 role="radio"

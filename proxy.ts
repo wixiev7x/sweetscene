@@ -27,7 +27,6 @@ const PROTECTED_PREFIXES = [
   "/lobby",
   "/chat",
   "/dm",
-  "/play",
   "/characters",
   "/create-character",
   "/profile",

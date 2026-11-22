@@ -29,8 +29,10 @@ type NavItem = {
 const NAV: NavItem[] = [
   { href: "/", label: "Explore", icon: "M12 22a10 10 0 100-20 10 10 0 000 20zM16.2 7.8l-2.1 6.3-6.3 2.1 2.1-6.3z" },
   { href: "/matchmake", label: "Matchmake", icon: "M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z" },
-  { href: "/lobby", label: "Chats", icon: "M21 11.5a8.4 8.4 0 01-12.3 7.4L3 21l2-5.4A8.4 8.4 0 1121 11.5z" },
+  { href: "/lobby", label: "Chat", icon: "M21 11.5a8.4 8.4 0 01-12.3 7.4L3 21l2-5.4A8.4 8.4 0 1121 11.5z" },
   { href: "/characters/my", label: "My characters", icon: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" },
+  { href: "/community", label: "Community", icon: "M8 21h8M12 17v4M6 4h12v7a6 6 0 01-12 0zM18 6h2a2 2 0 01-2 4M6 6H4a2 2 0 002 4" },
+  { href: "/scenarios", label: "Scenarios", icon: "M4 5a2 2 0 012-2h9l5 5v11a2 2 0 01-2 2H6a2 2 0 01-2-2zM14 3v5h5M8 13h8M8 17h5" },
 ];
 
 const MOBILE_TABS: NavItem[] = [
@@ -64,10 +66,11 @@ function SidebarRow({ item, active, onNavigate }: { item: NavItem; active: boole
       prefetch={false}
       aria-current={active ? "page" : undefined}
       onClick={onNavigate}
-      className={`flex h-11 items-center gap-3 rounded-full px-4 text-[15px] transition-colors focus-visible:ring-2 ring-line-focus ${
-        active ? "bg-surface-raised text-foreground" : "text-muted-strong hover:bg-surface hover:text-foreground"
+      className={`relative flex h-11 items-center gap-3.5 px-3 text-[15px] transition-colors focus-visible:outline-none focus-visible:text-foreground ${
+        active ? "text-foreground" : "text-muted-strong hover:text-foreground"
       }`}
     >
+      {active && <span aria-hidden="true" className="absolute -left-4 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand" />}
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-brand-light" : ""} aria-hidden="true">
         <path d={item.icon} />
       </svg>
@@ -416,30 +419,32 @@ export function SiteNav({ className = "" }: { className?: string }) {
             ))}
           </nav>
 
-          <div className="my-5 h-px bg-line" />
-          <p className="mb-2 px-2 text-[11px] uppercase tracking-[0.14em] text-muted">Plans</p>
+          <div className="mt-auto pt-5" />
           <Link
             href="/store"
             prefetch={false}
-            className="group flex items-center gap-3 rounded-3xl bg-gradient-to-br from-brand/25 via-surface to-surface px-4 py-3.5 ring-1 ring-brand/30 transition-colors hover:ring-brand/60"
+            className="group relative overflow-hidden rounded-[1.75rem] p-4"
+            style={{ background: "radial-gradient(120% 120% at 0% 100%, rgba(225,36,92,.55), rgba(60,8,24,.6) 45%, #0c0c0e 80%)" }}
           >
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/20 text-brand-light">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 5.5 5 10a5 5 0 01-10 0c0-2 .8-3.4 2-4.5.2 1.6 1 2.6 2 3 0-3 .3-5.6 1-8.5z" /></svg>
-            </span>
-            <span className="flex-1">
-              <span className="block text-[15px] text-foreground">Go Flame</span>
-              <span className="block text-xs text-muted">Longer, hotter scenes</span>
-            </span>
+            <span aria-hidden="true" className="absolute -right-4 -top-6 h-24 w-24 rounded-full bg-brand/40 blur-2xl transition-opacity group-hover:opacity-100 opacity-60" />
+            <svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" className="relative">
+              <defs>
+                <radialGradient id="emberGlow" cx="50%" cy="70%" r="60%">
+                  <stop offset="0%" stopColor="#FFD3A0" />
+                  <stop offset="55%" stopColor="#FF5C87" />
+                  <stop offset="100%" stopColor="#B5163F" />
+                </radialGradient>
+              </defs>
+              <path d="M12 22c4 0 7-2.8 7-6.8 0-3.6-2.6-5.4-3.4-8.7-.2.9-.9 2.6-2.3 3.2.3-3.1-1.4-6.2-4.2-7.7.4 3-1.7 5.3-2.8 7C5.4 10.3 5 11.7 5 13.3 5 18.4 8 22 12 22z" fill="url(#emberGlow)" />
+            </svg>
+            <span className="relative mt-3 block text-[17px] text-foreground">Turn up the heat</span>
+            <span className="relative mt-0.5 block text-xs text-foreground-dim/80">Longer nights, deeper scenes</span>
           </Link>
 
-          <div className="my-5 h-px bg-line" />
-          <p className="mb-2 px-2 text-[11px] uppercase tracking-[0.14em] text-muted">Other</p>
-          <SidebarRow item={{ href: "/how", label: "Help", icon: "M12 22a10 10 0 100-20 10 10 0 000 20zM9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01" }} active={isActive("/how")} onNavigate={() => closeMenus(null)} />
-          <SidebarRow item={{ href: "/safety", label: "Safety", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" }} active={isActive("/safety")} onNavigate={() => closeMenus(null)} />
         </div>
 
         <div className="space-y-1 border-t border-line p-4">
-          <div className="flex h-11 items-center gap-3 rounded-full px-4 text-[15px] text-muted-strong">
+          <div className="flex h-11 items-center gap-3.5 px-3 text-[15px] text-muted-strong">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" /></svg>
             <span className="flex-1">English</span>
           </div>
@@ -448,7 +453,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
               href={hasSession ? "/profile" : "/login"}
               prefetch={false}
               aria-current={isActive("/profile") ? "page" : undefined}
-              className="flex h-12 flex-1 items-center gap-3 rounded-full px-2 transition-colors hover:bg-surface"
+              className="flex h-12 flex-1 items-center gap-3 px-1 transition-colors hover:text-foreground"
             >
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent-candle text-white" aria-hidden="true">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" /></svg>
