@@ -63,3 +63,14 @@ export async function saveHoverMode(mode: string): Promise<{ ok: true } | { erro
   const { error } = await createAdminClient().from("profiles").update({ hover_mode: mode }).eq("id", user.id);
   return error ? { error: "Couldn't save" } : { ok: true };
 }
+
+/** Creator-only read of the stored card (for the edit page). */
+export async function getMyHoverCard(characterId: string): Promise<HoverCard | null> {
+  if (typeof characterId !== "string" || !UUID.test(characterId)) return null;
+  const { data: { user } } = await (await createClient()).auth.getUser();
+  if (!user) return null;
+  const { data } = await createAdminClient().from("characters").select("creator_id, hover_card").eq("id", characterId).maybeSingle();
+  if (!data || data.creator_id !== user.id || !data.hover_card) return null;
+  const r = sanitizeHoverCard(data.hover_card);
+  return "card" in r ? r.card : null;
+}

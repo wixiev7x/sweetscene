@@ -5,6 +5,9 @@ import { SFW_MODE } from "@/lib/utils/sfw";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getCharacter, updateCharacter, publishMyCharacter } from "@/lib/actions/characters";
+import HoverCardEditor from "@/components/hover-card/HoverCardEditor";
+import { getMyHoverCard, saveHoverCard } from "@/lib/actions/hover-card";
+import type { HoverCard } from "@/lib/hover-card/schema";
 import { getMyProfile } from "@/lib/actions/profile";
 import { LoadingState } from "@/components/ui";
 
@@ -64,6 +67,16 @@ export default function EditCharacterPage({
   const { id } = use(params);
   const router = useRouter();
 
+  const [hoverCard, setHoverCard] = useState<HoverCard | null>(null);
+  const [hoverMsg, setHoverMsg] = useState("");
+  useEffect(() => {
+    getMyHoverCard(id).then(setHoverCard);
+  }, [id]);
+  async function saveHover() {
+    setHoverMsg("Saving…");
+    const r = await saveHoverCard(id, hoverCard);
+    setHoverMsg("error" in r ? r.error : "Hover card saved.");
+  }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -598,6 +611,22 @@ export default function EditCharacterPage({
           </Link>
         </div>
       </form>
+
+      <section className="mt-12 border-t border-white/10 pt-10">
+        <h2 className="font-display text-2xl text-foreground">Hover card</h2>
+        <p className="mb-6 mt-1 text-sm text-muted">What people see when they hover over this character. Make it yours.</p>
+        <HoverCardEditor
+          value={hoverCard}
+          onChange={setHoverCard}
+          seed={{ name: name || "Them", story: shortDescription, greeting: firstMessage }}
+        />
+        <div className="mt-6 flex items-center gap-4">
+          <button type="button" onClick={saveHover} className="h-12 rounded-full bg-brand px-8 text-[15px] text-white">
+            Save hover card
+          </button>
+          {hoverMsg && <span className="text-sm text-muted-strong">{hoverMsg}</span>}
+        </div>
+      </section>
     </div>
   );
 }

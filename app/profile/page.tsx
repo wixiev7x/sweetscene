@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SFW_MODE } from "@/lib/utils/sfw";
+import { useHoverMode } from "@/components/hover-card/CardHoverPreview";
+import { saveHoverMode } from "@/lib/actions/hover-card";
 import Link from "next/link";
 import { Spinner, Badge, ProgressBar } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
@@ -94,6 +96,7 @@ function formatDate(iso: string, style: "short" | "month" = "short"): string {
 export default function ProfilePage() {
   const router = useRouter();
 
+  const [hoverMode, setHoverMode] = useHoverMode();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [matches, setMatches] = useState<MatchHistoryItem[]>([]);
   const [editing, setEditing] = useState(false);
@@ -665,6 +668,30 @@ export default function ProfilePage() {
         </div>
       </section>
       )}
+
+      {/* ── HOVER PREVIEWS ── */}
+      <section className="max-w-3xl mx-auto px-6 mb-8">
+        <h2 className="text-xl text-foreground-dim mb-1">Character previews</h2>
+        <p className="mb-4 text-sm text-muted">What appears when you hover over a character.</p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {([
+            ["custom", "Creator's card"],
+            ["story", "Their story"],
+            ["greeting", "Their greeting"],
+            ["off", "Nothing"],
+          ] as const).map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => { setHoverMode(m); void saveHoverMode(m); }}
+              aria-pressed={hoverMode === m}
+              className={`h-12 rounded-full text-[15px] transition-colors ${hoverMode === m ? "bg-brand text-white" : "bg-white/[.06] text-muted-strong hover:text-foreground"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* ── REPUTATION ── */}
       {profile && (

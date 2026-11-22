@@ -11,6 +11,9 @@ import {
 } from "@/lib/actions/characters";
 import { generateCharacterAvatar } from "@/lib/actions/avatars";
 import { getMyProfile } from "@/lib/actions/profile";
+import HoverCardEditor from "@/components/hover-card/HoverCardEditor";
+import { saveHoverCard } from "@/lib/actions/hover-card";
+import type { HoverCard } from "@/lib/hover-card/schema";
 
 const SCENARIO_TAGS = [
   "hospital",
@@ -60,6 +63,7 @@ export default function CreateCharacterPage() {
   const router = useRouter();
 
   const [name, setName] = useState("");
+  const [hoverCard, setHoverCard] = useState<HoverCard | null>(null);
   const [userPrompt, setUserPrompt] = useState("");
   const [personalityText, setPersonalityText] = useState("");
   const [firstMessage, setFirstMessage] = useState("");
@@ -263,7 +267,11 @@ export default function CreateCharacterPage() {
           setTagline(data.tagline ?? "");
           setTriggersText((data.triggers ?? []).join(", "));
           setLimitsText((data.limits ?? []).join(", "));
-          setCreatedId(result.characterId);
+          if (hoverCard) {
+      const hr = await saveHoverCard(result.characterId, hoverCard);
+      if ("error" in hr) setError(`Character saved, but the hover card wasn't: ${hr.error}`);
+    }
+    setCreatedId(result.characterId);
           setSuccess(true);
         }
       }
@@ -893,6 +901,18 @@ export default function CreateCharacterPage() {
               className="w-full mt-2 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-muted focus:outline-none focus:ring-1 focus:ring-brand/50"
             />
           </Field>
+
+          {/* ── HOVER CARD ── */}
+          <section className="rounded-[1.75rem] bg-white/[.02] p-5 ring-1 ring-white/[.06] sm:p-6">
+            <h2 className="text-lg text-foreground">Hover card</h2>
+            <p className="mb-5 mt-1 text-sm text-muted">Design what people see when they hover over your character. Optional.</p>
+            <HoverCardEditor
+              value={hoverCard}
+              onChange={setHoverCard}
+              seed={{ name: name || "Them", story: shortDescription, greeting: firstMessage, tags: customTags }}
+              images={avatarUrl ? [avatarUrl] : []}
+            />
+          </section>
 
           {/* ── SUBMIT ── */}
           <div className="flex flex-col gap-3">
