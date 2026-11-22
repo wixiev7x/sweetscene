@@ -10,11 +10,12 @@ export async function loadHomeFeed(input: {
   offset?: number;
 }): Promise<FeedCharacter[]> {
   const offset = Number.isInteger(input.offset) && (input.offset as number) >= 0 ? Math.min(input.offset as number, 2000) : 0;
+  const adult = await viewerCanSeeAdult();
   return fetchFeed({
     audience: parseAudience(input.audience),
     sort: parseSort(input.sort),
-    mood: parseMood(input.mood ?? null),
+    mood: parseMood(input.mood ?? null, adult),
     offset,
-    adult: await viewerCanSeeAdult(),
+    adult,
   });
 }

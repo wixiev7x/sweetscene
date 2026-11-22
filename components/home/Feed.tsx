@@ -19,7 +19,7 @@ const SORTS = [
   { key: "new", label: "New" },
   { key: "featured", label: "Featured" },
 ] as const;
-const MOODS = ["Romance", "Fantasy", "Dark", "Drama", "Slice of life", "Adventure"];
+import { MOODS as SFW_MOODS, NSFW_MOODS } from "@/lib/home/categories";
 
 function Card({ c, onOpen }: { c: FeedCharacter; onOpen: (c: FeedCharacter) => void }) {
   return (
@@ -38,6 +38,9 @@ function Card({ c, onOpen }: { c: FeedCharacter; onOpen: (c: FeedCharacter) => v
           <span className="rounded-full bg-brand px-2.5 py-1 text-[10px] uppercase tracking-wider text-white">New</span>
         ) : (
           <span />
+        )}
+        {c.is_nsfw && (
+          <span className="ml-auto mr-1.5 rounded-full bg-brand px-2 py-1 text-[10px] text-white">18+</span>
         )}
         {GENDER_ICON[c.audience] && (
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-black/55 text-white/85 backdrop-blur" aria-label={c.audience}>
@@ -69,12 +72,14 @@ export default function Feed({
   sort,
   mood,
   hero = [],
+  adult = false,
 }: {
   initial: FeedCharacter[];
   audience: string;
   sort: string;
   mood: string | null;
   hero?: FeedCharacter[];
+  adult?: boolean;
 }) {
   const router = useRouter();
   const [items, setItems] = useState(initial);
@@ -207,7 +212,7 @@ export default function Feed({
             className="flex gap-6 overflow-x-auto px-4 pb-2 pt-2.5 scrollbar-none sm:px-6"
             style={{ maskImage: "linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 32px), transparent)" }}
           >
-            {MOODS.map((m) => (
+            {[...SFW_MOODS, ...(adult ? NSFW_MOODS : [])].map((m) => (
               <button
                 key={m}
                 type="button"
@@ -217,6 +222,7 @@ export default function Feed({
                   mood === m ? "text-foreground" : "text-muted hover:text-foreground-dim"
                 }`}
               >
+                {(NSFW_MOODS as readonly string[]).includes(m) && <span aria-hidden="true" className="mr-1.5 inline-block h-1.5 w-1.5 -translate-y-0.5 rounded-full bg-brand" />}
                 {m}
                 <span aria-hidden="true" className={`absolute inset-x-0 bottom-0 h-[2px] rounded-full bg-brand transition-opacity ${mood === m ? "opacity-100" : "opacity-0"}`} />
               </button>

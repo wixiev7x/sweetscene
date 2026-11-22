@@ -52,8 +52,8 @@ export default async function Home({
   const sp = await searchParams;
   const audience = parseAudience(sp.a);
   const sort = parseSort(sp.s);
-  const mood = parseMood(sp.m);
   const adult = await viewerCanSeeAdult();
+  const mood = parseMood(sp.m, adult);
   const [initial, recent, featured] = await Promise.all([
     fetchFeed({ audience, sort, mood, offset: 0, adult }),
     getContinue(),
@@ -89,7 +89,7 @@ export default async function Home({
         )}
 
         <div className="pt-2">
-          <Feed key={`${audience}-${sort}-${mood ?? ""}`} initial={initial} audience={audience} sort={sort} mood={mood} hero={hero.length ? hero : featured.filter((c) => c.avatar_url).slice(0, 3)} />
+          <Feed key={`${audience}-${sort}-${mood ?? ""}-${adult ? 1 : 0}`} adult={adult} initial={initial} audience={audience} sort={sort} mood={mood} hero={hero.length ? hero : featured.filter((c) => c.avatar_url).slice(0, 3)} />
         </div>
       </div>
     </div>

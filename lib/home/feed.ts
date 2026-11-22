@@ -21,7 +21,8 @@ export const AUDIENCES = ["women", "men", "anime"] as const;
 export type Audience = (typeof AUDIENCES)[number];
 export const SORTS = ["popular", "new", "featured"] as const;
 export type FeedSort = (typeof SORTS)[number];
-export const MOODS = ["Romance", "Fantasy", "Dark", "Drama", "Slice of life", "Adventure"] as const;
+import { MOODS, NSFW_MOODS } from "@/lib/home/categories";
+export { MOODS, NSFW_MOODS };
 
 export type FeedCharacter = {
   id: string;
@@ -69,8 +70,10 @@ export function parseAudience(v: unknown): Audience {
 export function parseSort(v: unknown): FeedSort {
   return SORTS.includes(v as FeedSort) ? (v as FeedSort) : "popular";
 }
-export function parseMood(v: unknown): string | null {
-  return MOODS.includes(v as (typeof MOODS)[number]) ? (v as string) : null;
+export function parseMood(v: unknown, adult = false): string | null {
+  if (MOODS.includes(v as (typeof MOODS)[number])) return v as string;
+  if (adult && NSFW_MOODS.includes(v as (typeof NSFW_MOODS)[number])) return v as string;
+  return null;
 }
 
 export async function fetchFeed(opts: {

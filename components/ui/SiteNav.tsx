@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { signOut } from "@/lib/actions/auth";
 import { useAuthModal } from "@/components/auth/AuthModal";
+import NsfwSwitch from "@/components/nsfw/NsfwSwitch";
 import {
   markNotificationAsRead,
   markAllNotificationsRead,
@@ -267,6 +268,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-2.5">
+            <NsfwSwitch signedIn={hasSession} />
             {hasSession && (
               <Link
                 href="/store"
