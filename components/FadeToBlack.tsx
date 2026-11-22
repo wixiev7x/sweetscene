@@ -50,7 +50,7 @@ export default function FadeToBlack({
 
   /* Persist the decision, don't just render it. This previously only
      called setUserMovedOn, so the move_on RPC never fired from the
-     primary button — user_a_moved_on / user_b_moved_on stayed false and
+     primary button, user_a_moved_on / user_b_moved_on stayed false and
      the partner was never told the scene had ended. The only path that
      reached the server was the secondary "Skip and close" link. */
   function handleMoveOn() {
@@ -261,7 +261,7 @@ export default function FadeToBlack({
           )}
           <div className="mt-4">
             {/* Closes without rating. This used to call onMoveOn, which
-                re-fired the move_on RPC and closed nothing — the overlay
+                re-fired the move_on RPC and closed nothing, the overlay
                 stayed up with no way out. onVibeCheckComplete is the
                 route-away callback. */}
             <button
@@ -381,7 +381,7 @@ export default function FadeToBlack({
             : "Do you want to see who they really are?"}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-4">
-          {/* REVEAL button — hidden for AI matches (no human partner). */}
+          {/* REVEAL button, hidden for AI matches (no human partner). */}
           {!isAiMatch && (
             <div className="flex flex-col items-center gap-1">
               <button
@@ -459,7 +459,7 @@ export default function FadeToBlack({
 
       <style jsx>{`
         /* Phase 5.5: replaced framer-motion entrances with CSS. Also
-           NOTE — the previous version had a stray closing brace after
+           NOTE, the previous version had a stray closing brace after
            @keyframes slowSpin, making slowSpin AND glowExpand invalid
            CSS (silently dropped by browsers). Fixed here. */
 

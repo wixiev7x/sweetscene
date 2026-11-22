@@ -209,7 +209,7 @@ export default function CharactersPage() {
         </p>
         {error && (
           <p className="text-xs text-amber-400/80 mt-3">
-            Couldn&apos;t load community characters — showing defaults.
+            Couldn&apos;t load community characters, showing defaults.
           </p>
         )}
       </div>

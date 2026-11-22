@@ -3,7 +3,7 @@ import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
   title: "Scene Chat",
-  description: "A matched scene — two people and an AI narrator.",
+  description: "A matched scene, two people and an AI narrator.",
   path: "/chat",
   noIndex: true,
 });

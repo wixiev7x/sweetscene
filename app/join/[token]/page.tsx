@@ -44,7 +44,7 @@ export default function JoinInvitePage() {
           setState({ phase: "invalid" });
         }
       } catch {
-        if (!cancelled) setState({ phase: "error", message: "Couldn't check this invite — try again." });
+        if (!cancelled) setState({ phase: "error", message: "Couldn't check this invite, try again." });
       }
     })();
     return () => {
@@ -85,9 +85,9 @@ export default function JoinInvitePage() {
         setState({ phase: "revoked" });
         return;
       }
-      setState({ phase: "error", message: data.error || "Couldn't enter the room — try again." });
+      setState({ phase: "error", message: data.error || "Couldn't enter the room, try again." });
     } catch {
-      setState({ phase: "error", message: "Couldn't enter the room — try again." });
+      setState({ phase: "error", message: "Couldn't enter the room, try again." });
     } finally {
       joinedRef.current = false;
     }
@@ -146,7 +146,7 @@ export default function JoinInvitePage() {
                 href="/matchmake"
                 className="text-sm text-muted hover:text-foreground mt-4 ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none rounded"
               >
-                Not now — browse matchmaking
+                Not now, browse matchmaking
               </Link>
             </>
           )}
@@ -162,7 +162,7 @@ export default function JoinInvitePage() {
             <>
               <p className="font-display text-xl mb-2">This is your link</p>
               <p className="text-sm text-muted mb-6 max-w-xs">
-                You made this invitation. Share it with someone — or start a room yourself from matchmaking.
+                You made this invitation. Share it with someone, or start a room yourself from matchmaking.
               </p>
               <Link
                 href="/matchmake"

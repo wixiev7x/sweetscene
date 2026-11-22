@@ -113,7 +113,7 @@ export default function AgeVerificationPage() {
       }
       setError(result.error);
     } catch {
-      setError("Something went wrong starting verification — try again.");
+      setError("Something went wrong starting verification, try again.");
     } finally {
       setStarting(false);
     }
@@ -130,7 +130,7 @@ export default function AgeVerificationPage() {
       }
       await load();
     } catch {
-      setError("Couldn't check your verification status — try again.");
+      setError("Couldn't check your verification status, try again.");
     } finally {
       setChecking(false);
     }
@@ -145,7 +145,7 @@ export default function AgeVerificationPage() {
         </h1>
         <p className="type-body text-muted mb-8 leading-relaxed">
           Verifying your age unlocks 18+ content. The check runs with an independent
-          provider — <strong className="text-foreground">we only ever receive a
+          provider, <strong className="text-foreground">we only ever receive a
           pass/fail result</strong>. Your ID document and any biometric data stay
           with the provider and never touch SweetScene.
         </p>
@@ -294,7 +294,7 @@ export default function AgeVerificationPage() {
               <p className="type-body text-foreground mb-2">Verification isn&rsquo;t ready on this account yet.</p>
               <p className="type-meta text-muted mb-6">
                 The verification system is still being set up. Nothing is blocked in
-                the meantime — check back soon.
+                the meantime, check back soon.
               </p>
               <Link
                 href="/profile"
@@ -313,7 +313,7 @@ export default function AgeVerificationPage() {
         </div>
 
         <p className="type-meta text-muted-faint text-center mt-6 leading-relaxed">
-          We store the provider&rsquo;s pass/fail result and a reference ID — nothing
+          We store the provider&rsquo;s pass/fail result and a reference ID, nothing
           else. See the{" "}
           <Link href="/privacy" className="text-accent-candle/70 hover:text-accent-candle underline">Privacy Policy</Link>{" "}
           (§12) for exactly what happens to your documents.

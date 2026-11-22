@@ -4,7 +4,7 @@ const STEPS = [
   {
     n: "01",
     title: "Pick a mode & match",
-    body: "Quick Match, By Vibe, Blind Date or a private Invite Room. You're paired with a real person in your age group — no names, no photos.",
+    body: "Quick Match, By Vibe, Blind Date or a private Invite Room. You're paired with a real person in your age group, no names, no photos.",
   },
   {
     n: "02",
@@ -13,13 +13,13 @@ const STEPS = [
   },
   {
     n: "03",
-    title: "Reveal — or skip",
+    title: "Reveal, or skip",
     body: "If the chemistry was there, both tap Reveal and continue in DMs. If not, skip and you're straight back in the queue.",
   },
   {
     n: "04",
     title: "Play solo anytime",
-    body: "No match yet? Start a scene with any community character while you wait — or create your own for others to meet.",
+    body: "No match yet? Start a scene with any community character while you wait, or create your own for others to meet.",
   },
 ];
 

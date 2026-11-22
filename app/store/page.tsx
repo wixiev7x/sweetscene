@@ -5,11 +5,11 @@ import { useState } from "react";
 import { TIERS, FINISH_THE_SCENE, COMPARISON_NOTE, formatUsd, type BillingPeriod } from "@/lib/billing/plans";
 
 const FAQS = [
-  ["Are matches limited?", "No daily match limit on any plan. Tokens — which power the AI director and solo characters — are the only meter, and your balance is always visible."],
+  ["Are matches limited?", "No daily match limit on any plan. Tokens, which power the AI director and solo characters, are the only meter, and your balance is always visible."],
   ["What happens when I run out of tokens mid-scene?", "Your Spark tokens refill tomorrow, or you can finish the scene right away with a one-time Finish the scene pack. Paid plans simply give you much more room."],
   ["Can I cancel anytime?", "Yes. Cancel from Billing in two taps. You keep your plan until the end of the period you paid for."],
   ["How do refunds work?", "New subscriptions can be refunded within 14 days. See our Refund Policy for details."],
-  ["Who handles payment?", "Paddle.com is our Merchant of Record. They process your card securely and handle receipts and taxes — we never see your card details."],
+  ["Who handles payment?", "Paddle.com is our Merchant of Record. They process your card securely and handle receipts and taxes, we never see your card details."],
 ] as const;
 
 export default function StorePage() {
@@ -93,7 +93,7 @@ export default function StorePage() {
           <div>
             <h2 className="font-display text-xl font-bold">{FINISH_THE_SCENE.name}</h2>
             <p className="mt-1 text-sm text-muted-strong">
-              Ran out right before the good part? {FINISH_THE_SCENE.tokens.toLocaleString("en-US")} tokens, one-time — no subscription.
+              Ran out right before the good part? {FINISH_THE_SCENE.tokens.toLocaleString("en-US")} tokens, one-time, no subscription.
             </p>
           </div>
           <Link href={`/billing?plan=${FINISH_THE_SCENE.id}`} className="flex h-11 shrink-0 items-center rounded-full border border-line-strong px-6 text-sm font-semibold">

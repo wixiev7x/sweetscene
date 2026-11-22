@@ -11,28 +11,28 @@
 
 :root {
   /* ── Void (violet-ink depths) ── */
-  --void-950: #0B0709;
-  --void-900: #0F0A0D;
-  --void-700: #161014;
-  --void-500: #1E161B;
-  --void-400: #2A1F25;
+  --void-950: #000000;
+  --void-900: #050505;
+  --void-700: #0E0E10;
+  --void-500: #161618;
+  --void-400: #222225;
 
   /* ── Surfaces ── */
-  --background: #0B0709;
-  --surface-sunken: #080506;
-  --surface: #161014;
-  --surface-raised: #1E161B;
-  --surface-800: #161014;
-  --surface-700: #1B1418;
-  --surface-600: #22191E;
-  --surface-500: #2A1F25;
-  --surface-300: #3A2C33;
+  --background: #000000;
+  --surface-sunken: #050505;
+  --surface: #0F0F11;
+  --surface-raised: #18181B;
+  --surface-800: #0F0F11;
+  --surface-700: #141416;
+  --surface-600: #1B1B1E;
+  --surface-500: #232326;
+  --surface-300: #323236;
   --surface-200: #57454E;
   --surface-100: #7C6A72;
 
   /* ── Lines (borders, dividers) ── */
-  --line: rgb(244 236 232 / 7%);
-  --line-strong: rgb(244 236 232 / 13%);
+  --line: rgb(255 255 255 / 7%);
+  --line-strong: rgb(255 255 255 / 12%);
   --line-focus: rgb(225 36 92 / 55%);
 
   /* ── Text, brightest to faintest (warm off-white) ── */
@@ -96,8 +96,8 @@
   --crimson-400: #FF5C87;
 
   /* ── Shape ── */
-  --radius-card: 1rem;
-  --radius-control: 0.75rem;
+  --radius-card: 1.5rem;
+  --radius-control: 9999px;
 }
 
 @theme inline {
@@ -158,9 +158,9 @@
   --color-info: var(--info);
   --color-restricted: var(--restricted);
 
-  --font-sans: var(--font-ui), "Inter", system-ui, sans-serif;
-  --font-mono: var(--font-ui), "Inter", system-ui, sans-serif;
-  --font-display: var(--font-display-face), "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: var(--font-ui), "Varela Round", system-ui, sans-serif;
+  --font-mono: var(--font-ui), "Varela Round", system-ui, sans-serif;
+  --font-display: var(--font-ui), "Varela Round", system-ui, sans-serif;
 
   --color-ios-bg: var(--ios-bg);
   --color-ios-elevated: var(--ios-elevated);
@@ -184,7 +184,7 @@ body {
 }
 
 body {
-  font-family: var(--font-ui), "Inter", system-ui, sans-serif;
+  font-family: var(--font-ui), "Varela Round", system-ui, sans-serif;
 }
 
 /* ════════════════════════════════════════════════════════════════
@@ -192,13 +192,13 @@ body {
  * No negative letter-spacing anywhere in the system.
  * ════════════════════════════════════════════════════════════════ */
 .type-display-xl {
-  font-family: var(--font-display-face), system-ui, sans-serif;
+  font-family: var(--font-ui), system-ui, sans-serif;
   font-size: clamp(2.25rem, 5.5vw, 3.75rem);
   line-height: 1.05;
-  font-weight: 800;
+  font-weight: 400;
 }
 .type-display {
-  font-family: var(--font-display-face), system-ui, sans-serif;
+  font-family: var(--font-ui), system-ui, sans-serif;
   font-size: clamp(1.75rem, 3.6vw, 2.5rem);
   line-height: 1.1;
   font-weight: 700;
@@ -475,8 +475,8 @@ body {
 }
 .ss-prose > * + * { margin-top: 1.1em; }
 .ss-prose h2 {
-  font-family: var(--font-display-face), system-ui, sans-serif;
-  font-weight: 700;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-weight: 400;
   color: var(--foreground);
   font-size: 1.6rem;
   line-height: 1.2;
@@ -507,4 +507,22 @@ body {
 .ss-prose th { color: var(--foreground); font-weight: 600; }
 
 /* Display face is a sans: give it weight wherever the utility is used. */
-.font-display { font-weight: 700; }
+.font-display { font-weight: 400; }
+/* Varela Round ships a single weight; bold utilities stay crisp
+   (no synthetic bolding) — hierarchy comes from size and colour. */
+html { font-synthesis: none; }
+body { letter-spacing: 0.005em; }
+
+@keyframes ssCall {
+  0% { transform: scale(.45); opacity: .9; }
+  100% { transform: scale(1.25); opacity: 0; }
+}
+@keyframes ssBeat {
+  0%, 100% { transform: scale(1); }
+  15% { transform: scale(1.08); }
+  30% { transform: scale(1); }
+  45% { transform: scale(1.05); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [style*="ssCall"], [style*="ssBeat"] { animation: none !important; }
+}

@@ -379,7 +379,7 @@ export default function ScenariosPage() {
           Cinematic openers, hosted by an AI that keeps the night moving.
         </p>
         <p className="type-meta text-muted-faint mb-8">
-          Every scene plays solo — or <Link href="/matchmake" className="text-accent-candle/80 hover:text-accent-candle focus-visible:ring-2 focus-visible:ring-line-focus rounded">bring someone in through Matchmake</Link>.
+          Every scene plays solo, or <Link href="/matchmake" className="text-accent-candle/80 hover:text-accent-candle focus-visible:ring-2 focus-visible:ring-line-focus rounded">bring someone in through Matchmake</Link>.
         </p>
 
         <div className="bg-surface border border-line rounded-[var(--radius-card)] p-6 sm:p-8 mb-10 flex flex-col sm:flex-row items-center gap-6">
@@ -415,7 +415,7 @@ export default function ScenariosPage() {
                 )}
                 {!botsLoading && bots.length === 0 && (
                   <p className="text-xs text-muted-faint mb-2">
-                    No host yet — <Link href="/create" className="text-accent-candle hover:text-accent-candle-deep">create one</Link> or shake again.
+                    No host yet, <Link href="/create" className="text-accent-candle hover:text-accent-candle-deep">create one</Link> or shake again.
                   </p>
                 )}
               </div>
@@ -449,7 +449,7 @@ export default function ScenariosPage() {
 
           {botsError ? (
             <div className="bg-surface border border-line rounded-[var(--radius-card)] p-8 text-center">
-              <p className="text-sm text-muted mb-4">Couldn&rsquo;t load the scene shelf — the candles flickered.</p>
+              <p className="text-sm text-muted mb-4">Couldn&rsquo;t load the scene shelf, the candles flickered.</p>
               <button
                 onClick={() => setReloadKey((k) => k + 1)}
                 className="px-5 py-2.5 rounded-full border border-line text-sm text-foreground hover:border-accent-candle/40 hover:text-accent-candle ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
@@ -514,7 +514,7 @@ export default function ScenariosPage() {
                         : sugRec.gender === "male"
                           ? "He hosts this scene"
                           : "Your host for this scene"}
-                      {sugRec.tagline ? ` — ${sugRec.tagline}` : ""}
+                      {sugRec.tagline ? `, ${sugRec.tagline}` : ""}
                     </p>
                   </div>
                   <button
@@ -593,7 +593,7 @@ export default function ScenariosPage() {
                       </button>
                     </div>
                   ) : (
-                    <p className="text-xs text-muted-faint mb-4">No host yet — the scene plays fine with just you and the AI.</p>
+                    <p className="text-xs text-muted-faint mb-4">No host yet, the scene plays fine with just you and the AI.</p>
                   )}
 
                   {rec ? (

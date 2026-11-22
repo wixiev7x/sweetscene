@@ -30,8 +30,8 @@ type ProfileData = {
   anonymous_pfp_url: string | null;
   reputation_score: number;
   /* get_own_profile has always returned these; the page just dropped
-     them at the type level, so recompute_tier's whole output — tier and
-     earned tags, recalculated on every rating — was invisible to the
+     them at the type level, so recompute_tier's whole output, tier and
+     earned tags, recalculated on every rating, was invisible to the
      user it described. */
   reputation_tier: string;
   earned_tags: string[];
@@ -479,7 +479,7 @@ export default function ProfilePage() {
               VIP Active
             </p>
             <p className="text-sm text-muted mt-1">
-              Renews by {formatDate(profile.vip_expires_at)} — extend early, the days stack.
+              Renews by {formatDate(profile.vip_expires_at)}, extend early, the days stack.
             </p>
             <Link
               href="/billing"
@@ -706,7 +706,7 @@ export default function ProfilePage() {
             <p className="mt-4 text-sm text-muted">
               Points come from the vibe check people leave after a scene
               with you. Tags below are the three words chosen most often
-              to describe you — they refresh every five ratings.
+              to describe you, they refresh every five ratings.
             </p>
 
             {profile.earned_tags.length > 0 ? (
@@ -719,7 +719,7 @@ export default function ProfilePage() {
               </div>
             ) : (
               <p className="mt-3 text-xs text-muted-faint">
-                No earned tags yet — they appear after your fifth rating.
+                No earned tags yet, they appear after your fifth rating.
               </p>
             )}
           </div>
@@ -738,7 +738,7 @@ export default function ProfilePage() {
           ) : blocks.length === 0 ? (
             <p className="text-sm text-muted">
               You haven&apos;t blocked anyone. You can block someone from
-              inside a scene — they are never told.
+              inside a scene, they are never told.
             </p>
           ) : (
             <>

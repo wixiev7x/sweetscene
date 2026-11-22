@@ -131,7 +131,7 @@ export default function CompleteProfilePage() {
             disabled={pending}
           />
           <textarea
-            placeholder="Bio (optional — tell people what you're into)"
+            placeholder="Bio (optional, tell people what you're into)"
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-sm text-foreground placeholder-muted-faint focus:outline-none focus:border-brand/30 resize-none"

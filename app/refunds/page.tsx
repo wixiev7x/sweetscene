@@ -16,7 +16,7 @@ const sections: LegalSection[] = [
     title: "Summary",
     body: (
       <ul>
-        <li>Cancel any subscription at any time — you keep your plan until the end of the period you paid for.</li>
+        <li>Cancel any subscription at any time, you keep your plan until the end of the period you paid for.</li>
         <li>New subscriptions can be refunded within <strong>14 days</strong> of purchase.</li>
         <li>Renewals can be refunded within <strong>48 hours</strong> if you forgot to cancel and haven&rsquo;t used the new period&rsquo;s tokens.</li>
         <li>One-time &ldquo;Finish the scene&rdquo; packs can be refunded within 14 days if the tokens are unused.</li>

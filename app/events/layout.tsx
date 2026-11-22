@@ -3,7 +3,7 @@ import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
   title: "Events",
-  description: "What's happening on SweetScene — runs, challenges and community nights.",
+  description: "What's happening on SweetScene, runs, challenges and community nights.",
   path: "/events",
 });
 

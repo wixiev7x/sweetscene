@@ -3,7 +3,7 @@ import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
   title: "Character Profile",
-  description: "A SweetScene character — personality, scenario tags, and how to play.",
+  description: "A SweetScene character, personality, scenario tags, and how to play.",
   path: "/characters",
 });
 

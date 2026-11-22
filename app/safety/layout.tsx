@@ -3,7 +3,7 @@ import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
   title: "Safety",
-  description: "Consent, anonymity, blocking, reporting and age guidance — how SweetScene stays safe.",
+  description: "Consent, anonymity, blocking, reporting and age guidance, how SweetScene stays safe.",
   path: "/safety",
 });
 

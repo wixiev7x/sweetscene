@@ -22,7 +22,7 @@ export default function GlobalError({
         </div>
         <h1 className="text-xl font-semibold mb-2">Something went wrong</h1>
         <p className="text-sm text-muted mb-6">
-          The scene hit an unexpected error. Your data is safe — try again or
+          The scene hit an unexpected error. Your data is safe, try again or
           head back home.
         </p>
         {error.digest && (

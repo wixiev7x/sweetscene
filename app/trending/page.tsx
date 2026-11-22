@@ -19,7 +19,7 @@ export default function TrendingPage() {
     <div className="min-h-screen bg-void-950 text-white px-4 sm:px-6 py-8">
       <div className="max-w-3xl mx-auto">
         <h1 className="type-display text-2xl md:text-3xl mb-2 text-foreground">Fresh from the scene</h1>
-        <p className="type-body text-muted mb-8">Browse by genre — the shelf is newest first inside each lane.</p>
+        <p className="type-body text-muted mb-8">Browse by genre, the shelf is newest first inside each lane.</p>
 
         <div className="space-y-3">
           {CATEGORIES.map((cat) => (

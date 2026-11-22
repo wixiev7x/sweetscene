@@ -78,7 +78,7 @@ export default function MyCharactersPage() {
       result.status === "published"
         ? "Character is live now."
         : result.status === "pending_review"
-          ? "Submitted for review — it goes public once approved (usually fast)."
+          ? "Submitted for review, it goes public once approved (usually fast)."
           : "Still a draft. Add or remove the avatar, then publish again."
     );
   }
@@ -153,12 +153,12 @@ export default function MyCharactersPage() {
                     }`}
                     title={
                       c.status === "pending_review"
-                        ? "Waiting for avatar review — visible to you only."
+                        ? "Waiting for avatar review, visible to you only."
                         : c.status === "rejected"
                           ? "Rejected by moderation. Edit it and try publishing again."
                           : c.status === "published"
                             ? "Live and visible to the community."
-                            : "Draft — only you can see it."
+                            : "Draft, only you can see it."
                     }
                   >
                     {c.status === "published"
@@ -189,7 +189,7 @@ export default function MyCharactersPage() {
 
                   {c.status === "rejected" && (
                     <p className="text-[11px] text-red-400 mt-2">
-                      Rejected by moderation — edit and publish again to resubmit.
+                      Rejected by moderation, edit and publish again to resubmit.
                     </p>
                   )}
 

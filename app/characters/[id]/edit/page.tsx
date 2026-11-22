@@ -185,9 +185,9 @@ export default function EditCharacterPage({
     setCharStatus(result.status);
     setPublishNote(
       result.status === "published"
-        ? "Published — your character is live now."
+        ? "Published, your character is live now."
         : result.status === "pending_review"
-          ? "Submitted for review — it goes public once approved (usually fast)."
+          ? "Submitted for review, it goes public once approved (usually fast)."
           : "Saved as draft. Upload/remove the avatar in My Characters, then publish."
     );
   }
@@ -537,13 +537,13 @@ export default function EditCharacterPage({
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-brand/50 transition-all"
           >
             <option value="private" className="bg-surface">
-              Private — only you
+              Private, only you
             </option>
             <option value="unlisted" className="bg-surface">
-              Unlisted — anyone with the link
+              Unlisted, anyone with the link
             </option>
             <option value="public" className="bg-surface">
-              Public — listed in browse
+              Public, listed in browse
             </option>
           </select>
         </div>

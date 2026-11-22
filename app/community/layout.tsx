@@ -3,7 +3,7 @@ import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
   title: "Community",
-  description: "Confessions, bounties, the leaderboard and events — the after-hours side of SweetScene.",
+  description: "Confessions, bounties, the leaderboard and events, the after-hours side of SweetScene.",
   path: "/community",
 });
 

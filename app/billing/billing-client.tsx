@@ -86,7 +86,7 @@ export default function BillingClient({
           Pay by <span className="gradient-text">card.</span>
         </h1>
         <p className="type-body text-muted mb-10">
-          Card, Apple Pay, Google Pay or PayPal — secure checkout by
+          Card, Apple Pay, Google Pay or PayPal, secure checkout by
           Paddle, and your purchase lands the moment it completes.
         </p>
 
@@ -141,7 +141,7 @@ export default function BillingClient({
                   <p className="type-meta text-muted-faint">Coming soon</p>
                 )}
                 <p className="type-meta text-muted-faint mt-4 leading-relaxed">
-                  Renews automatically on your card. Cancel anytime below — paid time stays.
+                  Renews automatically on your card. Cancel anytime below, paid time stays.
                 </p>
               </div>
             );
@@ -190,7 +190,7 @@ export default function BillingClient({
             <p className="type-eyebrow text-muted-faint mb-1">Prefer crypto?</p>
             <p className="type-meta text-muted mb-5 leading-relaxed">
               Same plans and packs, paid in 200+ coins via NOWPayments.
-              Each purchase is one invoice — nothing auto-charges, tokens
+              Each purchase is one invoice, nothing auto-charges, tokens
               and VIP land the moment payment confirms.
             </p>
             <div className="flex flex-wrap gap-3">
@@ -239,7 +239,7 @@ export default function BillingClient({
                   Manage subscription
                 </h2>
                 <p className="type-meta text-muted leading-relaxed">
-                  Update your card, download invoices, or cancel — opens
+                  Update your card, download invoices, or cancel, opens
                   Paddle&apos;s secure portal.
                 </p>
               </div>
@@ -258,7 +258,7 @@ export default function BillingClient({
 
         <p className="type-meta text-muted-faint text-center leading-relaxed">
           Card checkout is handled by Paddle, our reseller and merchant of record; crypto checkout by
-          NOWPayments — payment details never touch SweetScene. Tokens
+          NOWPayments, payment details never touch SweetScene. Tokens
           are credited automatically the moment payment completes.
         </p>
       </div>

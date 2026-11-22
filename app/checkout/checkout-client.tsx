@@ -66,7 +66,7 @@ export default function CheckoutClient({
         {state === "loading" && <p className="type-body text-muted">Opening secure checkout…</p>}
         {state === "open" && <p className="type-body text-muted">Complete your purchase in the checkout window.</p>}
         {state === "done" && (
-          <p className="type-body text-foreground">Payment received — your balance updates in a moment.</p>
+          <p className="type-body text-foreground">Payment received, your balance updates in a moment.</p>
         )}
         {state === "closed" && (
           <p className="type-body text-muted">

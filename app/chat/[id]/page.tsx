@@ -112,7 +112,7 @@ export default function ChatPage() {
   const [leaveLoading, setLeaveLoading] = useState(false);
 
   /* Reporting from inside the live scene. Previously the only report
-     button was in /dm/[id], which requires status === "revealed" — so a
+     button was in /dm/[id], which requires status === "revealed", so a
      user being harassed had to reveal their identity to their harasser
      before they could report them. This is the surface where two
      strangers actually talk, so it is the one that needs the control. */
@@ -543,7 +543,7 @@ export default function ChatPage() {
 
     /* C1/M2: the send_human_message RPC atomically incremented the
        counter and computed ai_turn_due. We use the RPC's return
-       values to update local state optimistically — NO client-side
+       values to update local state optimistically, NO client-side
        matches.update anymore. Realtime will deliver the authoritative
        match row if the AI turn fires. */
     setMatch(
@@ -628,7 +628,7 @@ export default function ChatPage() {
      reportConversation snapshots the last 100 messages server-side as
      evidence, so the report survives the user leaving the scene right
      after filing it. The category is prefixed onto the reason rather
-     than sent as a separate field — the server takes one free-text
+     than sent as a separate field, the server takes one free-text
      reason and the admin queue renders it verbatim. */
   async function handleReport() {
     if (reporting) return;
@@ -642,7 +642,7 @@ export default function ChatPage() {
     setReporting(true);
     setReportMsg("");
 
-    const reason = [reportCategory, detail].filter(Boolean).join(" — ");
+    const reason = [reportCategory, detail].filter(Boolean).join(", ");
     const result = await reportConversation(matchId, reason);
 
     setReporting(false);
@@ -855,7 +855,7 @@ export default function ChatPage() {
               </button>
             )}
 
-            {/* Report — deliberately NOT gated on match.status. A scene
+            {/* Report, deliberately NOT gated on match.status. A scene
                 that just ended is exactly when someone reaches for this,
                 and gating it on "active" would mean the abuse that ended
                 the scene is the abuse you cannot report. */}
@@ -872,7 +872,7 @@ export default function ChatPage() {
               Report
             </button>
 
-            {/* Phase 9.6: leave scene — only when match is active */}
+            {/* Phase 9.6: leave scene, only when match is active */}
             {match.status === "active" && (
               <button
                 type="button"
@@ -1012,7 +1012,7 @@ export default function ChatPage() {
                 <span className="text-sm text-muted-strong">
                   {blocked
                     ? "Blocked. You won't be matched with them again."
-                    : "Also block this user — you'll never be matched again. They aren't told."}
+                    : "Also block this user, you'll never be matched again. They aren't told."}
                 </span>
               </label>
             )}
@@ -1049,7 +1049,7 @@ export default function ChatPage() {
                 </h2>
                 <p className="text-sm text-muted mb-6">
                   A moderator will review the conversation. You can keep
-                  chatting, or leave the scene now — the report stands
+                  chatting, or leave the scene now, the report stands
                   either way.
                 </p>
                 <div className="flex flex-col gap-3">
@@ -1061,7 +1061,7 @@ export default function ChatPage() {
                       className="w-full bg-danger/10 border border-danger/20 text-danger font-medium py-3 rounded-xl hover:bg-danger/15 disabled:opacity-60 disabled:hover:bg-danger/10 transition-all"
                     >
                       {blocked
-                        ? "Blocked — you won't be matched again"
+                        ? "Blocked, you won't be matched again"
                         : blocking
                           ? "Blocking..."
                           : "Also block this user"}

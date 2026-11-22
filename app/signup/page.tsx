@@ -97,7 +97,7 @@ function SignupPageInner() {
             Step into the <span className="gradient-text">scene.</span>
           </h2>
           <p className="text-sm text-muted mt-3 max-w-sm">
-            No faces. No names. Just vibes — match first, reveal only when both sides agree.
+            No faces. No names. Just vibes, match first, reveal only when both sides agree.
           </p>
           <p className="text-xs font-mono text-muted-faint mt-6 uppercase tracking-wider">
             16+ · Free to join
@@ -137,7 +137,7 @@ function SignupPageInner() {
                 <div className="w-20 h-20 rounded-full bg-gradient-to-br from-accent-candle to-accent-rose flex items-center justify-center text-3xl font-display text-accent-foreground shadow-lg" aria-hidden="true">
                   {username ? username.charAt(0).toUpperCase() : "?"}
                 </div>
-                <p className="text-[10px] text-muted-faint">Your anonymous mark — you can personalize it after joining.</p>
+                <p className="text-[10px] text-muted-faint">Your anonymous mark, you can personalize it after joining.</p>
               </div>
 
               <form onSubmit={handleEmailSignUp} className="w-full mt-6 flex flex-col gap-3 animate-slide-up">

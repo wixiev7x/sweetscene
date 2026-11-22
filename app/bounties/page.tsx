@@ -75,7 +75,7 @@ export default function BountiesPage() {
 
     try {
       /* Goes through the server action: moderated, scrubbed,
-         rate-limited, then persisted — never a raw client insert. */
+         rate-limited, then persisted, never a raw client insert. */
       const result = await postBounty(text.trim(), tags);
 
       if ("error" in result) {
@@ -211,7 +211,7 @@ export default function BountiesPage() {
                     ))}
                   </div>
                 )}
-                {/* The board is display-only for now — no fake "respond"
+                {/* The board is display-only for now, no fake "respond"
                  * actions. Building the scene is the real next step. */}
                 <Link
                   href="/create"

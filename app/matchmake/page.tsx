@@ -9,6 +9,9 @@ import { SuggestedBots } from "@/components/matchmake/SuggestedBots";
 import HeartBurst from "@/components/ui/HeartBurst";
 import { playSound } from "@/lib/utils/sound";
 import { MATCHMAKING_POLL_INTERVAL_MS, type MatchMode, type GenderPref } from "@/lib/matchmaking";
+import VibePie from "@/components/matchmake/VibePie";
+import { ALL_VIBES, MAX_VIBES } from "@/lib/matchmaking/vibes";
+import HeartCall from "@/components/matchmake/HeartCall";
 
 type State = {
   phase: "idle" | "searching" | "matched" | "timeout" | "cancelled";
@@ -55,11 +58,7 @@ function reducer(state: State, action: Action): State {
   }
 }
 
-const VIBE_TAGS = [
-  "Romance", "Slow Burn", "Dominant", "Submissive", "Fantasy", "Sci-Fi",
-  "Mystery", "Adventure", "Thriller", "Comedy", "Drama", "Slice of Life",
-  "Historical", "Horror", "Action", "Crime", "War", "Western",
-];
+const VIBE_TAGS: readonly string[] = ALL_VIBES;
 
 const GENDER_CHOICES: { key: GenderPref; label: string; desc: string }[] = [
   { key: "female", label: "Female", desc: "You'd like to meet a woman" },
@@ -79,7 +78,7 @@ const MODE_CARDS: {
   {
     key: "quick",
     name: "Quick Match",
-    promise: "Pick who you'd like to meet. No tags, no forms — straight into a scene.",
+    promise: "Skip the small talk.",
     note: "gender preference · fastest",
     icon: "M13 2L3 14h7l-1 8 10-12h-7l1-8z",
     bar: "from-accent-candle to-accent-candle-deep",
@@ -88,7 +87,7 @@ const MODE_CARDS: {
   {
     key: "kink",
     name: "By Vibe",
-    promise: "Choose the vibes you're in the mood for — up to five — and meet someone who chose the same.",
+    promise: "Choose your craving.",
     note: "vibes & moods · shared interests",
     icon: "M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z",
     bar: "from-accent-rose to-crimson-500",
@@ -97,7 +96,7 @@ const MODE_CARDS: {
   {
     key: "blind_date",
     name: "Blind Date",
-    promise: "Straight into the queue. No names, no profiles — when the scene ends, you walk away.",
+    promise: "No names. Just tension.",
     note: "full anonymity · instant queue",
     icon: "M12 3a9 9 0 100 18 9 9 0 000-18zM4.5 12c3.6-3 9.4-3 13 0-3.6 3-9.4 3-13 0z",
     bar: "from-muted-strong to-muted",
@@ -106,13 +105,20 @@ const MODE_CARDS: {
   {
     key: "invite",
     name: "Invite Room",
-    promise: "Build a private room around people you name — with a link you control.",
+    promise: "Your room. Your guests.",
     note: "by username · private link",
     icon: "M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8",
     bar: "from-info to-ios-indigo",
     num: "04",
   },
 ];
+
+const MODE_GLOW: Record<string, string> = {
+  quick: "radial-gradient(120% 90% at 20% 110%, rgba(225,36,92,.75), rgba(40,6,18,.9) 55%, #0a0a0c)",
+  kink: "radial-gradient(120% 90% at 80% 110%, rgba(176,92,255,.55), rgba(30,8,40,.9) 55%, #0a0a0c)",
+  blind_date: "radial-gradient(120% 90% at 50% 120%, rgba(122,31,61,.8), rgba(20,4,10,.95) 55%, #050505)",
+  invite: "radial-gradient(120% 90% at 20% 110%, rgba(217,179,122,.45), rgba(30,20,10,.9) 55%, #0a0a0c)",
+};
 
 const LOADER_STAGES = [
   "Lighting the candles…",
@@ -124,7 +130,7 @@ const LOADER_STAGES = [
 const WAITING_COPY: Record<string, string> = {
   quick: "Pairing your preference with the next person who fits it.",
   kink: "Looking for someone who chose the same vibes as you.",
-  blind_date: "No names, no profiles — the scene finds you both the moment someone joins.",
+  blind_date: "No names, no profiles, the scene finds you both the moment someone joins.",
 };
 
 interface BotCard {
@@ -140,7 +146,7 @@ interface FriendUser {
 }
 
 const SOLO_GUEST_LIMIT = 5;
-const MAX_TAGS = 5;
+const MAX_TAGS = MAX_VIBES;
 
 function Silhouette({ size = 80 }: { size?: number }) {
   return (
@@ -367,10 +373,10 @@ function MatchmakePageInner() {
             }
           }, MATCHMAKING_POLL_INTERVAL_MS);
         } else {
-          toast.error("Couldn't reach the scene — try again");
+          toast.error("Couldn't reach the scene, try again");
         }
       } catch {
-        toast.error("Couldn't reach the scene — try again");
+        toast.error("Couldn't reach the scene, try again");
       } finally {
         setSearching(false);
       }
@@ -569,10 +575,10 @@ function MatchmakePageInner() {
         setInviteRevoked(true);
         playSound("click");
       } else {
-        toast.error("Couldn't revoke the link — try again");
+        toast.error("Couldn't revoke the link, try again");
       }
     } catch {
-      toast.error("Couldn't revoke the link — try again");
+      toast.error("Couldn't revoke the link, try again");
     } finally {
       setInviteLoading(false);
     }
@@ -587,7 +593,7 @@ function MatchmakePageInner() {
       playSound("message");
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Couldn't copy — select the link and copy manually");
+      toast.error("Couldn't copy, select the link and copy manually");
     }
   };
 
@@ -604,22 +610,22 @@ function MatchmakePageInner() {
   const whyBullets =
     mode === "blind_date"
       ? [
-          "Full blind — no vibes, no info, nothing",
-          "No reveals, no follows — the scene is all there is",
-          "One scene, zero expectations — walk away when it ends",
+          "Full blind, no vibes, no info, nothing",
+          "No reveals, no follows, the scene is all there is",
+          "One scene, zero expectations, walk away when it ends",
         ]
       : mode === "quick"
         ? [
             "You were both looking for a scene right now",
             "Your preferences point at each other",
-            "Identities stay hidden — period",
+            "Identities stay hidden, period",
           ]
         : overlap.length > 0
           ? overlap.slice(0, 3).map((t) => `You both picked ${t}`)
           : [
               "Both of you were looking for a scene right now",
               "Matched by the moment, not a checklist",
-              "Identities stay hidden — period",
+              "Identities stay hidden, period",
             ];
 
   const inputClass =
@@ -637,14 +643,11 @@ function MatchmakePageInner() {
   return (
     <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
       <div className="max-w-2xl mx-auto">
-        <p className="type-eyebrow text-accent-candle mb-2">
-          Anonymous matchmaking
-        </p>
-        <h1 className="type-display text-4xl md:text-5xl leading-tight mb-3">
-          Four ways <span className="gradient-text">in.</span>
+        <h1 className="font-display text-4xl leading-tight md:text-5xl">
+          Who&rsquo;s waiting for you <span className="gradient-text">tonight?</span>
         </h1>
-        <p className="type-body text-muted mb-8">
-          Pick a way in. The moment someone compatible joins, you both drop into a scene together.
+        <p className="mb-8 mt-3 text-[15px] text-muted-strong">
+          Choose how you want to meet. Stay a stranger until it&rsquo;s worth revealing.
         </p>
 
         {state.phase === "idle" || state.phase === "cancelled" ? (
@@ -656,7 +659,7 @@ function MatchmakePageInner() {
                 </p>
                 <p className="type-meta text-muted mb-4 max-w-sm mx-auto">
                   Matchmaking needs a one-time age check before you can queue. It runs
-                  with an independent provider — we only receive the result.
+                  with an independent provider, we only receive the result.
                 </p>
                 <Link
                   href="/age-verification"
@@ -668,8 +671,8 @@ function MatchmakePageInner() {
               </div>
             )}
             {!mode ? (
-              <div className="grid sm:grid-cols-2 gap-4">
-                {MODE_CARDS.map((m) => (
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                {MODE_CARDS.map((m, i) => (
                   <button
                     key={m.key}
                     onClick={() => {
@@ -680,28 +683,22 @@ function MatchmakePageInner() {
                         startSearch("blind_date", [], null);
                         return;
                       }
-                      /* Re-entering Invite Room keeps the host's draft. */
                       setMode(m.key);
                       setFriendResults([]);
                     }}
                     disabled={m.key === "blind_date" && searching}
-                    className="group relative text-left bg-surface border border-line rounded-[var(--radius-card)] p-5 pt-7 ios-press hover:-translate-y-0.5 hover:border-line-strong focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none transition-all overflow-hidden disabled:opacity-60"
+                    className={`group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[2rem] p-5 text-left transition-all duration-500 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-60 sm:aspect-[5/4] ${
+                      i === 0 ? "ring-1 ring-brand/50" : "ring-1 ring-line"
+                    }`}
+                    style={{ background: MODE_GLOW[m.key] }}
                   >
-                    <span className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${m.bar}`} aria-hidden="true" />
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <span className="w-10 h-10 rounded-full bg-accent-candle/10 flex items-center justify-center text-accent-candle group-hover:bg-accent-candle/15 transition-colors">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <path d={m.icon} />
-                        </svg>
-                      </span>
-                      <span className="type-eyebrow text-muted-faint">{m.num}</span>
-                    </div>
-                    <span className="block text-base font-semibold text-foreground mb-1.5">{m.name}</span>
-                    <p className="type-body text-muted leading-relaxed mb-3">{m.promise}</p>
-                    <div className="flex items-center justify-between">
-                      <ModeMotif modeKey={m.key} />
-                      <p className="type-eyebrow text-accent-candle/80">{m.note}</p>
-                    </div>
+                    <span aria-hidden="true" className="absolute right-5 top-5 flex h-12 w-12 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition-transform duration-500 group-hover:scale-110">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d={m.icon} />
+                      </svg>
+                    </span>
+                    <span className="font-display text-xl text-white sm:text-2xl">{m.name}</span>
+                    <span className="mt-1 text-[13px] leading-snug text-white/75 sm:text-sm">{m.promise}</span>
                   </button>
                 ))}
               </div>
@@ -799,7 +796,7 @@ function MatchmakePageInner() {
                               <div className="flex-1 min-w-0">
                                 <p className="type-body font-medium text-foreground truncate">{u.anonymous_username}</p>
                                 <p className="type-eyebrow text-muted-faint">
-                                  Pending — waiting on your link
+                                  Pending, waiting on your link
                                 </p>
                               </div>
                               <button
@@ -822,7 +819,7 @@ function MatchmakePageInner() {
                         <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto scrollbar-none">
                           {bots.length === 0 ? (
                             <p className="type-meta text-muted-faint col-span-2 py-2">
-                              No characters yet — the room works fine without one.
+                              No characters yet, the room works fine without one.
                             </p>
                           ) : (
                             bots.map((bot) => (
@@ -857,7 +854,7 @@ function MatchmakePageInner() {
                           Link expiry <span className="type-meta text-muted font-normal">choose before generating</span>
                         </legend>
                         {[
-                          { key: "1d" as const, title: "Expires in 1 day", desc: "Default — the link closes itself after 24 hours." },
+                          { key: "1d" as const, title: "Expires in 1 day", desc: "Default, the link closes itself after 24 hours." },
                           { key: "permanent" as const, title: "Permanent", desc: "The link stays open until you revoke it." },
                         ].map((opt) => (
                           <button
@@ -908,7 +905,7 @@ function MatchmakePageInner() {
                           ? "This link no longer opens a room"
                           : inviteExpiresAt
                             ? `Expires ${new Date(inviteExpiresAt).toLocaleDateString()} ${new Date(inviteExpiresAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                            : "Permanent — until you revoke it"}
+                            : "Permanent, until you revoke it"}
                       </p>
                     </div>
 
@@ -941,7 +938,7 @@ function MatchmakePageInner() {
                                 <div className="flex-1 min-w-0">
                                   <p className="type-body font-medium text-foreground truncate">{u.anonymous_username}</p>
                                   <p className="type-eyebrow text-muted-faint">
-                                    Pending — send them the link
+                                    Pending, send them the link
                                   </p>
                                 </div>
                                 <button
@@ -958,7 +955,7 @@ function MatchmakePageInner() {
                         )}
 
                         <p className="type-meta text-muted text-center max-w-sm mx-auto leading-relaxed">
-                          The room opens the moment someone joins through this link — it then appears in
+                          The room opens the moment someone joins through this link, it then appears in
                           your <Link href="/lobby" className="text-accent-candle hover:underline focus-visible:ring-2 focus-visible:ring-line-focus rounded">Scenes</Link>.
                           Anyone with the link can join while it&rsquo;s active.
                         </p>
@@ -1011,7 +1008,7 @@ function MatchmakePageInner() {
                 <div>
                   <p className="type-body font-medium text-foreground mb-1">Who are you hoping to meet?</p>
                   <p className="type-meta text-muted mb-4">
-                    A preference, not a label — it steers your pairing and never appears on your profile.
+                    A preference, not a label, it steers your pairing and never appears on your profile.
                   </p>
                   <div className="space-y-2.5" role="radiogroup" aria-label="Who are you hoping to meet">
                     {GENDER_CHOICES.map((g) => (
@@ -1056,7 +1053,7 @@ function MatchmakePageInner() {
                 </HeartBurst>
 
                 <p className="type-meta text-muted-faint text-center">
-                  We pair complementary preferences — your choice matches you with someone looking back.
+                  We pair complementary preferences, your choice matches you with someone looking back.
                 </p>
               </div>
             ) : (
@@ -1075,80 +1072,11 @@ function MatchmakePageInner() {
                   </div>
                 )}
 
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="type-body font-medium text-foreground">Pick your vibes</p>
-                    <p className="type-eyebrow text-accent-candle/80" aria-live="polite">
-                      {selectedTags.length} of {MAX_TAGS} selected
-                    </p>
-                  </div>
-                  <p className="type-meta text-muted mb-3">
-                    The matchmaker looks for someone who chose the same vibes.
-                  </p>
-                  <div className="bg-surface-sunken border border-line rounded-[var(--radius-card)] p-4">
-                    <div className="flex flex-wrap gap-2">
-                      {VIBE_TAGS.map((tag) => {
-                        const selected = selectedTags.includes(tag);
-                        const blocked = !selected && atMaxTags;
-                        return (
-                          <button
-                            key={tag}
-                            onClick={() => {
-                              if (blocked) {
-                                setMaxNotice(true);
-                                return;
-                              }
-                              setMaxNotice(false);
-                              toggleTag(tag);
-                            }}
-                            aria-pressed={selected}
-                            aria-disabled={blocked}
-                            className={`text-xs px-3 py-1.5 rounded-full border transition-all ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none ${
-                              selected
-                                ? "bg-accent-rose/15 text-accent-rose border-accent-rose/40"
-                                : blocked
-                                  ? "bg-surface text-muted-faint border-line opacity-50"
-                                  : "bg-surface text-muted border-line hover:border-line-strong hover:text-foreground"
-                            }`}
-                          >
-                            {tag}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {maxNotice && (
-                      <p className="type-meta text-accent-candle mt-3" role="status">
-                        You&rsquo;ve picked {MAX_TAGS} — remove one to swap it out.
-                      </p>
-                    )}
-                    {selectedTags.length > 0 && (
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
-                        <div className="flex gap-1" aria-hidden="true">
-                          {Array.from({ length: MAX_TAGS }).map((_, i) => (
-                            <span
-                              key={i}
-                              className={`h-1.5 w-4 rounded-full ${i < selectedTags.length ? "bg-accent-rose" : "bg-surface-300"}`}
-                            />
-                          ))}
-                        </div>
-                        <button
-                          onClick={() => {
-                            setSelectedTags([]);
-                            setMaxNotice(false);
-                          }}
-                          data-cursor="destructive"
-                          className="type-eyebrow text-muted-faint hover:text-danger focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none rounded px-1 transition-colors"
-                        >
-                          Clear all
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <p className="type-meta text-muted-faint mt-2">
-                    Only the vibes you both picked are ever shown to the other side — the rest stay yours.
-                  </p>
+                <div className="text-center">
+                  <p className="font-display text-2xl text-foreground">What are you craving?</p>
+                  <p className="mt-1 text-sm text-muted">Pick up to {MAX_TAGS}. We&rsquo;ll find someone who wants the same.</p>
                 </div>
-
+                <VibePie selected={selectedTags} onToggle={toggleTag} />
                 <HeartBurst>
                   <button
                     onClick={() => startSearch("kink", selectedTags, null)}
@@ -1156,7 +1084,7 @@ function MatchmakePageInner() {
                     data-cursor="primary"
                     className="w-full h-[52px] rounded-full bg-gradient-to-r from-brand to-brand-dark text-accent-foreground text-base font-semibold ios-press shadow-lg shadow-brand/20 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none"
                   >
-                    {searching ? "Starting…" : selectedTags.length > 0 ? "Find My Match" : "Pick at least one vibe"}
+                    {searching ? "Starting…" : selectedTags.length > 0 ? "Find my match" : "Pick a vibe"}
                   </button>
                 </HeartBurst>
 
@@ -1164,7 +1092,7 @@ function MatchmakePageInner() {
                   <p className="type-body font-medium text-foreground mb-1">Just want to chat solo?</p>
                   <p className="type-meta text-muted mb-3">
                     {isLoggedIn === false
-                      ? `Try chatting with an AI character — first ${SOLO_GUEST_LIMIT} messages free, no signup needed.`
+                      ? `Try chatting with an AI character, first ${SOLO_GUEST_LIMIT} messages free, no signup needed.`
                       : "Browse and chat with AI characters created by the community."}
                   </p>
                   <Link
@@ -1191,40 +1119,8 @@ function MatchmakePageInner() {
 
         {state.phase === "searching" && (
           <>
-            <div className="flex flex-col items-center py-10 bg-surface border border-line rounded-[var(--radius-card)]">
-              <Candle />
-              <p className="font-display text-2xl mt-5 mb-1 tabular-nums" aria-live="off">
-                {formatElapsed(elapsed)}
-              </p>
-              <p className="type-eyebrow text-muted-faint mb-5">in the queue</p>
-              <p className="type-body text-muted text-center max-w-xs mb-2" aria-live="polite">
-                {LOADER_STAGES[loaderStage]}
-              </p>
-              <p className="type-meta text-muted-faint text-center max-w-xs mb-4">
-                {WAITING_COPY[mode ?? "quick"]}
-              </p>
-              {state.queuePosition != null && (
-                <p className="type-eyebrow text-accent-candle/80 mb-4">
-                  #{state.queuePosition} in the scene queue
-                </p>
-              )}
-              <div className="flex gap-1.5 mb-6" aria-hidden="true">
-                {LOADER_STAGES.map((_, i) => (
-                  <span
-                    key={i}
-                    className={`h-1.5 rounded-full transition-all duration-500 ${
-                      i <= loaderStage ? "w-8 bg-accent-candle" : "w-3 bg-surface-300"
-                    }`}
-                  />
-                ))}
-              </div>
-              <button
-                onClick={cancelSearch}
-                className="type-body text-muted hover:text-foreground border border-line rounded-full px-5 py-2 ios-press focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none transition-colors"
-              >
-                Leave the queue
-              </button>
-            </div>
+            <HeartCall elapsed={elapsed} onCancel={cancelSearch} />
+            <p className="mt-6 text-center text-sm text-muted">While you wait, someone here is ready to play.</p>
             <div className="border-t border-line pt-4 mt-4 -mx-4 sm:-mx-6">
               <SuggestedBots kinkTags={selectedTags} showFilter />
             </div>
@@ -1256,7 +1152,7 @@ function MatchmakePageInner() {
 
             {mode === "quick" && genderPref && (
               <p className="type-meta text-muted text-center mb-3">
-                You asked to meet {genderPref === "other" ? "anyone" : genderPref === "female" ? "a woman" : "a man"} — paired.
+                You asked to meet {genderPref === "other" ? "anyone" : genderPref === "female" ? "a woman" : "a man"}, paired.
               </p>
             )}
 
@@ -1282,8 +1178,8 @@ function MatchmakePageInner() {
 
             {mode === "blind_date" && (
               <p className="type-body text-muted text-center mb-4 max-w-xs leading-relaxed">
-                Nothing is revealed on a blind date — not vibes, not names.
-                When the scene ends, it ends — no strings attached.
+                Nothing is revealed on a blind date, not vibes, not names.
+                When the scene ends, it ends, no strings attached.
               </p>
             )}
 
@@ -1332,8 +1228,8 @@ function MatchmakePageInner() {
               <p className="font-display text-xl mb-2">No one in your scene right now</p>
               <p className="type-body text-muted mb-8 text-center max-w-xs">
                 {mode === "kink"
-                  ? "Try loosening your vibes — or take the solo scene waiting below."
-                  : "The queue was quiet this round — your scene for one is still waiting below."}
+                  ? "Try loosening your vibes, or take the solo scene waiting below."
+                  : "The queue was quiet this round, your scene for one is still waiting below."}
               </p>
               <button
                 onClick={retrySearch}

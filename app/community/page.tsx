@@ -61,7 +61,7 @@ export default function CommunityPage() {
           The <span className="gradient-text">community.</span>
         </h1>
         <p className="text-muted text-sm sm:text-base mb-8">
-          Stories, standings, and open invitations — all anonymous.
+          Stories, standings, and open invitations, all anonymous.
         </p>
 
         <div className="grid sm:grid-cols-2 gap-4">

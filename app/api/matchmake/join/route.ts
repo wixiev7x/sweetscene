@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server-admin";
 import { expireOldEntries, findAndCreateMatches } from "@/lib/matchmaking-server";
 import { getVerificationState } from "@/lib/verification/gate";
 import { REQUIRE_ID_VERIFICATION_FOR_MATCHMAKING } from "@/lib/config/constants";
+import { sanitizeVibes } from "@/lib/matchmaking/vibes";
 
 export async function POST(req: NextRequest) {
   const supabase = await createClient();
@@ -28,12 +29,16 @@ export async function POST(req: NextRequest) {
 
   await expireOldEntries();
 
-  const body = await req.json();
-  const { kink_tags = [], mode = "quick", preferred_gender } = body as {
-    kink_tags?: string[];
-    mode?: string;
-    preferred_gender?: string | null;
+  const body = (await req.json().catch(() => ({}))) as {
+    kink_tags?: unknown;
+    mode?: unknown;
+    preferred_gender?: unknown;
   };
+  /* Never trust the client: only known vibes, capped; only known modes. */
+  const kink_tags = sanitizeVibes(body.kink_tags);
+  const mode =
+    body.mode === "kink" || body.mode === "blind_date" || body.mode === "quick" ? body.mode : "quick";
+  const preferred_gender = body.preferred_gender;
 
   const genderPref =
     preferred_gender === "male" || preferred_gender === "female" || preferred_gender === "other"

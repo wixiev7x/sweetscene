@@ -5,7 +5,7 @@ import { pageMeta } from "@/lib/seo";
 export const metadata: Metadata = pageMeta({
   title: "Privacy Policy",
   description:
-    "How SweetScene handles your data — anonymous accounts, message encryption, age verification, payments, and your rights.",
+    "How SweetScene handles your data, anonymous accounts, message encryption, age verification, payments, and your rights.",
   path: "/privacy",
 });
 
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
             date of birth you give at sign-up: members aged 16–17 are only ever matched with, and can
             only message, other members aged 16–17, and members aged 18+ only with other adults. All
             content is moderated and rated safe-for-work. Some users may be asked to complete
-            third-party age verification before accessing certain features — see Section 12.{" "}
+            third-party age verification before accessing certain features, see Section 12.{" "}
             We do not knowingly process personal information from anyone under 16. If you are the
             parent or legal guardian of a child who has provided us personal information, contact
             us at <a href="mailto:support@sweetscene.love" className="text-accent-candle underline">support@sweetscene.love</a> to have that information deleted.
@@ -109,7 +109,7 @@ export default function PrivacyPage() {
               <strong className="text-foreground">Age and verification data:</strong> your date of
               birth and resulting age group (16–17 or 18+) and, where you complete ID verification, only the
               provider&rsquo;s pass/fail result and a verification reference ID. We never receive
-              or store ID document images or biometric data — those remain with the verification
+              or store ID document images or biometric data, those remain with the verification
               provider (Section 12).
             </li>
             <li>
@@ -121,7 +121,7 @@ export default function PrivacyPage() {
             <li>
               <strong className="text-foreground">Balance and payment records:</strong> your token
               balance and, for purchases, a payment reference from our card payment processor.
-              We never see or store card numbers — checkout runs on the processor&rsquo;s hosted
+              We never see or store card numbers, checkout runs on the processor&rsquo;s hosted
               page.
             </li>
           </ul>
@@ -130,9 +130,9 @@ export default function PrivacyPage() {
         <section className="space-y-3">
           <h2 className="text-xl text-white font-medium">4. Sources of Personal Data</h2>
           <ul className="list-disc pl-6 space-y-2 type-body">
-            <li>Directly from you — when you register, play scenes, post confessions, or contact support;</li>
-            <li>Automatically as you navigate — IP address, device information, and strictly necessary cookies (Section 8);</li>
-            <li>From providers you choose — Google/Discord at sign-in, and the age-verification provider&rsquo;s pass/fail result.</li>
+            <li>Directly from you, when you register, play scenes, post confessions, or contact support;</li>
+            <li>Automatically as you navigate, IP address, device information, and strictly necessary cookies (Section 8);</li>
+            <li>From providers you choose, Google/Discord at sign-in, and the age-verification provider&rsquo;s pass/fail result.</li>
           </ul>
         </section>
 
@@ -155,10 +155,10 @@ export default function PrivacyPage() {
           </h2>
           <p className="type-body">Where required by applicable law, we process personal data only when:</p>
           <ul className="list-disc pl-6 space-y-2 type-body">
-            <li>You consent — for example to biometric processing by the verification provider. Consent can be withdrawn at any time.</li>
-            <li>It is necessary to perform our contract with you — for example to create and operate your account.</li>
+            <li>You consent, for example to biometric processing by the verification provider. Consent can be withdrawn at any time.</li>
+            <li>It is necessary to perform our contract with you, for example to create and operate your account.</li>
             <li>It is necessary to comply with legal obligations.</li>
-            <li>It satisfies a legitimate interest not overridden by your data-protection interests — for example keeping SweetScene safe from fraud and illegal activity.</li>
+            <li>It satisfies a legitimate interest not overridden by your data-protection interests, for example keeping SweetScene safe from fraud and illegal activity.</li>
             <li>It protects your or others&rsquo; vital interests, or is carried out in the public interest.</li>
           </ul>
           <p className="type-body">
@@ -173,7 +173,7 @@ export default function PrivacyPage() {
           <ul className="list-disc pl-6 space-y-2 type-body">
             <li><strong className="text-foreground">The community, by design:</strong> your anonymous username, public confessions, and bounty posts are visible to other users. Nothing on your profile reveals your identity.</li>
             <li><strong className="text-foreground">Service providers:</strong> hosting and database (Vercel, Supabase), AI text generation (DeepSeek), optional image generation (Google Gemini), card payment processing and reselling (Paddle, merchant of record), bot protection (Cloudflare Turnstile), rate limiting (Upstash), and the age-verification provider. Providers process data only on our instructions under data-processing agreements where required.</li>
-            <li><strong className="text-foreground">Sign-in providers:</strong> Google and Discord, when you choose them — their own policies govern those services.</li>
+            <li><strong className="text-foreground">Sign-in providers:</strong> Google and Discord, when you choose them, their own policies govern those services.</li>
             <li><strong className="text-foreground">Legal successors:</strong> in a merger, acquisition, or sale of assets.</li>
             <li><strong className="text-foreground">Authorities:</strong> regulators, public authorities, and law enforcement where we reasonably believe disclosure is required to comply with law, enforce our Terms (including safety enforcement), detect or prevent illegal activity, or protect the rights, property, or safety of our users or others.</li>
           </ul>
@@ -197,7 +197,7 @@ export default function PrivacyPage() {
           <h2 className="text-xl text-white font-medium">9. Your Choices</h2>
           <ul className="list-disc pl-6 space-y-2 type-body">
             <li>Remain anonymous: we never ask for your real name or face; profile pictures are optional generated/anonymous art.</li>
-            <li>Revoke matchmaking preferences at any time — they only live for the current pairing.</li>
+            <li>Revoke matchmaking preferences at any time, they only live for the current pairing.</li>
             <li>Delete your account from your profile page; this removes access to your content and starts deletion of your account data.</li>
           </ul>
         </section>
@@ -217,7 +217,7 @@ export default function PrivacyPage() {
 
         <section className="space-y-3">
           <h2 className="text-xl text-white font-medium">
-            11. Residents&rsquo; Rights — Other United States Jurisdictions
+            11. Residents&rsquo; Rights, Other United States Jurisdictions
           </h2>
           <p className="type-body">
             We do not sell or trade registered users&rsquo; personal information. Residents of
@@ -229,7 +229,7 @@ export default function PrivacyPage() {
         <section className="space-y-3">
           <h2 className="text-xl text-white font-medium">12. Age Verification and Biometric Information</h2>
           <p className="type-body">
-            Where required — to access certain gated features — age and identity
+            Where required, to access certain gated features, age and identity
             verification is performed by an independent third-party provider. Depending on the
             provider, verification may involve government-issued ID and facial-recognition
             technology. That process runs entirely on the provider&rsquo;s infrastructure:
@@ -237,7 +237,7 @@ export default function PrivacyPage() {
               {" "}we receive only a pass/fail result and a verification reference ID
             </strong>
             . We never receive, process, or store ID document images or biometric data. The
-            provider&rsquo;s own privacy notice governs that processing — read it before
+            provider&rsquo;s own privacy notice governs that processing, read it before
             verifying.
           </p>
         </section>
@@ -256,7 +256,7 @@ export default function PrivacyPage() {
           <h2 className="text-xl text-white font-medium">14. Retention of Personal Information</h2>
           <p className="type-body">
             We retain personal information while your account is active, and afterwards only as
-            long as necessary for the purposes processed — including legal, accounting, and
+            long as necessary for the purposes processed, including legal, accounting, and
             moderation requirements. Message content is stored encrypted at rest for the lifetime
             of the match or scene and deleted with it. Where we no longer need information, we
             delete it, and we delete account data upon a verified deletion request (some data may

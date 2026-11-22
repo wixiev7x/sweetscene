@@ -381,7 +381,7 @@ export default function LobbyPage() {
         }
 
         /* Poll for a human partner every 3 seconds. On join, show a
-           toast instead of auto-redirecting — the user chooses. */
+           toast instead of auto-redirecting, the user chooses. */
         const interval = setInterval(async () => {
           const supabase = createClient();
           const { data: match } = await supabase

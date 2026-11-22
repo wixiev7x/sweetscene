@@ -98,7 +98,7 @@ export default function ConfessionsPage() {
     setSubmitting(true);
     try {
       /* Goes through the server action: moderated, scrubbed,
-         rate-limited, then persisted — never a raw client insert. */
+         rate-limited, then persisted, never a raw client insert. */
       const result = await postConfession(trimmed, selectedMood);
       if ("error" in result) {
         toast.error(result.error);
@@ -111,7 +111,7 @@ export default function ConfessionsPage() {
       setSelectedMood(null);
       setShowForm(false);
     } catch {
-      toast.error("Could not post your story — try again");
+      toast.error("Could not post your story, try again");
     } finally {
       setSubmitting(false);
     }
@@ -147,7 +147,7 @@ export default function ConfessionsPage() {
               onChange={(e) => setText(e.target.value)}
               maxLength={MAX_CHARS}
               rows={4}
-              placeholder="What happened in the scene stays in the scene — until now..."
+              placeholder="What happened in the scene stays in the scene, until now..."
               className="w-full bg-surface-sunken border border-line rounded-[var(--radius-control)] px-4 py-3 text-sm text-foreground placeholder:text-muted-faint focus:outline-none focus:ring-2 focus:ring-line-focus focus:border-accent-candle/40 resize-none transition-all"
             />
             <div className="mt-2 flex items-center justify-between">

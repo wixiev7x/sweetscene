@@ -64,7 +64,7 @@ export default function GlobalError({
             Something went wrong
           </h1>
           <p style={{ fontSize: "14px", opacity: 0.65, margin: "0 0 24px", lineHeight: 1.5 }}>
-            SweetScene hit an unexpected error. Your data is safe — try
+            SweetScene hit an unexpected error. Your data is safe, try
             again, or reload in a moment.
           </p>
           {error.digest && (

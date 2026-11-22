@@ -10,7 +10,7 @@ import CheckoutClient from "./checkout-client";
  * time and passed down — nothing is hardcoded or build-time inlined.
  * ════════════════════════════════════════════════════════════════════ */
 
-export const metadata = { title: "Checkout — SweetScene" };
+export const metadata = { title: "Checkout, SweetScene" };
 export const dynamic = "force-dynamic";
 
 export default function CheckoutPage() {

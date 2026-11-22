@@ -26,47 +26,33 @@ type NavItem = {
   icon: string;
 };
 
-const MAIN_GROUP: NavItem[] = [
-  { href: "/", label: "Explore", icon: "M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10" },
-  { href: "/matchmake", label: "Matchmake", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" },
-  { href: "/lobby", label: "Scenes", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
-  { href: "/scenarios", label: "Scenarios", icon: "M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z" },
-  { href: "/community", label: "Community", icon: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" },
-  { href: "/confessions", label: "Confessions", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
-  { href: "/store", label: "Store", icon: "M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 8h18M16 12a4 4 0 11-8 0 4 4 0 018 0z" },
-];
-
-const MORE_GROUP: NavItem[] = [
-  { href: "/bounties", label: "Bounties", icon: "M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z" },
-  { href: "/leaderboard", label: "Leaderboard", icon: "M8 21h8M12 17v4M6 4h12v7a6 6 0 01-12 0zM4 4h2v7a2 2 0 01-2-2zM18 4h2v5a2 2 0 01-2 2z" },
-  { href: "/events", label: "Events", icon: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 6v6l4 2" },
-  { href: "/achievements", label: "Achievements", icon: "M8 21h8M12 17v4M6 4h12v7a6 6 0 01-12 0zM4 4h2v7a2 2 0 01-2-2zM18 4h2v5a2 2 0 01-2 2z" },
-  { href: "/safety", label: "Safety", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
-  { href: "/how", label: "Help", icon: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zM12 8v4M12 16h.01" },
-  { href: "/terms", label: "Terms", icon: "M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M9 15l2 2 4-4" },
-  { href: "/privacy", label: "Privacy", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+const NAV: NavItem[] = [
+  { href: "/", label: "Explore", icon: "M12 22a10 10 0 100-20 10 10 0 000 20zM16.2 7.8l-2.1 6.3-6.3 2.1 2.1-6.3z" },
+  { href: "/matchmake", label: "Matchmake", icon: "M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z" },
+  { href: "/lobby", label: "Chats", icon: "M21 11.5a8.4 8.4 0 01-12.3 7.4L3 21l2-5.4A8.4 8.4 0 1121 11.5z" },
+  { href: "/characters/my", label: "My characters", icon: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" },
 ];
 
 const MOBILE_TABS: NavItem[] = [
-  { href: "/", label: "Home", icon: "M3 12l9-9 9 9M5 10v10h4v-6h6v6h4V10" },
-  { href: "/lobby", label: "Scenes", icon: "M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" },
-  { href: "/matchmake", label: "Match", icon: "M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" },
-  { href: "/store", label: "Store", icon: "M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4zM3 8h18" },
+  { href: "/", label: "Explore", icon: NAV[0].icon },
+  { href: "/lobby", label: "Chats", icon: NAV[2].icon },
+  { href: "/matchmake", label: "Match", icon: NAV[1].icon },
+  { href: "/create-character", label: "Create", icon: "M12 5v14M5 12h14" },
   { href: "/profile", label: "Profile", icon: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" },
 ];
 
 function CoinIcon({ className = "w-4 h-4" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 20 20" className={`${className} inline-block`} aria-hidden="true">
+    <svg viewBox="0 0 24 24" className={`${className} inline-block shrink-0`} aria-hidden="true">
       <defs>
-        <radialGradient id="navCoinFace" cx="0.38" cy="0.32" r="0.9">
-          <stop offset="0%" stopColor="oklch(0.9 0.1 80)" />
-          <stop offset="55%" stopColor="oklch(0.82 0.14 75)" />
-          <stop offset="100%" stopColor="oklch(0.74 0.13 70)" />
-        </radialGradient>
+        <linearGradient id="ssCoin" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#F6DDA6" />
+          <stop offset="100%" stopColor="#C9974E" />
+        </linearGradient>
       </defs>
-      <circle cx="10" cy="10" r="8.6" fill="url(#navCoinFace)" stroke="oklch(0.72 0.16 10 / 0.55)" strokeWidth="1.4" />
-      <path d="M10 13.6c-1.9 0-3.2-1.5-3.2-3.6S8.1 6.4 10 6.4s3.2 1.5 3.2 3.6-1.3 3.6-3.2 3.6zm0-1.7c.8 0 1.3-.8 1.3-1.9s-.5-1.9-1.3-1.9-1.3.8-1.3 1.9.5 1.9 1.3 1.9z" fill="oklch(0.62 0.19 12 / 0.85)" />
+      <circle cx="12" cy="12" r="10.5" fill="url(#ssCoin)" />
+      <circle cx="12" cy="12" r="8" fill="none" stroke="#8A5F22" strokeOpacity=".35" strokeWidth="1" />
+      <path d="M12 16.6s-3.6-2.3-4.7-4.2c-.8-1.5-.1-3.3 1.6-3.3 1 0 1.6.6 2.1 1.3.5-.7 1.1-1.3 2.1-1.3 1.7 0 2.4 1.8 1.6 3.3-1.1 1.9-4.7 4.2-4.7 4.2z" fill="#7A4E14" fillOpacity=".8" />
     </svg>
   );
 }
@@ -78,23 +64,68 @@ function SidebarRow({ item, active, onNavigate }: { item: NavItem; active: boole
       prefetch={false}
       aria-current={active ? "page" : undefined}
       onClick={onNavigate}
-      className={`ios-press ios-hairline flex items-center gap-3 px-3 last:border-b-0 transition-all focus-visible:ring-2 ring-line-focus ${
-        active ? "bg-accent-candle/10" : "hover:bg-surface-raised/60"
+      className={`flex h-11 items-center gap-3 rounded-full px-4 text-[15px] transition-colors focus-visible:ring-2 ring-line-focus ${
+        active ? "bg-surface-raised text-foreground" : "text-muted-strong hover:bg-surface hover:text-foreground"
       }`}
-      style={{ minHeight: "50px" }}
     >
-      <div className="flex items-center justify-center w-7 h-7 rounded-[8px] flex-shrink-0 bg-surface-raised/60">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-accent-candle" : "text-muted-strong"}>
-          <path d={item.icon} />
-        </svg>
-      </div>
-      <span className={`type-body flex-1 ${active ? "text-foreground font-medium" : "text-muted-strong"}`}>
-        {item.label}
-      </span>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted-faint flex-shrink-0" aria-hidden="true">
-        <path d="M9 18l6-6-6-6" />
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-brand-light" : ""} aria-hidden="true">
+        <path d={item.icon} />
       </svg>
+      {item.label}
     </Link>
+  );
+}
+
+function CreateMenu({ onNavigate }: { onNavigate?: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        className="flex h-12 w-full items-center gap-3 rounded-full bg-brand px-5 text-[15px] text-white transition-transform active:scale-[0.98]"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+          <path d="M12 5v14M5 12h14" />
+        </svg>
+        Create
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="ml-auto opacity-80" aria-hidden="true">
+          <path d="M9 18l6-6-6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div role="menu" className="absolute left-[calc(100%-12px)] top-0 z-50 w-64 pl-4">
+          <div className="rounded-3xl border border-line-strong bg-surface p-2 shadow-2xl" style={{ animation: "iosDropdown .18s var(--ios-ease) both" }}>
+            <Link
+              href="/create-character"
+              role="menuitem"
+              prefetch={false}
+              onClick={() => { setOpen(false); onNavigate?.(); }}
+              className="flex items-center gap-3 rounded-2xl p-3 transition-colors hover:bg-surface-raised"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised text-brand-light">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" /></svg>
+              </span>
+              <span>
+                <span className="block text-[15px] text-foreground">Character</span>
+                <span className="block text-xs text-muted">Bring someone to life</span>
+              </span>
+            </Link>
+            <div role="menuitem" aria-disabled="true" className="flex items-center gap-3 rounded-2xl p-3 opacity-60">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised text-brand-light">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8" /></svg>
+              </span>
+              <span>
+                <span className="block text-[15px] text-foreground">Group <span className="ml-1 rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-muted">Soon</span></span>
+                <span className="block text-xs text-muted">Several characters, one scene</span>
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -237,11 +268,10 @@ export function SiteNav({ className = "" }: { className?: string }) {
     return `${Math.floor(hrs / 24)}d`;
   };
 
-  const moreActive = MORE_GROUP.some((i) => isActive(i.href));
 
   return (
     <>
-      {/* Headless session data — the only place supabase-js enters the
+      {/* Headless session data, the only place supabase-js enters the
           nav; downloaded solely when a session cookie exists. */}
       {hasSession && (
         <NavSession
@@ -253,85 +283,66 @@ export function SiteNav({ className = "" }: { className?: string }) {
         />
       )}
 
-      {/* Top bar — candlelit frosted */}
+      {/* Top bar, sits right of the sidebar on desktop */}
       <header
-        className={`sticky top-0 z-50 ios-frosted border-b border-[var(--ios-hairline)] ${className}`}
-        style={{ height: "56px" }}
+        className={`sticky top-0 z-40 bg-background/80 backdrop-blur-xl md:pl-60 ${className}`}
+        style={{ height: "64px" }}
       >
-        <div className="flex items-center justify-end md:justify-between h-full px-4">
-          {/* Left cluster — wordmark */}
-          <div className="flex items-center gap-2.5">
-            <Link
-              href="/"
-              prefetch={false}
-              className="ios-press flex items-center gap-1.5 rounded-lg px-1 focus-visible:ring-2 ring-line-focus"
-              aria-label="SweetScene home"
-            >
-              <span className="font-display text-[19px] font-extrabold tracking-tight text-foreground">
-                sweet<span className="text-brand">scene</span>
-              </span>
-            </Link>
-          </div>
+        <div className="flex h-full items-center justify-between gap-3 px-4 sm:px-6">
+          <Link href="/" prefetch={false} aria-label="SweetScene home" className="md:invisible">
+            <span className="font-display text-[22px] text-foreground">sweet<span className="text-brand">scene</span></span>
+          </Link>
 
-          {/* Right cluster */}
-          <div className="flex items-center gap-2.5">
-            {/* Token pill — real balance */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
             <Link
-              href="/billing"
+              href="/store"
               prefetch={false}
-              aria-label={`Token balance: ${tokens ?? 0} — buy more`}
-              className="ios-press relative flex items-center gap-1.5 rounded-full bg-surface-raised border border-line px-3 h-9 type-body text-foreground font-medium transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"
+              aria-label={`Token balance: ${tokens ?? 0}, get more`}
+              className="flex h-10 items-center gap-2 rounded-full bg-surface px-4 text-[15px] text-foreground transition-colors hover:bg-surface-raised"
             >
-              <CoinIcon className="w-4 h-4" />
-              <span>{tokens != null ? tokens : 0}</span>
-              <span className="flex items-center justify-center w-4 h-4 rounded-full bg-accent-candle/20 text-accent-candle text-[10px] font-bold -ml-0.5" aria-hidden="true">+</span>
+              <CoinIcon className="h-5 w-5" />
+              <span className="tabular-nums">{(tokens ?? 0).toLocaleString("en-US")}</span>
             </Link>
 
-            {/* Premium */}
             <Link
-              href="/billing"
+              href="/store"
               prefetch={false}
-              data-cursor="primary"
-              className="ios-press hidden sm:flex items-center gap-1.5 rounded-full px-3.5 h-9 type-body font-semibold text-accent-foreground transition-all hover:opacity-90 focus-visible:ring-2 ring-line-focus"
-              style={{ background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
+              className="hidden h-10 items-center gap-2 rounded-full bg-brand px-5 text-[15px] text-white transition-transform active:scale-[0.98] sm:flex"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" />
-              </svg>
-              <span>Upgrade</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 5.5 5 10a5 5 0 01-10 0c0-2 .8-3.4 2-4.5.2 1.6 1 2.6 2 3 0-3 .3-5.6 1-8.5z" /></svg>
+              Upgrade
             </Link>
 
-            {/* Premium icon on mobile */}
-            <Link
-              href="/billing"
-              prefetch={false}
-              aria-label="Upgrade"
-              className="ios-press sm:hidden flex items-center justify-center w-9 h-9 rounded-full bg-surface-raised border border-line text-accent-candle transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z" />
-              </svg>
-            </Link>
+            {!hasSession && (
+              <Link
+                href="/login"
+                prefetch={false}
+                className="flex h-10 items-center rounded-full border border-line-strong px-5 text-[15px] text-foreground transition-colors hover:bg-surface"
+              >
+                Sign in
+              </Link>
+            )}
 
-            {/* Notifications bell — real count */}
+            {hasSession && (
             <button
               ref={bellBtnRef}
               onClick={() => { setNotifOpen(!notifOpen); setMoreOpen(false); }}
               aria-expanded={notifOpen}
               aria-haspopup="dialog"
               aria-label={displayUnread > 0 ? `Notifications, ${displayUnread} unread` : "Notifications"}
-              className="ios-press relative flex items-center justify-center w-9 h-9 rounded-full bg-surface-raised border border-line text-foreground transition-all hover:bg-accent-candle/10 hover:border-accent-candle/30 focus-visible:ring-2 ring-line-focus"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full bg-surface text-foreground transition-colors hover:bg-surface-raised"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
               {displayUnread > 0 && (
-                <span className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-danger text-accent-foreground text-[10px] font-bold flex items-center justify-center" aria-hidden="true">
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-brand px-1 text-[10px] text-white" aria-hidden="true">
                   {displayUnread > 9 ? "9+" : displayUnread}
                 </span>
               )}
             </button>
+            )}
           </div>
         </div>
 
@@ -341,7 +352,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
             ref={notifPanelRef}
             role="dialog"
             aria-label="Notifications"
-            className="ios-dropdown absolute right-4 top-14 w-80 max-h-96 overflow-y-auto ios-card ios-frosted border border-line shadow-2xl z-50"
+            className="ios-dropdown absolute right-4 top-16 w-80 max-h-96 overflow-y-auto rounded-3xl bg-surface border border-line-strong shadow-2xl z-50"
           >
             {!user ? (
               <div className="p-5 text-center">
@@ -356,7 +367,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
               </div>
             ) : notifications.length === 0 ? (
               <p className="type-body text-muted text-center py-8 px-4">
-                Nothing yet — matches and invites land here.
+                Nothing yet, matches and invites land here.
               </p>
             ) : (
               <ul className="divide-y divide-line">
@@ -390,122 +401,77 @@ export function SiteNav({ className = "" }: { className?: string }) {
       </header>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed left-0 top-14 bottom-0 w-56 flex-col ios-frosted border-r border-[var(--ios-hairline)] z-40 overflow-y-auto scrollbar-none">
+      <aside className="fixed bottom-0 left-0 top-0 z-50 hidden w-60 flex-col border-r border-line bg-background md:flex">
+        <Link href="/" prefetch={false} aria-label="SweetScene home" className="flex h-16 items-center px-6">
+          <span className="font-display text-[24px] text-foreground">sweet<span className="text-brand">scene</span></span>
+        </Link>
 
-        {/* Primary CTA — Matchmake */}
-        <div className="px-4 pb-3">
-          <Link
-            href="/matchmake"
-            prefetch={false}
-            data-cursor="primary"
-            aria-current={isActive("/matchmake") ? "page" : undefined}
-            className="ios-press flex items-center justify-center gap-2 w-full rounded-full text-accent-foreground font-semibold text-base transition-all hover:opacity-90 focus-visible:ring-2 ring-line-focus"
-            style={{ height: "52px", background: "linear-gradient(135deg, var(--brand), var(--brand-dark))" }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 2a10 10 0 100 20 10 10 0 000-20zM12 6v6l4 2" />
-            </svg>
-            Matchmake
-          </Link>
-        </div>
+        <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-4 pt-2 scrollbar-none">
+          <p className="mb-2 px-2 text-[11px] uppercase tracking-[0.14em] text-muted">App</p>
+          <CreateMenu onNavigate={() => closeMenus(null)} />
 
-        {/* Main nav group */}
-        <div className="px-4 pb-4 flex-1">
-          <div className="ios-card overflow-hidden mb-3">
-            {MAIN_GROUP.map((item) => (
-              <SidebarRow key={item.label} item={item} active={isActive(item.href)} onNavigate={() => closeMenus(null)} />
+          <nav aria-label="Main" className="mt-2 space-y-1">
+            {NAV.map((item) => (
+              <SidebarRow key={item.href} item={item} active={isActive(item.href)} onNavigate={() => closeMenus(null)} />
             ))}
-          </div>
+          </nav>
 
-          {/* More — expanding panel */}
-          <div ref={morePanelRef} className="ios-card overflow-hidden mb-3">
-            <button
-              ref={moreBtnRef}
-              onClick={() => { setMoreOpen(!moreOpen); setNotifOpen(false); }}
-              aria-expanded={moreOpen}
-              aria-controls="more-menu"
-              className={`ios-press flex items-center gap-3 px-3 w-full transition-all focus-visible:ring-2 ring-line-focus ${
-                moreActive && !moreOpen ? "bg-accent-candle/10" : "hover:bg-surface-raised/60"
-              }`}
-              style={{ minHeight: "50px" }}
-            >
-              <div className="flex items-center justify-center w-7 h-7 rounded-[8px] flex-shrink-0 bg-surface-raised/60">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-strong" aria-hidden="true">
-                  <path d="M3 12h18M3 6h18M3 18h18" />
-                </svg>
-              </div>
-              <span className={`type-body flex-1 text-left ${moreActive ? "text-foreground font-medium" : "text-muted-strong"}`}>More</span>
-              <svg
-                width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
-                strokeLinecap="round" strokeLinejoin="round"
-                className="text-muted-faint flex-shrink-0 transition-transform"
-                style={{ transform: moreOpen ? "rotate(90deg)" : "rotate(0deg)" }}
-                aria-hidden="true"
-              >
-                <path d="M9 18l6-6-6-6" />
-              </svg>
-            </button>
-            {moreOpen && (
-              <div id="more-menu">
-                {MORE_GROUP.map((item) => (
-                  <SidebarRow key={item.label} item={item} active={isActive(item.href)} onNavigate={() => closeMenus(null)} />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom: Profile + Log out + info */}
-        <div className="px-4 pb-4 border-t border-[var(--ios-hairline)] pt-3">
+          <div className="my-5 h-px bg-line" />
+          <p className="mb-2 px-2 text-[11px] uppercase tracking-[0.14em] text-muted">Plans</p>
           <Link
-            href="/profile"
+            href="/store"
             prefetch={false}
-            aria-current={isActive("/profile") ? "page" : undefined}
-            onClick={() => closeMenus(null)}
-            className="ios-press flex items-center gap-3 ios-row px-3 mb-3 hover:bg-surface-raised/60 focus-visible:ring-2 ring-line-focus"
+            className="group flex items-center gap-3 rounded-3xl bg-gradient-to-br from-brand/25 via-surface to-surface px-4 py-3.5 ring-1 ring-brand/30 transition-colors hover:ring-brand/60"
           >
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent-candle to-accent-rose flex items-center justify-center text-foreground flex-shrink-0" aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" />
-              </svg>
-            </div>
-            <span className="type-body text-foreground flex-1">Profile</span>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-muted-faint" aria-hidden="true">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand/20 text-brand-light">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 5.5 5 10a5 5 0 01-10 0c0-2 .8-3.4 2-4.5.2 1.6 1 2.6 2 3 0-3 .3-5.6 1-8.5z" /></svg>
+            </span>
+            <span className="flex-1">
+              <span className="block text-[15px] text-foreground">Go Flame</span>
+              <span className="block text-xs text-muted">Longer, hotter scenes</span>
+            </span>
           </Link>
 
-          {user && (
-            <button
-              onClick={handleLogout}
-              data-cursor="destructive"
-              className="ios-press flex items-center gap-3 w-full text-left px-3 mb-3 rounded-[10px] hover:bg-danger/10 transition-all focus-visible:ring-2 ring-line-focus"
-            >
-              <div className="flex items-center justify-center w-9 h-9 rounded-full bg-danger/15 flex-shrink-0" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-danger">
-                  <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4" />
-                  <path d="M16 17l5-5-5-5" />
-                  <path d="M21 12H9" />
-                </svg>
-              </div>
-              <span className="type-body text-danger flex-1">Log Out</span>
-            </button>
-          )}
+          <div className="my-5 h-px bg-line" />
+          <p className="mb-2 px-2 text-[11px] uppercase tracking-[0.14em] text-muted">Other</p>
+          <SidebarRow item={{ href: "/how", label: "Help", icon: "M12 22a10 10 0 100-20 10 10 0 000 20zM9.1 9a3 3 0 015.8 1c0 2-3 3-3 3M12 17h.01" }} active={isActive("/how")} onNavigate={() => closeMenus(null)} />
+          <SidebarRow item={{ href: "/safety", label: "Safety", icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" }} active={isActive("/safety")} onNavigate={() => closeMenus(null)} />
+        </div>
 
-          <div className="px-3 pt-2 pb-1">
-            <p className="type-meta text-muted-faint leading-relaxed">
-              SweetScene &copy; 2026<br />
-              Anonymous AI Matchmaking<br />
-              <span className="type-eyebrow text-muted-faint">16+ · Free to join</span>
-            </p>
+        <div className="space-y-1 border-t border-line p-4">
+          <div className="flex h-11 items-center gap-3 rounded-full px-4 text-[15px] text-muted-strong">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20" /></svg>
+            <span className="flex-1">English</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Link
+              href={hasSession ? "/profile" : "/login"}
+              prefetch={false}
+              aria-current={isActive("/profile") ? "page" : undefined}
+              className="flex h-12 flex-1 items-center gap-3 rounded-full px-2 transition-colors hover:bg-surface"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent-candle text-white" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" /></svg>
+              </span>
+              <span className="text-[15px] text-foreground">{hasSession ? "Profile" : "Sign in"}</span>
+            </Link>
+            {user && (
+              <button
+                onClick={handleLogout}
+                aria-label="Log out"
+                className="flex h-10 w-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface hover:text-foreground"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" /></svg>
+              </button>
+            )}
           </div>
         </div>
       </aside>
 
-      {/* Mobile bottom tab bar — safe-area aware */}
+      {/* Mobile bottom tab bar, safe-area aware */}
       <nav
         aria-label="Primary"
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 ios-frosted border-t border-[var(--ios-hairline)] flex items-center justify-around"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-xl border-t border-line flex items-center justify-around"
         style={{ height: "calc(52px + env(safe-area-inset-bottom))", paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         {MOBILE_TABS.map((tab) =>
@@ -528,7 +494,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
                   <path d="M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z" />
                 </svg>
               </span>
-              <span className={`mb-1 text-[10px] font-semibold ${isActive(tab.href) ? "text-accent-candle" : "text-foreground-dim"}`}>
+              <span className={`mb-1 text-[10px] font-semibold ${isActive(tab.href) ? "text-brand-light" : "text-foreground-dim"}`}>
                 {tab.label}
               </span>
             </Link>
@@ -540,7 +506,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
             aria-current={isActive(tab.href) ? "page" : undefined}
             onClick={() => closeMenus(null)}
             className={`ios-press flex flex-col items-center justify-center gap-0.5 flex-1 h-[52px] transition-colors focus-visible:ring-2 ring-line-focus rounded-lg ${
-              isActive(tab.href) ? "text-accent-candle" : "text-muted-strong"
+              isActive(tab.href) ? "text-brand-light" : "text-muted-strong"
             }`}
           >
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

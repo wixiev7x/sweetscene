@@ -1,21 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Plus_Jakarta_Sans, Inter } from "next/font/google";
+import { Varela_Round } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-display-face",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  display: "swap",
-});
-
-const inter = Inter({
+const varela = Varela_Round({
   variable: "--font-ui",
   subsets: ["latin"],
+  weight: "400",
   display: "swap",
 });
 
@@ -24,11 +18,11 @@ export const metadata: Metadata = {
     process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.sweetscene.love"
   ),
   title: {
-    default: "SweetScene — Anonymous AI Matchmaking",
+    default: "SweetScene, Anonymous AI Matchmaking",
     template: "%s · SweetScene",
   },
   description:
-    "Get matched anonymously with a real person, play an AI-directed roleplay scene together, then reveal — or skip. Free to start. 16+.",
+    "Get matched anonymously with a real person, play an AI-directed roleplay scene together, then reveal, or skip. Free to start. 16+.",
   icons: {
     icon: [
       { url: "/favicon.ico", type: "image/x-icon" },
@@ -38,7 +32,7 @@ export const metadata: Metadata = {
     apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   openGraph: {
-    title: "SweetScene — Anonymous Matchmaking for AI Roleplay",
+    title: "SweetScene, Anonymous Matchmaking for AI Roleplay",
     description:
       "Match anonymously. Play an AI-directed scene together. Reveal only when both sides agree.",
     siteName: "SweetScene",
@@ -48,7 +42,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0B0709",
+  themeColor: "#000000",
 };
 
 export default function RootLayout({
@@ -64,7 +58,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jakarta.variable} ${inter.variable} h-full antialiased`}
+      className={`${varela.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         {stagingBanner ? (
@@ -73,7 +67,7 @@ export default function RootLayout({
             aria-label="Staging environment notice"
             className="sticky top-0 z-[10002] w-full bg-amber-500/90 text-black text-center text-xs font-semibold tracking-widest uppercase py-1 px-2"
           >
-            DESIGN — Staging environment · not production · data here is for testing only
+            DESIGN, Staging environment · not production · data here is for testing only
           </div>
         ) : null}
         <a
@@ -85,7 +79,7 @@ export default function RootLayout({
         <SiteNav />
         <main
           id="site-main"
-          className="flex-1 w-full md:pl-56 pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0"
+          className="flex-1 w-full md:pl-60 pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0"
         >
           {children}
           <SiteFooter />

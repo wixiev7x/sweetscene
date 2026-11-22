@@ -11,27 +11,27 @@ import { createClient } from "@/lib/supabase/client";
 const QUESTIONS = [
   {
     q: "It's 3am and you can't sleep. What sounds ideal?",
-    options: ["A deep conversation with a stranger", "Reading a book in comfortable silence", "Creating something — writing, drawing, coding", "Watching the city from a rooftop"],
+    options: ["A deep conversation with a stranger", "Reading a book in comfortable silence", "Creating something, writing, drawing, coding", "Watching the city from a rooftop"],
     vibes: ["Romance", "Slice of Life", "Drama", "Adventure"],
   },
   {
     q: "What draws you to a scene?",
-    options: ["The mystery — not knowing what happens next", "The connection — finding someone who gets it", "The story — building something together", "The escape — being someone else for a while"],
+    options: ["The mystery, not knowing what happens next", "The connection, finding someone who gets it", "The story, building something together", "The escape, being someone else for a while"],
     vibes: ["Mystery", "Romance", "Drama", "Fantasy"],
   },
   {
     q: "When the AI throws a curveball, you...",
-    options: ["Embrace it — that's the fun", "Think carefully before responding", "Match the energy — throw one back", "Go quiet and see what they do"],
+    options: ["Embrace it, that's the fun", "Think carefully before responding", "Match the energy, throw one back", "Go quiet and see what they do"],
     vibes: ["Comedy", "Thriller", "Comedy", "Mystery"],
   },
   {
     q: "After a great scene, you want to...",
-    options: ["Unmask immediately — I need to know", "Stay anonymous — the mystery was the point", "Leave it ambiguous — maybe another scene", "Talk about it on the Confessions wall"],
+    options: ["Unmask immediately, I need to know", "Stay anonymous, the mystery was the point", "Leave it ambiguous, maybe another scene", "Talk about it on the Confessions wall"],
     vibes: ["Romance", "Mystery", "Slice of Life", "Drama"],
   },
   {
     q: "Your ideal scenario setting?",
-    options: ["Somewhere cozy and enclosed — diner, train, cafe", "Somewhere vast and open — rooftop, field, sea", "Somewhere charged and formal — ball, office, gala", "Somewhere unexpected — anywhere but the obvious"],
+    options: ["Somewhere cozy and enclosed, diner, train, cafe", "Somewhere vast and open, rooftop, field, sea", "Somewhere charged and formal, ball, office, gala", "Somewhere unexpected, anywhere but the obvious"],
     vibes: ["Slice of Life", "Romance", "Historical", "Adventure"],
   },
 ];

@@ -89,7 +89,7 @@ export function SuggestedBots({ kinkTags, showFilter = false }: { kinkTags: stri
         )}
       </div>
       {showFilter && (
-        <p className="text-xs text-muted mb-3">Solo scenes open in a new tab — your queue keeps running.</p>
+        <p className="text-xs text-muted mb-3">Solo scenes open in a new tab, your queue keeps running.</p>
       )}
 
       {loading ? (
@@ -115,7 +115,7 @@ export function SuggestedBots({ kinkTags, showFilter = false }: { kinkTags: stri
         </div>
       ) : visible.length === 0 ? (
         <p className="text-xs text-muted-faint py-3">
-          No characters in this lane yet — the community is still growing.
+          No characters in this lane yet, the community is still growing.
         </p>
       ) : (
         <div className="flex gap-3 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-2">

@@ -48,14 +48,14 @@ export default function SiteFooter() {
   if (HIDE_ON.some((p) => pathname.startsWith(p))) return null;
 
   return (
-    <footer className="border-t border-line px-4 pb-10 pt-14 sm:px-6">
+    <footer className="mt-10 border-t border-line px-4 pb-10 pt-14 sm:px-6">
       <div className="mx-auto grid max-w-6xl gap-10 md:grid-cols-[1.3fr_repeat(4,1fr)]">
         <div>
           <Link href="/" className="font-display text-2xl text-foreground">
-            Sweet<span className="gradient-text italic">Scene</span>
+            sweet<span className="text-brand">scene</span>
           </Link>
           <p className="mt-3 max-w-xs text-sm leading-relaxed text-muted">
-            Anonymous matchmaking for AI roleplay. Match, play a scene together, then reveal — or skip.
+            Strangers, stories and slow-burning chemistry. Reveal only when it&rsquo;s worth it.
           </p>
           <p className="mt-4 text-xs text-muted-faint">16+ · Safe-for-work · Payments by Paddle</p>
         </div>

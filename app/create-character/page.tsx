@@ -385,7 +385,7 @@ export default function CreateCharacterPage() {
         </h1>
         <p className="text-sm text-muted mt-2">
           Design an AI personality. The backend wraps your prompt with
-          platform instructions — you control the character; we handle
+          platform instructions, you control the character; we handle
           the behavior.
         </p>
         <p className="text-xs text-muted-faint mt-2 italic max-w-md">
@@ -412,7 +412,7 @@ export default function CreateCharacterPage() {
               {createdStatus === "published"
                 ? "Your character is published and visible to the community."
                 : createdStatus === "pending_review"
-                  ? "Characters with uploaded avatars get a quick review before going public — usually fast. You can keep playing it solo in the meantime."
+                  ? "Characters with uploaded avatars get a quick review before going public, usually fast. You can keep playing it solo in the meantime."
                   : "Saved as a draft. Publish it any time from My Characters."}
             </p>
             <div className="flex flex-col items-center gap-3 mt-8 w-full">
@@ -486,7 +486,7 @@ export default function CreateCharacterPage() {
               value={tagline}
               onChange={(e) => setTagline(e.target.value)}
               maxLength={120}
-              placeholder="She knows every book in the library — except the one you're writing."
+              placeholder="She knows every book in the library, except the one you're writing."
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
             />
             <CharCounter len={tagline.length} max={120} />
@@ -591,7 +591,7 @@ export default function CreateCharacterPage() {
           {/* ── PHASE 5: TRIGGERS ── */}
           <Field
             label="Triggers"
-            hint="Optional. Things that set this character off — phrases, topics, actions. Comma or newline separated, up to 10, 120 chars each. The AI reacts strongly to these."
+            hint="Optional. Things that set this character off, phrases, topics, actions. Comma or newline separated, up to 10, 120 chars each. The AI reacts strongly to these."
           >
             <textarea
               value={triggersText}
@@ -642,7 +642,7 @@ export default function CreateCharacterPage() {
               onChange={(e) => setFullPersonality(e.target.value)}
               maxLength={3000}
               rows={5}
-              placeholder="Speaks softly, often trailing off mid-sentence. Stammers when nervous. Observant — notices small details about people. Uses literary references. Warm but guarded…"
+              placeholder="Speaks softly, often trailing off mid-sentence. Stammers when nervous. Observant, notices small details about people. Uses literary references. Warm but guarded…"
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none min-h-[120px] max-h-[300px]"
             />
             <CharCounter len={fullPersonality.length} max={3000} />
@@ -655,7 +655,7 @@ export default function CreateCharacterPage() {
               onChange={(e) => setBackstory(e.target.value)}
               maxLength={3000}
               rows={5}
-              placeholder="Grew up in a coastal town. Moved to the city for university. Works at the public library. Lost a sibling young — never talks about it…"
+              placeholder="Grew up in a coastal town. Moved to the city for university. Works at the public library. Lost a sibling young, never talks about it…"
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none min-h-[120px] max-h-[300px]"
             />
             <CharCounter len={backstory.length} max={3000} />

@@ -28,7 +28,7 @@ const sections: LegalSection[] = [
       <ul>
         <li>Check in. If your partner steers away from a story direction, follow their lead.</li>
         <li>&ldquo;Skip&rdquo; is always okay. Never pressure anyone to stay, reveal or move to DMs.</li>
-        <li>Reveal is mutual by design — don&rsquo;t ask for photos, real names, social handles or locations.</li>
+        <li>Reveal is mutual by design, don&rsquo;t ask for photos, real names, social handles or locations.</li>
         <li>Out-of-character requests to stop are final.</li>
       </ul>
     ),
@@ -41,7 +41,7 @@ const sections: LegalSection[] = [
         <p>Romance, drama, mystery and tension are welcome. These are not:</p>
         <ul>
           <li>Sexually explicit content of any kind.</li>
-          <li>Any sexual or romantic content involving minors — including fictional characters who are, or appear to be, under 18. Zero tolerance; reported to authorities.</li>
+          <li>Any sexual or romantic content involving minors, including fictional characters who are, or appear to be, under 18. Zero tolerance; reported to authorities.</li>
           <li>Graphic violence, gore, or content that glorifies self-harm or suicide.</li>
           <li>Hate speech, slurs or harassment targeting real groups or people.</li>
           <li>Characters that impersonate real people.</li>
@@ -87,7 +87,7 @@ const sections: LegalSection[] = [
     body: (
       <p>
         Use <strong>Report</strong> or <strong>Block</strong> from any chat menu. Reports are reviewed by our moderation
-        team. Depending on severity we may warn, restrict features, or permanently ban — and we cooperate with law
+        team. Depending on severity we may warn, restrict features, or permanently ban, and we cooperate with law
         enforcement on serious harm. See the <Link href="/safety">Safety Center</Link> for more.
       </p>
     ),

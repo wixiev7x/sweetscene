@@ -9,7 +9,7 @@ const PILLARS = [
   },
   {
     title: "Reveal only together",
-    body: "Profiles are only revealed when both players tap Reveal. Either of you can skip at any moment — no explanation needed.",
+    body: "Profiles are only revealed when both players tap Reveal. Either of you can skip at any moment, no explanation needed.",
     icon: "M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z",
   },
   {
@@ -35,11 +35,11 @@ const PILLARS = [
 ];
 
 const TIPS = [
-  "Keep personal details — real name, school, workplace, address, socials — out of scenes and DMs.",
+  "Keep personal details, real name, school, workplace, address, socials, out of scenes and DMs.",
   "Never send money, gift cards or codes to anyone you meet here.",
   "Be wary of anyone pushing you to move to another app quickly.",
   "If a scene stops feeling fun, skip. You don't owe anyone a reason.",
-  "If someone makes you uncomfortable, block and report — it helps protect others too.",
+  "If someone makes you uncomfortable, block and report, it helps protect others too.",
 ];
 
 const PARENTS = [
@@ -66,7 +66,7 @@ export default function SafetyPage() {
         </h1>
         <p className="mt-4 max-w-xl text-muted-strong">
           SweetScene is built so strangers can tell stories together without giving anything away. Here&rsquo;s how we
-          protect you — and how you can protect yourself.
+          protect you, and how you can protect yourself.
         </p>
 
         <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

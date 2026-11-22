@@ -49,7 +49,7 @@ export async function GET(request: Request) {
     }
 
     /* New-ish accounts land in age verification when a provider is
-       configured and they haven't passed yet. Explicit ?next= wins —
+       configured and they haven't passed yet. Explicit ?next= wins , 
        a returning user mid-flow (e.g. an invite link) keeps their
        destination. */
     if (

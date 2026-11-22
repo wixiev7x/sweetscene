@@ -19,6 +19,7 @@ import {
 } from "@/lib/actions/solo";
 import { TOKEN_PACKAGES } from "@/lib/billing/constants";
 import { SOLO_TOKEN_BUDGET as TOKEN_BUDGET } from "@/lib/config/constants";
+import { getCharacterPreview } from "@/lib/actions/character-preview";
 
 /* ── local types (MessageList does not export ChatMessage) ── */
 type ChatMessage = {
@@ -121,9 +122,11 @@ export default function PlayPage() {
   /* ── load or resume session on mount ── */
   useEffect(() => {
     async function load() {
+      let signedIn = false;
       try {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
+        signedIn = !!user;
         setIsLoggedIn(!!user);
         if (!user) {
           const stored = localStorage.getItem(GUEST_MSG_KEY);
@@ -131,6 +134,37 @@ export default function PlayPage() {
         }
       } catch {
         setIsLoggedIn(false);
+      }
+
+      /* Guests: read-only preview. They can look around; the first send
+         opens the sign-in sheet. */
+      if (!signedIn) {
+        const preview = await getCharacterPreview(characterId);
+        if (!preview) {
+          setError("This character isn't available.");
+          setLoading(false);
+          return;
+        }
+        setCharacter({
+          id: preview.id,
+          name: preview.name,
+          user_prompt: "",
+          scenario_tags: [],
+          is_nsfw: preview.is_nsfw,
+          alternate_greetings_count: 0,
+          avatar_url: preview.avatar_url,
+        });
+        setMessages(
+          preview.first_message
+            ? soloToChatMessages(
+                [{ role: "assistant", content: preview.first_message, created_at: new Date().toISOString() }],
+                preview.id,
+                preview.name
+              )
+            : []
+        );
+        setLoading(false);
+        return;
       }
 
       const searchParams = new URLSearchParams(window.location.search);
@@ -165,12 +199,11 @@ export default function PlayPage() {
   /* ── send a message ── */
   async function handleSend(text: string) {
     if (aiResponding) return;
-    if (!character || !sessionId) return;
-
-    if (isLoggedIn === false && guestMsgCount >= GUEST_MSG_LIMIT) {
+    if (isLoggedIn === false) {
       setShowGuestLimit(true);
       return;
     }
+    if (!character || !sessionId) return;
 
     if (tokensUsed >= TOKEN_BUDGET) {
       setShowPaywall(true);
@@ -221,7 +254,7 @@ export default function PlayPage() {
       setMessages((prev) => [...prev, aiMsg]);
       setTokensUsed((prev) => prev + result.tokensUsed);
 
-      if (isLoggedIn === false) {
+      if ((isLoggedIn as boolean | null) === false) {
         const newCount = guestMsgCount + 1;
         setGuestMsgCount(newCount);
         localStorage.setItem(GUEST_MSG_KEY, String(newCount));
@@ -487,7 +520,7 @@ export default function PlayPage() {
               </p>
               <p className="text-xs text-muted-faint mt-6 italic">
                 Start chatting with {character.name}. This is a private
-                practice session — your history is saved.
+                practice session, your history is saved.
               </p>
               <span className="block text-2xl text-brand/30 mt-4">
                 &darr;
@@ -571,7 +604,7 @@ export default function PlayPage() {
                 >
                   {TOKEN_PACKAGES.map((pkg) => (
                     <option key={pkg.id} value={pkg.tokens}>
-                      {pkg.tokens.toLocaleString()} — ${pkg.priceUsd}
+                      {pkg.tokens.toLocaleString()}, ${pkg.priceUsd}
                     </option>
                   ))}
                 </select>
@@ -606,28 +639,23 @@ export default function PlayPage() {
 
       {/* ── GUEST LIMIT MODAL ── */}
       {showGuestLimit && (
-        <div className="fixed inset-0 z-40 bg-void-950/80 backdrop-blur-sm flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
-            <span className="block text-4xl mb-4">&#x1F510;</span>
-            <h2 className="text-xl font-light text-white">
-              You&apos;ve used your {GUEST_MSG_LIMIT} free messages
-            </h2>
-            <p className="text-sm text-muted mt-2">
-              Create an account to keep chatting with {character?.name} and unlock unlimited messages, matchmaking, and more.
-            </p>
-            <div className="flex flex-col gap-3 mt-6">
-              <Link
-                href={`/signup?next=/play/${characterId}`}
-                className="w-full bg-gradient-to-r from-brand-dark to-crimson-600 text-white font-medium py-3 rounded-xl hover:from-brand hover:to-crimson-500 active:scale-95 transition-all text-center"
-              >
-                Create Free Account
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/75 p-4 backdrop-blur-sm sm:items-center" role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm rounded-[2rem] border border-line-strong bg-surface p-7 text-center" style={{ animation: "iosSheetUp .3s var(--ios-ease) both" }}>
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-brand/15 text-brand-light">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z" /></svg>
+            </span>
+            <h2 className="mt-4 font-display text-2xl text-foreground">{character?.name ?? "They"} is waiting for you</h2>
+            <p className="mt-2 text-sm text-muted-strong">Sign in to answer. It&rsquo;s free.</p>
+            <div className="mt-6 flex flex-col gap-2.5">
+              <Link href={`/signup?next=/play/${characterId}`} className="flex h-12 items-center justify-center rounded-full bg-brand text-[15px] text-white">
+                Create free account
               </Link>
-              <Link
-                href={`/login?next=/play/${characterId}`}
-                className="w-full border border-white/15 text-muted hover:text-foreground-dim hover:border-white/30 font-medium py-3 rounded-xl transition-all text-center"
-              >
-                I already have one
+              <Link href={`/login?next=/play/${characterId}`} className="flex h-12 items-center justify-center rounded-full bg-surface-raised text-[15px] text-foreground-dim">
+                I have an account
               </Link>
+              <button onClick={() => setShowGuestLimit(false)} className="mt-1 text-sm text-muted hover:text-foreground">
+                Keep looking
+              </button>
             </div>
           </div>
         </div>

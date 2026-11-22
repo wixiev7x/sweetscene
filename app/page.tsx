@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Feed from "@/components/home/Feed";
+import MatchHero from "@/components/home/MatchHero";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { fetchFeed, parseAudience, parseMood, parseSort, viewerCanSeeAdult } from "@/lib/home/feed";
 
 export const metadata: Metadata = {
-  title: { absolute: "SweetScene — Anonymous Matchmaking for AI Roleplay" },
+  title: { absolute: "SweetScene, Anonymous Matchmaking for AI Roleplay" },
   description:
     "Browse AI characters, play solo scenes, or get matched anonymously with a real person for an AI-directed roleplay. Reveal only if you both want to.",
   alternates: { canonical: "/" },
@@ -17,6 +18,25 @@ export const dynamic = "force-dynamic";
 type Continue = { id: string; name: string; avatar_url: string | null };
 
 /** Signed-in only: characters from the viewer's most recent solo scenes. */
+async function getHeroFaces(): Promise<Continue[]> {
+  try {
+    const { data } = await createAdminClient()
+      .from("characters")
+      .select("id, name, avatar_url")
+      .eq("is_public", true)
+      .eq("visibility", "public")
+      .eq("status", "published")
+      .eq("is_hidden", false)
+      .eq("is_nsfw", false)
+      .not("avatar_url", "is", null)
+      .order("is_featured", { ascending: false })
+      .limit(2);
+    return (data as Continue[] | null) ?? [];
+  } catch {
+    return [];
+  }
+}
+
 async function getContinue(): Promise<Continue[]> {
   try {
     const supabase = await createClient();
@@ -54,15 +74,16 @@ export default async function Home({
   const sort = parseSort(sp.s);
   const mood = parseMood(sp.m);
   const adult = await viewerCanSeeAdult();
-  const [initial, recent] = await Promise.all([
+  const [initial, recent, faces] = await Promise.all([
     fetchFeed({ audience, sort, mood, offset: 0, adult }),
     getContinue(),
+    getHeroFaces(),
   ]);
 
   return (
     <div className="min-h-screen bg-background px-4 pb-10 text-foreground sm:px-6">
       <div className="mx-auto max-w-7xl">
-        <h1 className="sr-only">SweetScene — AI characters and anonymous roleplay matchmaking</h1>
+        <MatchHero faces={faces} />
 
         {recent.length > 0 && (
           <section aria-label="Continue your scenes" className="pt-4">
@@ -87,7 +108,7 @@ export default async function Home({
           </section>
         )}
 
-        <div className="pt-2">
+        <div className="pt-6">
           <Feed key={`${audience}-${sort}-${mood ?? ""}`} initial={initial} audience={audience} sort={sort} mood={mood} />
         </div>
       </div>

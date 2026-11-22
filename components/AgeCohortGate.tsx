@@ -68,7 +68,7 @@ export default function AgeCohortGate() {
       }
 
       /* Carry over the DOB entered pre-auth so the user isn't asked
-         twice. It is only a claim either way — the server recomputes. */
+         twice. It is only a claim either way, the server recomputes. */
       const pending = sessionStorage.getItem("sweetscene_pending_dob");
       if (pending && /^\d{4}-\d{2}-\d{2}$/.test(pending)) {
         sessionStorage.removeItem("sweetscene_pending_dob");

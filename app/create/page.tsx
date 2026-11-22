@@ -113,7 +113,7 @@ export default function CreatePage() {
         <div className="max-w-md text-center">
           <div className="text-5xl mb-4 text-success">&#x2713;</div>
           <h1 className="text-3xl font-display mb-3">Character published!</h1>
-          <p className="text-sm text-muted mb-8">It goes live in Explore right away — our moderation team reviews every new host.</p>
+          <p className="text-sm text-muted mb-8">It goes live in Explore right away, our moderation team reviews every new host.</p>
           <Link href="/explore" className="px-8 py-3 rounded-full font-medium text-accent-foreground bg-gradient-to-r from-brand-dark to-brand hover:from-brand hover:to-brand-light active:scale-95 transform transition-all inline-block focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none">
             View in Explore →
           </Link>
@@ -221,7 +221,7 @@ export default function CreatePage() {
                 </button>
               ))}
             </div>
-            <p className="text-xs text-muted-faint mt-2">Used to tailor solo recommendations — never shown as a label.</p>
+            <p className="text-xs text-muted-faint mt-2">Used to tailor solo recommendations, never shown as a label.</p>
           </div>
 
           <div>

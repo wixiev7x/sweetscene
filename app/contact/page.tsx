@@ -40,7 +40,7 @@ export default function ContactPage() {
         <h1 className="mt-3 font-display text-4xl md:text-5xl">We&rsquo;re here to help.</h1>
         <p className="mt-4 max-w-xl text-muted-strong">
           Email <a className="text-accent-candle underline underline-offset-4" href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
-          We reply within 2 business days — usually much sooner. Pick a topic below so your message reaches the right place.
+          We reply within 2 business days, usually much sooner. Pick a topic below so your message reaches the right place.
         </p>
 
         <div className="mt-10 grid gap-4 sm:grid-cols-2">
