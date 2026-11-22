@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMeta } from "@/lib/seo";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import LegalLayout, { type LegalSection } from "@/components/legal/LegalLayout";
 
 export const metadata: Metadata = pageMeta({
   title: "Community Guidelines",
-  description: "How to play fair on SweetScene: respect, consent, safe-for-work stories and zero tolerance for harm.",
+  description: "How to play fair on SweetScene: respect, consent, clear boundaries and zero tolerance for harm.",
   path: "/guidelines",
 });
 
@@ -35,12 +36,16 @@ const sections: LegalSection[] = [
   },
   {
     id: "content",
-    title: "Keep it safe-for-work",
+    title: SFW_MODE ? "Keep it safe-for-work" : "Content boundaries",
     body: (
       <>
-        <p>Romance, drama, mystery and tension are welcome. These are not:</p>
+        <p>
+          {SFW_MODE
+            ? "Romance, drama, mystery and tension are welcome. These are not:"
+            : "Romance, drama, tension, and for opted-in adults in 18+ mode, explicit scenes between fictional adults are welcome. These are not:"}
+        </p>
         <ul>
-          <li>Sexually explicit content of any kind.</li>
+          <li>{SFW_MODE ? "Sexually explicit content of any kind." : "Explicit content outside 18+ mode, or adult characters not marked 18+."}</li>
           <li>Any sexual or romantic content involving minors, including fictional characters who are, or appear to be, under 18. Zero tolerance; reported to authorities.</li>
           <li>Graphic violence, gore, or content that glorifies self-harm or suicide.</li>
           <li>Hate speech, slurs or harassment targeting real groups or people.</li>

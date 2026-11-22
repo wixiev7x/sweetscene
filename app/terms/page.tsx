@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { pageMeta } from "@/lib/seo";
+import { SFW_MODE } from "@/lib/utils/sfw";
 import LegalLayout, { SUPPORT_EMAIL, type LegalSection } from "@/components/legal/LegalLayout";
 
 export const metadata: Metadata = pageMeta({
@@ -83,13 +84,22 @@ const sections: LegalSection[] = [
     title: "5. Content standards and conduct",
     body: (
       <>
-        <p>
-          SweetScene is a safe-for-work platform. Sexually explicit content is not permitted anywhere on the Service. You
-          agree not to create, request or share content that:
-        </p>
+        {SFW_MODE ? (
+          <p>
+            SweetScene is a safe-for-work platform. Sexually explicit content is not permitted anywhere on the Service. You
+            agree not to create, request or share content that:
+          </p>
+        ) : (
+          <p>
+            Adult content is available only to signed-in members aged 18 or over who have turned on 18+ mode, and only
+            between clearly adult, fictional characters. Outside 18+ mode the Service is safe-for-work. You agree not to
+            create, request or share content that:
+          </p>
+        )}
         <ul>
           <li>sexualises, endangers or exploits minors in any way, including fictional characters who are or appear to be minors;</li>
-          <li>is sexually explicit or pornographic;</li>
+          {SFW_MODE ? <li>is sexually explicit or pornographic;</li> : <li>is sexually explicit but not marked 18+, or is shown to members outside 18+ mode;</li>}
+          <li>depicts real, identifiable people in sexual or degrading content, including edited images (&ldquo;deepfakes&rdquo;);</li>
           <li>harasses, threatens, bullies or doxxes anyone, or reveals another person&rsquo;s private information;</li>
           <li>promotes violence, terrorism, self-harm or illegal activity;</li>
           <li>is hateful toward people based on protected characteristics;</li>
@@ -119,6 +129,14 @@ const sections: LegalSection[] = [
         <p>
           Characters you publish are visible to other members. Private scenes and direct messages are only visible to
           their participants, subject to moderation as described in our <Link href="/privacy">Privacy Policy</Link>.
+        </p>
+        <p>
+          <strong>Images you upload.</strong> You may only upload images you created, own or have permission to use, and
+          never images of real people for characters. Public characters go live immediately but remain subject to review.
+          We may remove any character, image or other content that breaks these Terms, our{" "}
+          <Link href="/safety/prohibited-content">content rules</Link> or someone else&rsquo;s rights, at any time and
+          without prior notice, and may restrict your ability to publish. See{" "}
+          <Link href="/safety/your-characters-and-uploads">Your characters &amp; uploads</Link>.
         </p>
       </>
     ),
@@ -228,7 +246,7 @@ export default function TermsPage() {
       eyebrow="Legal"
       title="Terms of Service"
       current="/terms"
-      intro={<p>The short version: be 16 or older, be kind, keep it safe-for-work, and know that paid plans renew until you cancel. The full rules are below.</p>}
+      intro={<p>The short version: be 16 or older, be kind, follow our content rules, and know that paid plans renew until you cancel. The full rules are below.</p>}
       sections={sections}
     />
   );
