@@ -101,7 +101,7 @@ export default function CreateCharacterPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/login");
+        router.replace("/?auth=signup&next=/create-character");
         return;
       }
       /* B4: read VIP status via getMyProfile action (is_vip REVOKED
@@ -209,7 +209,7 @@ export default function CreateCharacterPage() {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) {
-      router.push("/login");
+      router.replace("/?auth=signup&next=/create-character");
       return;
     }
     setUploadingAvatar(true);

@@ -137,7 +137,7 @@ export default function ProfilePage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/login");
+        router.replace("/?auth=signup&next=/profile");
         return;
       }
 
@@ -458,7 +458,7 @@ export default function ProfilePage() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-muted-strong">$9.99 / month · or $99.99 / year (2 months free)</span>
+              <span className="text-sm text-muted-strong">Longer nights, deeper scenes</span>
               <button
                 type="button"
                 onClick={handleBuyVIP}

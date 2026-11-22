@@ -35,10 +35,14 @@ export type FeedCharacter = {
   is_featured: boolean;
   is_nsfw: boolean;
   created_at: string;
+  age: number | null;
+  like_count: number;
+  audience: string;
+  creator: string;
 };
 
 const COLUMNS =
-  "id, name, tagline, short_description, first_message, avatar_url, tags, chat_count, is_featured, is_nsfw, created_at";
+  "id, name, tagline, short_description, first_message, avatar_url, tags, chat_count, is_featured, is_nsfw, created_at, age, like_count, audience, creator_id";
 
 export const PAGE_SIZE = 24;
 
@@ -99,5 +103,18 @@ export async function fetchFeed(opts: {
      fall back to an unsplit feed rather than an empty page. */
   if (error && error.code === "42703") ({ data, error } = await build(false));
   if (error || !data) return [];
-  return data as FeedCharacter[];
+  const rows = data as unknown as (Omit<FeedCharacter, "creator"> & { creator_id: string | null })[];
+  const ids = [...new Set(rows.map((r) => r.creator_id).filter((x): x is string => !!x))];
+  const names = new Map<string, string>();
+  if (ids.length) {
+    const { data: ps } = await admin.from("profiles").select("id, anonymous_username").in("id", ids);
+    for (const p of ps ?? []) names.set(p.id as string, (p.anonymous_username as string) ?? "anonymous");
+  }
+  return rows.map(({ creator_id, ...r }) => ({
+    ...r,
+    age: r.age ?? null,
+    like_count: r.like_count ?? 0,
+    audience: r.audience ?? "other",
+    creator: creator_id ? names.get(creator_id) ?? "anonymous" : "SweetScene",
+  }));
 }

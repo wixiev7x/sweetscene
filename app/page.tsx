@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Feed from "@/components/home/Feed";
-import MatchHero from "@/components/home/MatchHero";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { fetchFeed, parseAudience, parseMood, parseSort, viewerCanSeeAdult } from "@/lib/home/feed";
@@ -18,25 +17,6 @@ export const dynamic = "force-dynamic";
 type Continue = { id: string; name: string; avatar_url: string | null };
 
 /** Signed-in only: characters from the viewer's most recent solo scenes. */
-async function getHeroFaces(): Promise<Continue[]> {
-  try {
-    const { data } = await createAdminClient()
-      .from("characters")
-      .select("id, name, avatar_url")
-      .eq("is_public", true)
-      .eq("visibility", "public")
-      .eq("status", "published")
-      .eq("is_hidden", false)
-      .eq("is_nsfw", false)
-      .not("avatar_url", "is", null)
-      .order("is_featured", { ascending: false })
-      .limit(2);
-    return (data as Continue[] | null) ?? [];
-  } catch {
-    return [];
-  }
-}
-
 async function getContinue(): Promise<Continue[]> {
   try {
     const supabase = await createClient();
@@ -74,16 +54,16 @@ export default async function Home({
   const sort = parseSort(sp.s);
   const mood = parseMood(sp.m);
   const adult = await viewerCanSeeAdult();
-  const [initial, recent, faces] = await Promise.all([
+  const [initial, recent, featured] = await Promise.all([
     fetchFeed({ audience, sort, mood, offset: 0, adult }),
     getContinue(),
-    getHeroFaces(),
+    fetchFeed({ audience, sort: "featured", mood: null, offset: 0, adult }),
   ]);
+  const hero = featured.filter((c) => c.is_featured && c.avatar_url).slice(0, 3);
 
   return (
     <div className="min-h-screen bg-background px-4 pb-10 text-foreground sm:px-6">
       <div className="mx-auto max-w-7xl">
-        <MatchHero faces={faces} />
 
         {recent.length > 0 && (
           <section aria-label="Continue your scenes" className="pt-4">
@@ -108,8 +88,8 @@ export default async function Home({
           </section>
         )}
 
-        <div className="pt-6">
-          <Feed key={`${audience}-${sort}-${mood ?? ""}`} initial={initial} audience={audience} sort={sort} mood={mood} />
+        <div className="pt-2">
+          <Feed key={`${audience}-${sort}-${mood ?? ""}`} initial={initial} audience={audience} sort={sort} mood={mood} hero={hero.length ? hero : featured.filter((c) => c.avatar_url).slice(0, 3)} />
         </div>
       </div>
     </div>

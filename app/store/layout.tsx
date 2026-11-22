@@ -3,7 +3,7 @@ import { pageMeta } from "@/lib/seo";
 
 export const metadata: Metadata = pageMeta({
   title: "Plans & Pricing",
-  description: "Free forever, or longer scenes from $1.99/month, up to 75% cheaper than other AI roleplay apps. Cancel anytime. Secure checkout by Paddle.",
+  description: "Free to start. Longer nights and deeper scenes when you want them. Cancel anytime, discreet billing by Paddle.",
   path: "/store",
 });
 

@@ -118,6 +118,9 @@ export default function PlayPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [guestMsgCount, setGuestMsgCount] = useState(0);
   const mounted = useMounted();
+  const [draft] = useState(() =>
+    typeof window === "undefined" ? "" : (new URLSearchParams(window.location.search).get("draft") ?? "").slice(0, 500)
+  );
 
   /* ── load or resume session on mount ── */
   useEffect(() => {
@@ -403,9 +406,13 @@ export default function PlayPage() {
     !showRating;
 
   return (
-    <div className="h-screen flex flex-col bg-void-950 text-white overflow-hidden">
-      {/* background */}
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(ellipse_at_50%_0%,rgba(255,45,149,0.08)_0%,transparent_50%)]" />
+    <div className="relative h-[calc(100dvh-64px)] flex flex-col bg-black text-white overflow-hidden">
+      {/* Character portrait as the chat backdrop */}
+      {character?.avatar_url && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={character.avatar_url} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-35 blur-[2px] scale-105" />
+      )}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/55 to-black/90" />
 
       {/* ── HEADER ── */}
       <header className="relative z-10 border-b border-white/5 backdrop-blur-md bg-void-950/60 px-6 py-3">
@@ -668,6 +675,7 @@ export default function PlayPage() {
         isRevealed={false}
         errorMessage={error}
         onSend={handleSend}
+        initialValue={draft}
       />
     </div>
   );

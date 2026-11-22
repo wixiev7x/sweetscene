@@ -28,8 +28,9 @@ export default function ChatBox({
   isRevealed,
   errorMessage,
   onSend,
-}: ChatBoxProps) {
-  const [input, setInput] = useState("");
+  initialValue = "",
+}: ChatBoxProps & { initialValue?: string }) {
+  const [input, setInput] = useState(initialValue);
   const [localError, setLocalError] = useState("");
 
   /**

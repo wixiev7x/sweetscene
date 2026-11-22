@@ -5,6 +5,8 @@ import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
+import { Suspense } from "react";
+import { AuthModalProvider } from "@/components/auth/AuthModal";
 
 const varela = Varela_Round({
   variable: "--font-ui",
@@ -67,7 +69,7 @@ export default function RootLayout({
             aria-label="Staging environment notice"
             className="sticky top-0 z-[10002] w-full bg-amber-500/90 text-black text-center text-xs font-semibold tracking-widest uppercase py-1 px-2"
           >
-            DESIGN, Staging environment · not production · data here is for testing only
+            Design preview · test data only
           </div>
         ) : null}
         <a
@@ -76,6 +78,8 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        <Suspense fallback={null}>
+        <AuthModalProvider>
         <SiteNav />
         <main
           id="site-main"
@@ -84,6 +88,8 @@ export default function RootLayout({
           {children}
           <SiteFooter />
         </main>
+        </AuthModalProvider>
+        </Suspense>
         <ServiceWorkerRegister />
         <Toaster
           position="bottom-right"

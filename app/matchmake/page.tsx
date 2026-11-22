@@ -12,6 +12,7 @@ import { MATCHMAKING_POLL_INTERVAL_MS, type MatchMode, type GenderPref } from "@
 import VibePie from "@/components/matchmake/VibePie";
 import { ALL_VIBES, MAX_VIBES } from "@/lib/matchmaking/vibes";
 import HeartCall from "@/components/matchmake/HeartCall";
+import { useAuthModal } from "@/components/auth/AuthModal";
 
 type State = {
   phase: "idle" | "searching" | "matched" | "timeout" | "cancelled";
@@ -230,6 +231,7 @@ function formatElapsed(seconds: number) {
 }
 
 function MatchmakePageInner() {
+  const { openAuth } = useAuthModal();
   const searchParams = useSearchParams();
   /* Deep links: /matchmake?mode=vibe&tags=Romance,Fantasy (used by the
    * vibe quiz and shareable entry points). */
@@ -301,11 +303,11 @@ function MatchmakePageInner() {
 
   const requireAuth = useCallback(() => {
     if (isLoggedIn === false) {
-      router.push("/signup?next=/matchmake");
+      openAuth("signup", "/matchmake");
       return false;
     }
     return true;
-  }, [isLoggedIn, router]);
+  }, [isLoggedIn, openAuth]);
 
   const fetchSharedTags = useCallback(async (matchId: string) => {
     try {
@@ -332,7 +334,7 @@ function MatchmakePageInner() {
           body: JSON.stringify({ kink_tags: tags, mode: searchMode, preferred_gender: gender }),
         });
         if (res.status === 401) {
-          router.push("/signup?next=/matchmake");
+          openAuth("signup", "/matchmake");
           return;
         }
         const data = await res.json();
@@ -381,7 +383,7 @@ function MatchmakePageInner() {
         setSearching(false);
       }
     },
-    [requireAuth, router, fetchSharedTags]
+    [requireAuth, router, fetchSharedTags, openAuth]
   );
 
   useEffect(() => {
@@ -499,7 +501,7 @@ function MatchmakePageInner() {
         body: JSON.stringify({ friendUsername }),
       });
       if (res.status === 401) {
-        router.push("/signup?next=/matchmake");
+        openAuth("signup", "/matchmake");
         return;
       }
       const data = await res.json();
@@ -542,7 +544,7 @@ function MatchmakePageInner() {
         body: JSON.stringify({ botId: selectedBot, expiresIn: expiryChoice }),
       });
       if (res.status === 401) {
-        router.push("/signup?next=/matchmake");
+        openAuth("signup", "/matchmake");
         return;
       }
       const data = await res.json();
@@ -710,12 +712,13 @@ function MatchmakePageInner() {
                   isLoggedIn === false ? (
                     <div className="text-center py-8 bg-surface border border-line rounded-[var(--radius-card)]">
                       <p className="type-body text-muted mb-4">You need an account to host a private room.</p>
-                      <Link
-                        href="/signup?next=/matchmake"
-                        className="inline-block px-6 py-3 rounded-full bg-gradient-to-r from-brand to-brand-dark text-accent-foreground text-sm font-semibold ios-press focus-visible:ring-2 focus-visible:ring-line-focus"
+                      <button
+                        type="button"
+                        onClick={() => openAuth("signup", "/matchmake")}
+                        className="inline-block rounded-full bg-brand px-7 py-3 text-base text-white"
                       >
-                        Sign Up Free
-                      </Link>
+                        Join free
+                      </button>
                     </div>
                   ) : (
                     <>
@@ -993,17 +996,6 @@ function MatchmakePageInner() {
               <div className="space-y-5">
                 {backBtn}
 
-                {isLoggedIn === false && (
-                  <div className="px-4 py-3 rounded-[var(--radius-control)] bg-accent-candle/5 border border-accent-candle/30 text-center">
-                    <p className="type-body text-foreground">Sign up to start matchmaking with real people</p>
-                    <Link
-                      href="/signup?next=/matchmake"
-                      className="type-body text-accent-candle font-medium hover:text-accent-candle-deep focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none rounded"
-                    >
-                      Create your identity →
-                    </Link>
-                  </div>
-                )}
 
                 <div>
                   <p className="type-body font-medium text-foreground mb-1">Who are you hoping to meet?</p>
@@ -1060,17 +1052,6 @@ function MatchmakePageInner() {
               <div className="space-y-5">
                 {backBtn}
 
-                {isLoggedIn === false && (
-                  <div className="px-4 py-3 rounded-[var(--radius-control)] bg-accent-candle/5 border border-accent-candle/30 text-center">
-                    <p className="type-body text-foreground">Sign up to start matchmaking with real people</p>
-                    <Link
-                      href="/signup?next=/matchmake"
-                      className="type-body text-accent-candle font-medium hover:text-accent-candle-deep focus-visible:ring-2 focus-visible:ring-line-focus focus-visible:outline-none rounded"
-                    >
-                      Create your identity →
-                    </Link>
-                  </div>
-                )}
 
                 <div className="text-center">
                   <p className="font-display text-2xl text-foreground">What are you craving?</p>

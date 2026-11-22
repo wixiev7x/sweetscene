@@ -195,7 +195,7 @@ export default function LobbyPage() {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) {
-          router.push("/login");
+          router.replace("/?auth=login&next=/lobby");
           return;
         }
         /* B2: read profile via getMyProfile action — tokens_balance/is_vip

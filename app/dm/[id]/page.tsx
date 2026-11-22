@@ -80,7 +80,7 @@ export default function DMPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/login");
+        router.replace(`/?auth=login&next=/dm/${matchId}`);
         return;
       }
       setCurrentUserId(user.id);

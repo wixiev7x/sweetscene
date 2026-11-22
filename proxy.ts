@@ -155,7 +155,16 @@ export async function proxy(req: NextRequest) {
 
   if (isProtected && !hasSessionCookie(req) && !PUBLIC_EXCEPTIONS.includes(pathname)) {
     const url = req.nextUrl.clone();
-    url.pathname = "/login";
+    /* Admin keeps its own login; everything else opens the auth popup
+       on the homepage and returns to `next` afterwards. */
+    if (pathname.startsWith("/admin")) {
+      url.pathname = "/login";
+      url.search = "";
+    } else {
+      url.pathname = "/";
+      url.search = "";
+      url.searchParams.set("auth", "login");
+    }
     url.searchParams.set("next", pathname);
     return withSecurityHeaders(NextResponse.redirect(url), req);
   }

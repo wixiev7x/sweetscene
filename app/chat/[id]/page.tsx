@@ -164,7 +164,7 @@ export default function ChatPage() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/login");
+        router.replace(`/?auth=login&next=/chat/${matchId}`);
         return;
       }
       setCurrentUserId(user.id);

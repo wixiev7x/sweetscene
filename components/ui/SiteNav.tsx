@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { signOut } from "@/lib/actions/auth";
+import { useAuthModal } from "@/components/auth/AuthModal";
 import {
   markNotificationAsRead,
   markAllNotificationsRead,
@@ -28,7 +29,6 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { href: "/", label: "Explore", icon: "M12 22a10 10 0 100-20 10 10 0 000 20zM16.2 7.8l-2.1 6.3-6.3 2.1 2.1-6.3z" },
-  { href: "/matchmake", label: "Matchmake", icon: "M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z" },
   { href: "/lobby", label: "Chat", icon: "M21 11.5a8.4 8.4 0 01-12.3 7.4L3 21l2-5.4A8.4 8.4 0 1121 11.5z" },
   { href: "/characters/my", label: "My characters", icon: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" },
   { href: "/community", label: "Community", icon: "M8 21h8M12 17v4M6 4h12v7a6 6 0 01-12 0zM18 6h2a2 2 0 01-2 4M6 6H4a2 2 0 002 4" },
@@ -37,9 +37,9 @@ const NAV: NavItem[] = [
 
 const MOBILE_TABS: NavItem[] = [
   { href: "/", label: "Explore", icon: NAV[0].icon },
-  { href: "/lobby", label: "Chats", icon: NAV[2].icon },
-  { href: "/matchmake", label: "Match", icon: NAV[1].icon },
-  { href: "/create-character", label: "Create", icon: "M12 5v14M5 12h14" },
+  { href: "/lobby", label: "Chat", icon: NAV[1].icon },
+  { href: "/matchmake", label: "Desire", icon: "" },
+  { href: "/community", label: "Community", icon: NAV[3].icon },
   { href: "/profile", label: "Profile", icon: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" },
 ];
 
@@ -66,12 +66,12 @@ function SidebarRow({ item, active, onNavigate }: { item: NavItem; active: boole
       prefetch={false}
       aria-current={active ? "page" : undefined}
       onClick={onNavigate}
-      className={`relative flex h-11 items-center gap-3.5 px-3 text-[15px] transition-colors focus-visible:outline-none focus-visible:text-foreground ${
+      className={`relative flex h-12 items-center gap-4 px-3 text-[17px] transition-colors focus-visible:outline-none focus-visible:text-foreground ${
         active ? "text-foreground" : "text-muted-strong hover:text-foreground"
       }`}
     >
       {active && <span aria-hidden="true" className="absolute -left-4 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-brand" />}
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-brand-light" : ""} aria-hidden="true">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={active ? "text-brand-light" : ""} aria-hidden="true">
         <path d={item.icon} />
       </svg>
       {item.label}
@@ -79,61 +79,9 @@ function SidebarRow({ item, active, onNavigate }: { item: NavItem; active: boole
   );
 }
 
-function CreateMenu({ onNavigate }: { onNavigate?: () => void }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className="flex h-12 w-full items-center gap-3 rounded-full bg-brand px-5 text-[15px] text-white transition-transform active:scale-[0.98]"
-      >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-        Create
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="ml-auto opacity-80" aria-hidden="true">
-          <path d="M9 18l6-6-6-6" />
-        </svg>
-      </button>
-      {open && (
-        <div role="menu" className="absolute left-[calc(100%-12px)] top-0 z-50 w-64 pl-4">
-          <div className="rounded-3xl border border-line-strong bg-surface p-2 shadow-2xl" style={{ animation: "iosDropdown .18s var(--ios-ease) both" }}>
-            <Link
-              href="/create-character"
-              role="menuitem"
-              prefetch={false}
-              onClick={() => { setOpen(false); onNavigate?.(); }}
-              className="flex items-center gap-3 rounded-2xl p-3 transition-colors hover:bg-surface-raised"
-            >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised text-brand-light">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z" /></svg>
-              </span>
-              <span>
-                <span className="block text-[15px] text-foreground">Character</span>
-                <span className="block text-xs text-muted">Bring someone to life</span>
-              </span>
-            </Link>
-            <div role="menuitem" aria-disabled="true" className="flex items-center gap-3 rounded-2xl p-3 opacity-60">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised text-brand-light">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.9M16 3.1a4 4 0 010 7.8" /></svg>
-              </span>
-              <span>
-                <span className="block text-[15px] text-foreground">Group <span className="ml-1 rounded-full bg-surface-raised px-2 py-0.5 text-[10px] text-muted">Soon</span></span>
-                <span className="block text-xs text-muted">Several characters, one scene</span>
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function SiteNav({ className = "" }: { className?: string }) {
   const pathname = usePathname();
+  const { openAuth } = useAuthModal();
   const [notifOpen, setNotifOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [tokens, setTokens] = useState<number | null>(null);
@@ -297,33 +245,27 @@ export function SiteNav({ className = "" }: { className?: string }) {
           </Link>
 
           <div className="flex items-center gap-2 sm:gap-2.5">
-            <Link
-              href="/store"
-              prefetch={false}
-              aria-label={`Token balance: ${tokens ?? 0}, get more`}
-              className="flex h-10 items-center gap-2 rounded-full bg-surface px-4 text-[15px] text-foreground transition-colors hover:bg-surface-raised"
-            >
-              <CoinIcon className="h-5 w-5" />
-              <span className="tabular-nums">{(tokens ?? 0).toLocaleString("en-US")}</span>
-            </Link>
-
-            <Link
-              href="/store"
-              prefetch={false}
-              className="hidden h-10 items-center gap-2 rounded-full bg-brand px-5 text-[15px] text-white transition-transform active:scale-[0.98] sm:flex"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c1 3.5 5 5.5 5 10a5 5 0 01-10 0c0-2 .8-3.4 2-4.5.2 1.6 1 2.6 2 3 0-3 .3-5.6 1-8.5z" /></svg>
-              Upgrade
-            </Link>
+            {hasSession && (
+              <Link
+                href="/store"
+                prefetch={false}
+                aria-label={`Token balance: ${tokens ?? 0}, get more`}
+                className="flex h-11 items-center gap-2.5 rounded-full bg-surface px-5 text-base text-foreground transition-colors hover:bg-surface-raised"
+              >
+                <CoinIcon className="h-6 w-6" />
+                <span className="tabular-nums">{(tokens ?? 0).toLocaleString("en-US")}</span>
+              </Link>
+            )}
 
             {!hasSession && (
-              <Link
-                href="/login"
-                prefetch={false}
-                className="flex h-10 items-center rounded-full border border-line-strong px-5 text-[15px] text-foreground transition-colors hover:bg-surface"
-              >
-                Sign in
-              </Link>
+              <>
+                <button type="button" onClick={() => openAuth("login")} className="h-11 px-4 text-base text-foreground-dim transition-colors hover:text-foreground">
+                  Sign in
+                </button>
+                <button type="button" onClick={() => openAuth("signup")} className="h-11 rounded-full bg-brand px-6 text-base text-white transition-transform active:scale-[0.98]">
+                  Join free
+                </button>
+              </>
             )}
 
             {hasSession && (
@@ -410,10 +352,20 @@ export function SiteNav({ className = "" }: { className?: string }) {
         </Link>
 
         <div className="flex flex-1 flex-col overflow-y-auto px-4 pb-4 pt-2 scrollbar-none">
-          <p className="mb-2 px-2 text-[11px] uppercase tracking-[0.14em] text-muted">App</p>
-          <CreateMenu onNavigate={() => closeMenus(null)} />
+          <Link
+            href="/matchmake"
+            prefetch={false}
+            onClick={() => closeMenus(null)}
+            className="group relative flex h-14 items-center gap-3 overflow-hidden rounded-full px-6 text-lg text-white shadow-[0_10px_40px_-12px_var(--brand)] transition-transform active:scale-[0.98]"
+            style={{ background: "linear-gradient(120deg, #B5163F, #E1245C 55%, #FF5C87)" }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{ animation: "ssBeat 1.6s ease-in-out infinite" }}>
+              <path d="M12 21s-7-4.6-9.3-8.4C1 9.6 2.4 6 5.7 6c2 0 3.2 1.1 4.3 2.6C11.1 7.1 12.3 6 14.3 6c3.3 0 4.7 3.6 3 6.6C19 16.4 12 21 12 21z" />
+            </svg>
+            Desire
+          </Link>
 
-          <nav aria-label="Main" className="mt-2 space-y-1">
+          <nav aria-label="Main" className="mt-5 space-y-1">
             {NAV.map((item) => (
               <SidebarRow key={item.href} item={item} active={isActive(item.href)} onNavigate={() => closeMenus(null)} />
             ))}
@@ -450,7 +402,8 @@ export function SiteNav({ className = "" }: { className?: string }) {
           </div>
           <div className="flex items-center gap-1">
             <Link
-              href={hasSession ? "/profile" : "/login"}
+              href={hasSession ? "/profile" : "#"}
+              onClick={(e) => { if (!hasSession) { e.preventDefault(); openAuth("signup"); } }}
               prefetch={false}
               aria-current={isActive("/profile") ? "page" : undefined}
               className="flex h-12 flex-1 items-center gap-3 px-1 transition-colors hover:text-foreground"

@@ -64,7 +64,7 @@ export default function JoinInvitePage() {
         body: JSON.stringify({ token }),
       });
       if (res.status === 401) {
-        router.push(`/signup?next=/join/${token}`);
+        router.push(`${window.location.pathname}?auth=signup&next=/join/${token}`);
         return;
       }
       const data = await res.json();
