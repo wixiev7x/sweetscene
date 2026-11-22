@@ -161,40 +161,53 @@ function QuickView({ c, onClose }: { c: FeedCharacter; onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true" aria-label={c.name}>
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      <div className="relative w-full max-w-md overflow-hidden rounded-t-3xl border border-line-strong bg-surface sm:rounded-3xl" style={{ animation: "iosSheetUp .35s var(--ios-ease) both" }}>
-        <div className="group relative aspect-[4/5] w-full">
-          <Portrait c={c} sizes="448px" />
-          <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/20 to-transparent" />
-          <button type="button" onClick={onClose} aria-label="Close" className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur">
-            ✕
-          </button>
-          <div className="absolute inset-x-0 bottom-0 p-5">
-            <h2 className="font-display text-3xl font-bold text-white">{c.name}</h2>
-            {c.tagline && <p className="mt-1.5 text-[15px] leading-snug text-white/85">{c.tagline}</p>}
-          </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={c.name}>
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/75 backdrop-blur-sm" />
+      <div
+        className="relative flex max-h-[min(88dvh,560px)] w-full max-w-[min(92vw,760px)] overflow-hidden rounded-2xl border border-line-strong bg-surface shadow-2xl"
+        style={{ animation: "iosSheetUp .3s var(--ios-ease) both" }}
+      >
+        {/* Portrait — left, fixed proportion of the dialog */}
+        <div className="group relative w-[38%] shrink-0 sm:w-[42%]">
+          <Portrait c={c} sizes="320px" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-surface/40" />
         </div>
-        <div className="space-y-4 p-5 pt-2">
+
+        {/* Details — right, scrolls internally if tall */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-y-auto p-4 sm:p-6">
+          <div className="flex items-start justify-between gap-2">
+            <h2 className="font-display text-xl font-bold leading-tight text-foreground sm:text-3xl">{c.name}</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close"
+              className="-mr-1 -mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted transition-colors hover:bg-surface-raised hover:text-foreground"
+            >
+              ✕
+            </button>
+          </div>
+          {c.tagline && <p className="mt-1.5 text-[13px] leading-snug text-foreground-dim sm:text-[15px]">{c.tagline}</p>}
           {c.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {c.tags.slice(0, 5).map((t) => (
-                <span key={t} className="rounded-full border border-line px-2.5 py-1 text-[11px] text-muted-strong">{t}</span>
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {c.tags.slice(0, 4).map((t) => (
+                <span key={t} className="rounded-full border border-line px-2 py-0.5 text-[10.5px] text-muted-strong sm:text-[11px]">{t}</span>
               ))}
             </div>
           )}
           {c.first_message && (
-            <p className="line-clamp-4 rounded-2xl bg-surface-sunken/70 p-4 text-[14px] italic leading-relaxed text-foreground-dim">
+            <p className="mt-3 line-clamp-5 rounded-xl bg-surface-sunken/70 p-3 text-[12.5px] italic leading-relaxed text-foreground-dim sm:text-[14px]">
               &ldquo;{c.first_message}&rdquo;
             </p>
           )}
-          <Link
-            href={`/play/${c.id}`}
-            className="flex h-12 w-full items-center justify-center rounded-full bg-brand text-[15px] font-semibold text-white transition-transform active:scale-[0.98]"
-          >
-            Start scene
-          </Link>
-          {c.chat_count > 0 && <p className="text-center text-xs text-muted">{compact(c.chat_count)} scenes played</p>}
+          <div className="mt-auto pt-4">
+            <Link
+              href={`/play/${c.id}`}
+              className="flex h-11 w-full items-center justify-center rounded-full bg-brand text-[14px] font-semibold text-white transition-transform active:scale-[0.98] sm:h-12 sm:text-[15px]"
+            >
+              Start scene
+            </Link>
+            {c.chat_count > 0 && <p className="mt-2 text-center text-xs text-muted">{compact(c.chat_count)} scenes played</p>}
+          </div>
         </div>
       </div>
     </div>
