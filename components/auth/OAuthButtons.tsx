@@ -47,8 +47,10 @@ function Spinner() {
 
 export function OAuthButtons({
   onSignIn,
+  variant = "default",
 }: {
   onSignIn: (provider: Provider) => Promise<{ error?: string } | void>;
+  variant?: "default" | "white";
 }) {
   const [loadingProvider, setLoadingProvider] = useState<Provider | null>(null);
 
@@ -71,7 +73,7 @@ export function OAuthButtons({
         type="button"
         disabled={loadingProvider !== null}
         onClick={() => handle("google")}
-        className="h-[52px] w-full rounded-full flex items-center justify-center gap-3 bg-white text-black font-medium ios-press transition-all disabled:opacity-60"
+        className={`${variant === "white" ? "h-14 text-[17px]" : "h-[52px]"} w-full rounded-full flex items-center justify-center gap-3 bg-white text-black font-medium ios-press transition-all hover:bg-white/90 disabled:opacity-60`}
       >
         {loadingProvider === "google" ? (
           <>
@@ -89,7 +91,7 @@ export function OAuthButtons({
         type="button"
         disabled={loadingProvider !== null}
         onClick={() => handle("discord")}
-        className="h-[52px] w-full rounded-full flex items-center justify-center gap-3 bg-[#5865F2] text-white font-medium ios-press transition-all disabled:opacity-60"
+        className={`${variant === "white" ? "h-14 text-[17px] bg-white text-black hover:bg-white/90 [&_svg]:text-[#5865F2]" : "h-[52px] bg-[#5865F2] text-white"} w-full rounded-full flex items-center justify-center gap-3 font-medium ios-press transition-all disabled:opacity-60`}
       >
         {loadingProvider === "discord" ? (
           <>

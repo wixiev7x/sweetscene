@@ -71,7 +71,6 @@ function AuthDialog({
   const [agree, setAgree] = useState(false);
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
-  const [showEmail, setShowEmail] = useState(false);
   const [pending, start] = useTransition();
 
   useEffect(() => {
@@ -114,63 +113,45 @@ function AuthDialog({
   const isSignup = mode === "signup";
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={isSignup ? "Create account" : "Sign in"}>
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+    <div className="fixed inset-0 z-[90] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={isSignup ? "Create account" : "Sign in"}>
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/70 backdrop-blur-xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand/25 blur-[120px]" />
       <div
-        className="relative grid w-full max-w-[880px] overflow-hidden rounded-t-[2rem] bg-[#0b0b0d] ring-1 ring-white/10 sm:rounded-[2rem] md:grid-cols-[1fr_1.1fr]"
+        className="relative w-full max-w-[480px] rounded-[2rem] bg-[#121214]/95 ring-1 ring-white/10 shadow-2xl"
         style={{ animation: "iosSheetUp .3s var(--ios-ease) both" }}
       >
-        <button type="button" onClick={onClose} aria-label="Close" className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
+        <button type="button" onClick={onClose} aria-label="Close" className="absolute right-5 top-5 z-10 flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/10 hover:text-white">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12" /></svg>
         </button>
 
-        {/* Mood side */}
-        <div className="relative hidden min-h-[560px] overflow-hidden md:block" style={{ background: "radial-gradient(120% 90% at 20% 100%, rgba(225,36,92,.55), rgba(60,8,24,.75) 45%, #050505 85%)" }}>
-          <div className="absolute inset-0 bg-[radial-gradient(40%_30%_at_75%_25%,rgba(255,179,122,.18),transparent)]" />
-          <div className="absolute inset-x-0 bottom-0 p-9">
-            <p className="font-display text-[34px] leading-[1.1] text-white">
-              {isSignup ? <>Someone is<br />waiting for you.</> : <>Welcome back.<br />They missed you.</>}
-            </p>
-            <p className="mt-3 text-sm text-white/70">Anonymous. Free to start. Yours to reveal.</p>
-          </div>
-        </div>
-
-        {/* Form side */}
-        <div className="max-h-[92dvh] overflow-y-auto px-6 pb-7 pt-10 sm:px-9">
-          <h2 className="font-display text-[28px] text-foreground">{isSignup ? "Create your account" : "Sign in"}</h2>
-          <p className="mt-1 text-sm text-muted">
-            {isSignup ? "Already have one? " : "New here? "}
-            <button type="button" onClick={() => setMode(isSignup ? "login" : "signup")} className="text-brand-light hover:underline">
-              {isSignup ? "Sign in" : "Create an account"}
-            </button>
+        <div className="max-h-[90dvh] overflow-y-auto px-7 pb-8 pt-12 sm:px-10">
+          <h2 className="text-center font-display text-[32px] leading-tight text-white">
+            {isSignup ? <>Welcome to sweet<span className="text-brand">scene</span></> : "Welcome back"}
+          </h2>
+          <p className="mt-3 text-center text-[16px] text-muted-strong">
+            {isSignup ? "Create an account to keep going" : "Sign in to pick up where you left off"}
           </p>
 
-          <div className="mt-6">
-            <OAuthButtons onSignIn={oauth} />
+          <div className="mt-8">
+            <OAuthButtons onSignIn={oauth} variant="white" />
           </div>
 
-          <div className="my-5 flex items-center gap-3 text-xs text-muted">
+          <div className="my-6 flex items-center gap-4 text-sm text-muted">
             <span className="h-px flex-1 bg-white/10" />
-            or
+            OR
             <span className="h-px flex-1 bg-white/10" />
           </div>
 
-          {!showEmail ? (
-            <button type="button" onClick={() => setShowEmail(true)} className="h-12 w-full rounded-full bg-white/[.06] text-[15px] text-foreground hover:bg-white/10">
-              Continue with email
+          <form onSubmit={submit} className="space-y-3">
+            {isSignup && (
+              <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Anonymous name" autoComplete="nickname" className="h-14 w-full rounded-full bg-white/[.06] px-6 text-[16px] text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/60" />
+            )}
+            <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="Email" autoComplete="email" className="h-14 w-full rounded-full bg-white/[.06] px-6 text-[16px] text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/60" />
+            <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required minLength={6} placeholder="Password" autoComplete={isSignup ? "new-password" : "current-password"} className="h-14 w-full rounded-full bg-white/[.06] px-6 text-[16px] text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/60" />
+            <button type="submit" disabled={pending} className="h-14 w-full rounded-full bg-brand text-[17px] text-white shadow-[0_14px_40px_-14px_var(--brand)] transition-transform active:scale-[0.98] disabled:opacity-60">
+              {pending ? "One moment…" : isSignup ? "Create account" : "Sign in"}
             </button>
-          ) : (
-            <form onSubmit={submit} className="space-y-3">
-              {isSignup && (
-                <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Anonymous name" autoComplete="nickname" className="h-12 w-full rounded-full bg-white/[.06] px-5 text-[15px] text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand/60" />
-              )}
-              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" required placeholder="Email" autoComplete="email" className="h-12 w-full rounded-full bg-white/[.06] px-5 text-[15px] text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand/60" />
-              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" required minLength={6} placeholder="Password" autoComplete={isSignup ? "new-password" : "current-password"} className="h-12 w-full rounded-full bg-white/[.06] px-5 text-[15px] text-foreground placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brand/60" />
-              <button type="submit" disabled={pending} className="h-13 min-h-[52px] w-full rounded-full bg-brand text-base text-white transition-transform active:scale-[0.98] disabled:opacity-60">
-                {pending ? "One moment…" : isSignup ? "Create account" : "Sign in"}
-              </button>
-            </form>
-          )}
+          </form>
 
           <label className="mt-5 flex cursor-pointer items-start gap-3 text-[13px] leading-snug text-muted-strong">
             <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--brand)]" />
@@ -182,11 +163,18 @@ function AuthDialog({
           </label>
 
           {SITE_KEY && (
-            <div className="mt-4">
+            <div className="mt-4 flex justify-center">
               <TurnstileWidget siteKey={SITE_KEY} onVerify={setToken} />
             </div>
           )}
-          {error && <p className="mt-3 text-sm text-danger" role="alert">{error}</p>}
+          {error && <p className="mt-3 text-center text-sm text-danger" role="alert">{error}</p>}
+
+          <p className="mt-6 text-center text-[15px] text-muted">
+            {isSignup ? "Already have an account? " : "New here? "}
+            <button type="button" onClick={() => setMode(isSignup ? "login" : "signup")} className="text-brand-light hover:underline">
+              {isSignup ? "Sign in" : "Create one"}
+            </button>
+          </p>
         </div>
       </div>
     </div>
