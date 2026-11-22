@@ -114,3 +114,31 @@ export async function submitCharacterReview(
     );
   return error ? { error: "Couldn't save your review" } : { ok: true };
 }
+
+export type CharacterPublicCard = {
+  id: string;
+  name: string;
+  age: number | null;
+  avatar_url: string | null;
+  tagline: string | null;
+  short_description: string | null;
+  first_message: string | null;
+  tags: string[];
+  like_count: number;
+  chat_count: number;
+  hover_card: unknown | null;
+};
+
+/** Public card data for the chat side panel (visible characters only). */
+export async function getCharacterPublicCard(id: string): Promise<CharacterPublicCard | null> {
+  if (typeof id !== "string" || !UUID.test(id)) return null;
+  const c = await visibleCharacter(id);
+  if (!c) return null;
+  const { data } = await createAdminClient()
+    .from("characters")
+    .select("id, name, age, avatar_url, tagline, short_description, first_message, tags, like_count, chat_count, hover_card")
+    .eq("id", id)
+    .maybeSingle();
+  if (!data) return null;
+  return { ...(data as CharacterPublicCard), tags: (data.tags as string[] | null) ?? [], like_count: data.like_count ?? 0, chat_count: data.chat_count ?? 0 };
+}

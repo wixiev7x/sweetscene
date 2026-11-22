@@ -20,6 +20,7 @@ import {
 import { TOKEN_PACKAGES } from "@/lib/billing/constants";
 import { SOLO_TOKEN_BUDGET as TOKEN_BUDGET } from "@/lib/config/constants";
 import { getCharacterPreview } from "@/lib/actions/character-preview";
+import ChatSidePanel from "@/components/character/ChatSidePanel";
 
 /* ── local types (MessageList does not export ChatMessage) ── */
 type ChatMessage = {
@@ -410,20 +411,24 @@ export default function PlayPage() {
       {/* Character portrait as the chat backdrop */}
       {character?.avatar_url && (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={character.avatar_url} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-35 blur-[2px] scale-105" />
+        <img src={character.avatar_url} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover object-top opacity-45 scale-105" />
       )}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/55 to-black/90" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/85 via-black/60 to-black/40" />
+
+      <div className="relative z-10 flex min-h-0 flex-1">
+      <div className="relative flex min-w-0 flex-1 flex-col">
 
       {/* ── HEADER ── */}
-      <header className="relative z-10 border-b border-white/5 backdrop-blur-md bg-void-950/60 px-6 py-3">
+      <header className="relative z-10 border-b border-white/5 backdrop-blur-xl bg-black/40 px-5 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* left */}
           <div className="flex items-center gap-3 min-w-0">
             <Link
-              href="/characters"
-              className="text-sm text-muted hover:text-foreground-dim transition-colors shrink-0"
+              href="/"
+              aria-label="Back"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-white/10 hover:text-foreground transition-colors shrink-0"
             >
-              &larr; Characters
+              &larr;
             </Link>
 
             {character.avatar_url ? (
@@ -677,6 +682,9 @@ export default function PlayPage() {
         onSend={handleSend}
         initialValue={draft}
       />
+      </div>
+      {character && <ChatSidePanel characterId={character.id} onNewChat={isLoggedIn ? handleClear : undefined} />}
+      </div>
     </div>
   );
 }

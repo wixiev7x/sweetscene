@@ -10,6 +10,8 @@
  * ════════════════════════════════════════════════════════════════════ */
 
 :root {
+  /* Sidebar width: full 240px, rail 76px (data-nav set pre-paint). */
+  --nav-w: 240px;
   /* ── Void (violet-ink depths) ── */
   --void-950: #000000;
   --void-900: #050505;
@@ -98,6 +100,10 @@
   /* ── Shape ── */
   --radius-card: 1.5rem;
   --radius-control: 9999px;
+}
+
+html[data-nav="rail"] {
+  --nav-w: 76px;
 }
 
 @theme inline {
@@ -526,7 +532,3 @@ body { letter-spacing: 0.005em; }
 @media (prefers-reduced-motion: reduce) {
   [style*="ssCall"], [style*="ssBeat"] { animation: none !important; }
 }
-
-/* Sidebar width: full 240px, rail 76px (set pre-paint from localStorage). */
-:root { --nav-w: 240px; }
-html[data-nav="rail"] { --nav-w: 76px; }

@@ -13,6 +13,7 @@ import VibePie from "@/components/matchmake/VibePie";
 import { ALL_VIBES, MAX_VIBES } from "@/lib/matchmaking/vibes";
 import HeartCall from "@/components/matchmake/HeartCall";
 import { useAuthModal } from "@/components/auth/AuthModal";
+import ModeCarousel from "@/components/matchmake/ModeCarousel";
 
 type State = {
   phase: "idle" | "searching" | "matched" | "timeout" | "cancelled";
@@ -114,12 +115,6 @@ const MODE_CARDS: {
   },
 ];
 
-const MODE_GLOW: Record<string, string> = {
-  quick: "radial-gradient(120% 90% at 20% 110%, rgba(225,36,92,.75), rgba(40,6,18,.9) 55%, #0a0a0c)",
-  kink: "radial-gradient(120% 90% at 80% 110%, rgba(176,92,255,.55), rgba(30,8,40,.9) 55%, #0a0a0c)",
-  blind_date: "radial-gradient(120% 90% at 50% 120%, rgba(122,31,61,.8), rgba(20,4,10,.95) 55%, #050505)",
-  invite: "radial-gradient(120% 90% at 20% 110%, rgba(217,179,122,.45), rgba(30,20,10,.9) 55%, #0a0a0c)",
-};
 
 const LOADER_STAGES = [
   "Lighting the candles…",
@@ -644,12 +639,12 @@ function MatchmakePageInner() {
 
   return (
     <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-8">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <h1 className="font-display text-4xl leading-tight md:text-5xl">
-          Who&rsquo;s waiting for you <span className="gradient-text">tonight?</span>
+          Desire
         </h1>
-        <p className="mb-8 mt-3 text-[15px] text-muted-strong">
-          Choose how you want to meet. Stay a stranger until it&rsquo;s worth revealing.
+        <p className="mb-6 mt-2 text-[15px] text-muted-strong">
+          Stay a stranger until it&rsquo;s worth revealing.
         </p>
 
         {state.phase === "idle" || state.phase === "cancelled" ? (
@@ -673,37 +668,21 @@ function MatchmakePageInner() {
               </div>
             )}
             {!mode ? (
-              <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                {MODE_CARDS.map((m, i) => (
-                  <button
-                    key={m.key}
-                    onClick={() => {
-                      playSound("click");
-                      if (m.key === "blind_date") {
-                        setMode("blind_date");
-                        setSelectedTags([]);
-                        startSearch("blind_date", [], null);
-                        return;
-                      }
-                      setMode(m.key);
-                      setFriendResults([]);
-                    }}
-                    disabled={m.key === "blind_date" && searching}
-                    className={`group relative flex aspect-[4/5] flex-col justify-end overflow-hidden rounded-[2rem] p-5 text-left transition-all duration-500 hover:-translate-y-1 active:scale-[0.98] disabled:opacity-60 sm:aspect-[5/4] ${
-                      i === 0 ? "ring-1 ring-brand/50" : "ring-1 ring-line"
-                    }`}
-                    style={{ background: MODE_GLOW[m.key] }}
-                  >
-                    <span aria-hidden="true" className="absolute right-5 top-5 flex h-12 w-12 items-center justify-center rounded-full bg-black/35 text-white backdrop-blur transition-transform duration-500 group-hover:scale-110">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d={m.icon} />
-                      </svg>
-                    </span>
-                    <span className="font-display text-xl text-white sm:text-2xl">{m.name}</span>
-                    <span className="mt-1 text-[13px] leading-snug text-white/75 sm:text-sm">{m.promise}</span>
-                  </button>
-                ))}
-              </div>
+              <ModeCarousel
+                modes={MODE_CARDS.map((m) => ({ key: m.key, name: m.name, promise: m.promise, icon: m.icon }))}
+                disabledKey={searching ? "blind_date" : null}
+                onPick={(key) => {
+                  playSound("click");
+                  if (key === "blind_date") {
+                    setMode("blind_date");
+                    setSelectedTags([]);
+                    startSearch("blind_date", [], null);
+                    return;
+                  }
+                  setMode(key as MatchMode | "invite");
+                  setFriendResults([]);
+                }}
+              />
             ) : mode === "invite" ? (
               <div className="space-y-4">
                 {backBtn}
