@@ -39,10 +39,11 @@ export type FeedCharacter = {
   like_count: number;
   audience: string;
   creator: string;
+  hover_card: unknown | null;
 };
 
 const COLUMNS =
-  "id, name, tagline, short_description, first_message, avatar_url, tags, chat_count, is_featured, is_nsfw, created_at, age, like_count, audience, creator_id";
+  "id, name, tagline, short_description, first_message, avatar_url, tags, chat_count, is_featured, is_nsfw, created_at, age, like_count, audience, creator_id, hover_card";
 
 export const PAGE_SIZE = 24;
 
@@ -114,6 +115,7 @@ export async function fetchFeed(opts: {
     ...r,
     age: r.age ?? null,
     like_count: r.like_count ?? 0,
+    hover_card: r.hover_card ?? null,
     audience: r.audience ?? "other",
     creator: creator_id ? names.get(creator_id) ?? "anonymous" : "SweetScene",
   }));
