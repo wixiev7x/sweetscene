@@ -135,12 +135,12 @@ export default function CharacterSheet({ c, onClose, onOpen }: { c: FeedCharacte
   const creator = d?.creator ?? c.creator;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-5" role="dialog" aria-modal="true" aria-label={c.name}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-8 md:p-12" role="dialog" aria-modal="true" aria-label={c.name}>
       <FlameDefs />
-      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+      <button type="button" aria-label="Close" onClick={onClose} className="absolute inset-0 bg-black/55 backdrop-blur-[3px]" />
 
       <div
-        className="relative flex h-[94dvh] w-full max-w-[1180px] flex-col overflow-hidden rounded-[2rem] bg-[#0b0b0d] shadow-2xl ring-1 ring-white/10 md:grid md:grid-cols-[400px_1fr]"
+        className="relative flex h-[min(86dvh,820px)] w-full max-w-[1040px] flex-col overflow-hidden rounded-[2rem] bg-[#0b0b0d]/95 shadow-[0_40px_120px_-30px_rgba(0,0,0,.9)] ring-1 ring-white/10 md:grid md:grid-cols-[360px_1fr]"
         style={{ animation: "iosSheetUp .3s var(--ios-ease) both" }}
       >
         {/* Portrait-tinted backdrop */}
@@ -156,7 +156,7 @@ export default function CharacterSheet({ c, onClose, onOpen }: { c: FeedCharacte
         {/* Left column */}
         <aside className="relative hidden flex-col gap-5 overflow-y-auto p-6 scrollbar-none md:flex">
           <div className="group relative aspect-[4/5] w-full overflow-hidden rounded-[1.75rem] shadow-2xl">
-            <Portrait c={c} sizes="352px" />
+            <Portrait c={c} sizes="312px" />
             <div className="absolute inset-x-0 bottom-0 flex gap-2 bg-gradient-to-t from-black/70 to-transparent p-3 pt-10">
               <GlassPill active={social.liked} onClick={like} label="Like">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={HEART} /></svg>
