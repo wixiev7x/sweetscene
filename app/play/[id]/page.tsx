@@ -529,9 +529,6 @@ export default function PlayPage() {
               <h2 className="text-2xl font-light text-white mt-4">
                 {character.name}
               </h2>
-              <p className="text-sm text-muted mt-2 max-w-sm mx-auto leading-relaxed">
-                {character.user_prompt}
-              </p>
               <p className="text-xs text-muted-faint mt-6 italic">
                 Start chatting with {character.name}. This is a private
                 practice session, your history is saved.

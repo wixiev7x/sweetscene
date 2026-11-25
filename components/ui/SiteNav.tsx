@@ -131,6 +131,7 @@ export function SiteNav({ className = "" }: { className?: string }) {
   const [hasSession, setHasSession] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setHasSession(/(?:^|;\s*)sb-[a-z0-9]+-auth-token=/.test(document.cookie));
   }, []);
 

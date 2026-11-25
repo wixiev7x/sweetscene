@@ -4,7 +4,8 @@ import { createAdminClient } from "@/lib/supabase/server-admin";
 import { createClient } from "@/lib/supabase/server";
 import { viewerCanSeeAdult } from "@/lib/home/feed";
 import { moderateText } from "@/lib/utils/moderation";
-import { awardPoints, POINTS } from "@/lib/community/points";
+import { awardPoints, isEstablished, isLiveCharacter, POINTS } from "@/lib/community/points";
+import { rateLimit } from "@/lib/utils/ratelimit";
 
 export type CharacterReview = { name: string; rating: number; comment: string | null; created_at: string };
 export type CharacterDetails = {
@@ -100,7 +101,10 @@ export async function submitCharacterReview(
 
   const { data: { user } } = await (await createClient()).auth.getUser();
   if (!user) return { error: "Sign in to leave a review" };
-  if (!(await visibleCharacter(id))) return { error: "Character not found" };
+  if (!(await rateLimit(user.id))) return { error: "Slow down" };
+  const target = await visibleCharacter(id);
+  if (!target) return { error: "Character not found" };
+  if (target.creator_id === user.id) return { error: "You can't rate your own character" };
 
   if (text) {
     const verdict = await moderateText(text, { surface: "review" });
@@ -116,7 +120,7 @@ export async function submitCharacterReview(
   if (error) return { error: "Couldn't save your review" };
   const { data: owner } = await createAdminClient().from("characters").select("creator_id").eq("id", id).maybeSingle();
   const creatorId = (owner as { creator_id: string | null } | null)?.creator_id;
-  if (creatorId && creatorId !== user.id) {
+  if (creatorId && creatorId !== user.id && (await isEstablished(user.id)) && (await isLiveCharacter(id))) {
     await awardPoints(creatorId, rating * POINTS.review_received_per_flame, "review_received", `${id}:${user.id}`);
   }
   return { ok: true };

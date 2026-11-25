@@ -4,9 +4,9 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { rateLimit } from "@/lib/utils/ratelimit";
-import { scrubInjection, sanitizeMessage, sanitizeAndScrub } from "@/lib/utils/safety";
+import { scrubInjection, sanitizeMessage } from "@/lib/utils/safety";
 import { encryptMessage, decryptMessage } from "@/lib/utils/crypto";
-import { buildSystemPrompt, parseExampleDialog } from "@/lib/ai/prompts";
+import { buildSystemPrompt, postHistoryReminder } from "@/lib/ai/prompts";
 import { getProvider } from "@/lib/ai";
 import type { AIMessage } from "@/lib/ai/provider";
 import { logger } from "@/lib/utils/logger";
@@ -170,7 +170,17 @@ export async function generateAIResponse(
   if (dbChar) {
     systemPrompt = dbChar.system_prompt ?? dbChar.user_prompt;
     userPrompt = dbChar.user_prompt;
-    isNSFW = dbChar.is_nsfw ?? false;
+    /* Adult framing needs an 18+ character AND both participants to be
+       adults who currently have 18+ mode on. */
+    isNSFW = false;
+    if (dbChar.is_nsfw && match.cohort === "adult" && match.user_b) {
+      const { data: ps } = await admin
+        .from("profiles")
+        .select("id, age_cohort, nsfw_opt_in")
+        .in("id", [match.user_a, match.user_b]);
+      const rows = (ps ?? []) as { age_cohort: string | null; nsfw_opt_in: boolean | null }[];
+      isNSFW = rows.length === 2 && rows.every((r) => r.age_cohort === "adult" && r.nsfw_opt_in === true);
+    }
   } else {
     systemPrompt = "You are a helpful AI character.";
     userPrompt = "You are a helpful AI character.";
@@ -293,6 +303,8 @@ export async function generateAIResponse(
     }
   }
 
+  messages.push({ role: "system", content: postHistoryReminder(isNSFW, "the scene's characters") });
+
   const provider = await getProvider();
   const aiResult = await provider.generate(messages, {
     maxTokens: 150,
@@ -348,122 +360,6 @@ export async function generateAIResponse(
   }
 
   return { content: aiText, characterId };
-}
-
-type SoloMessage = { role: "user" | "assistant"; content: string };
-
-type SoloPlayResult =
-  | { content: string; tokensUsed: number }
-  | { error: string };
-
-/**
- * Server-side AI call for the solo-play page (/play/[id]). The API key
- * is server-only. The system_prompt is read via the admin client
- * (column-level restricted from authenticated). Solo sessions are NOT
- * encrypted — the admin can inspect them for AI behaviour debugging.
- *
- * Phase 5a: H7 — verifies the caller can see the character (public,
- * unlisted, or owned) before reading system_prompt via the admin
- * client. Prevents any user from using a private character's prompt.
- */
-export async function getSoloPlayResponse(
-  characterId: string,
-  history: SoloMessage[]
-): Promise<SoloPlayResult> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { error: "Not authenticated" };
-
-  if (!(await rateLimit(user.id))) {
-    return { error: "Slow down. The director is thinking." };
-  }
-
-  /* H7: visibility check via the USER client (RLS-enforced). The
-     character must be public, unlisted, or owned by the caller.
-     This runs BEFORE the admin read so a private character's
-     system_prompt is never exposed to a non-owner. */
-  const { data: visibleChar } = await supabase
-    .from("characters")
-    .select("id")
-    .eq("id", characterId)
-    .maybeSingle();
-
-  if (!visibleChar) return { error: "Character not found" };
-
-  /* Read system_prompt via the admin client — REVOKED from authenticated. */
-  const admin = createAdminClient();
-  const { data: dbCharRaw } = await admin
-    .from("characters")
-    .select("system_prompt, user_prompt, is_nsfw, example_dialog, triggers, limits")
-    .eq("id", characterId)
-    .single();
-
-  const dbChar = dbCharRaw as
-    | {
-        system_prompt: string | null;
-        user_prompt: string;
-        is_nsfw: boolean | null;
-        example_dialog: string | null;
-        triggers: string[] | null;
-        limits: string[] | null;
-      }
-    | null;
-
-  if (!dbChar) return { error: "Character not found" };
-
-  const systemPrompt = dbChar.system_prompt ?? dbChar.user_prompt;
-  const isNSFW = dbChar.is_nsfw ?? false;
-  const exampleDialog = dbChar.example_dialog ?? null;
-
-  const fullSystemPrompt =
-    buildSystemPrompt(
-      { system_prompt: systemPrompt, user_prompt: systemPrompt },
-      isNSFW
-    ) + behaviouralDirective(dbChar.triggers, dbChar.limits);
-
-  const sanitizedHistory: SoloMessage[] = history.map((m) =>
-    m.role === "user" ? { ...m, content: sanitizeAndScrub(m.content) } : m
-  );
-
-  const messages: AIMessage[] = [
-    { role: "system", content: fullSystemPrompt },
-  ];
-
-  const exampleMessages = parseExampleDialog(exampleDialog);
-  for (const ex of exampleMessages) {
-    messages.push({ role: ex.role, content: ex.content });
-  }
-
-  messages.push(...sanitizedHistory);
-
-  const provider = await getProvider();
-  const aiResult = await provider.generate(messages, {
-    maxTokens: 200,
-    temperature: 0.9,
-  });
-
-  if ("error" in aiResult) {
-    /* E10: hide provider error from client — return a generic message
-       matching the matched-chat pattern in generateAIResponse (A6). */
-    if (!(await provider.isConfigured())) {
-      return { error: "AI not configured" };
-    }
-    return { error: "The character hesitates and falls silent for a moment…" };
-  }
-
-  /* S11: sanitize AI output, then screen it — see generateAIResponse. */
-  const sanitizedContent = await screenOutput(
-    scrubInjection(sanitizeMessage(aiResult.content)),
-    { nsfwAllowed: isNSFW, surface: "solo_ai" }
-  );
-
-  return {
-    content: sanitizedContent,
-    tokensUsed: provider.estimateTokens(sanitizedContent),
-  };
 }
 
 /**

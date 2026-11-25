@@ -8,7 +8,7 @@ import { scrubInjection, sanitizeMessage, sanitizeAndScrub } from "@/lib/utils/s
 import { moderateText, screenOutput } from "@/lib/utils/moderation";
 import { buildCharacterChatPrompt, parseExampleDialog, postHistoryReminder } from "@/lib/ai/prompts";
 import { viewerCanSeeAdult } from "@/lib/home/feed";
-import { awardPoints, POINTS } from "@/lib/community/points";
+import { awardPoints, isEstablished, isLiveCharacter, POINTS } from "@/lib/community/points";
 import { getProvider } from "@/lib/ai";
 import { assertNotBanned } from "@/lib/utils/ban";
 import { isNsfwAccessAllowed } from "@/lib/verification/gate";
@@ -154,9 +154,17 @@ async function resolveCharacter(
   const admin = createAdminClient();
   const { data: promptRow } = await admin
     .from("characters")
-    .select("system_prompt")
+    .select("system_prompt, is_hidden, status, creator_id")
     .eq("id", characterId)
     .single();
+
+  /* Moderator-hidden or unpublished characters are only playable by their owner. */
+  const flags = promptRow as { is_hidden: boolean | null; status: string | null; creator_id: string | null } | null;
+  if (flags) {
+    const { data: { user: viewer } } = await supabase.auth.getUser();
+    const own = !!viewer && flags.creator_id === viewer.id;
+    if (!own && (flags.is_hidden || flags.status !== "published")) return null;
+  }
 
   const systemPrompt =
     (promptRow as { system_prompt: string | null } | null)?.system_prompt ??
@@ -191,7 +199,8 @@ function toCharacterInfo(char: ResolvedCharacter): CharacterInfo {
   return {
     id: char.id,
     name: char.name,
-    user_prompt: char.user_prompt,
+    /* Never ship the author's raw prompt to players. */
+    user_prompt: "",
     scenario_tags: char.scenario_tags,
     is_nsfw: char.is_nsfw,
     alternate_greetings_count: char.alternate_greetings.length,
@@ -283,7 +292,7 @@ export async function startSoloSession(
        and the chatter earns once per day for their first chat. */
     const { data: owner } = await admin.from("characters").select("creator_id").eq("id", characterId).maybeSingle();
     const creatorId = (owner as { creator_id: string | null } | null)?.creator_id;
-    if (creatorId && creatorId !== user.id) {
+    if (creatorId && creatorId !== user.id && (await isEstablished(user.id)) && (await isLiveCharacter(characterId))) {
       await awardPoints(creatorId, POINTS.creator_new_chat, "creator_new_chat", `${characterId}:${user.id}`);
     }
     await awardPoints(user.id, POINTS.daily_first_chat, "daily_first_chat", new Date().toISOString().slice(0, 10));
@@ -455,6 +464,8 @@ export async function appendSoloMessage(
   sessionId: string,
   content: string
 ): Promise<AppendResult> {
+  if (typeof sessionId !== "string" || !/^[0-9a-f-]{36}$/i.test(sessionId)) return { error: "Invalid session" };
+  if (typeof content !== "string" || content.length > 2000) return { error: "Message too long (2,000 characters max)" };
   const supabase = await createClient();
 
   const {
@@ -599,7 +610,7 @@ export async function appendSoloMessage(
     return { error: aiResult.error };
   }
 
-  /* S11: sanitize AI output before storing — same as getSoloPlayResponse.
+  /* S11: sanitize AI output before storing.
      Scrub injection patterns + redact PII so the AI can't reflect them,
      then screen the result so a successful jailbreak still produces
      nothing publishable. */

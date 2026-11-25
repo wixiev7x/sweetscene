@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { createClient } from "@/lib/supabase/server";
 import { fetchFeed, viewerCanSeeAdult, type FeedCharacter } from "@/lib/home/feed";
+import { rateLimit } from "@/lib/utils/ratelimit";
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
@@ -35,6 +36,7 @@ async function toggle(table: "character_likes" | "character_favorites", id: stri
   if (typeof id !== "string" || !UUID.test(id)) return { error: "invalid" };
   const uid = await currentUserId();
   if (!uid) return { error: "auth" };
+  if (!(await rateLimit(uid))) return { error: "failed" };
   if (!(await isVisible(id))) return { error: "invalid" };
   const admin = createAdminClient();
   const { data: existing } = await admin.from(table).select("character_id").eq("user_id", uid).eq("character_id", id).maybeSingle();
@@ -104,6 +106,7 @@ export async function reportCharacter(id: string, reason: string, note: string):
   if (!REPORT_REASONS.includes(reason as ReportReason)) return { error: "Pick a reason" };
   const uid = await currentUserId();
   if (!uid) return { error: "auth" };
+  if (!(await rateLimit(uid))) return { error: "Slow down" };
   const admin = createAdminClient();
   const { data: exists } = await admin
     .from("moderation_queue")

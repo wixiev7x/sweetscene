@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { rateLimit } from "@/lib/utils/ratelimit";
 import { notifyRatingReceived } from "@/lib/notifications/dispatch";
 import { logger } from "@/lib/utils/logger";
-import { awardPoints, POINTS } from "@/lib/community/points";
+import { awardPoints, isEstablished, POINTS } from "@/lib/community/points";
 
 /* ════════════════════════════════════════════════════════════════════
  * Phase 6 — Vibe Check + reputation actions.
@@ -116,7 +116,7 @@ export async function submitMatchRating(
     const partnerId = user_a === user.id ? user_b : user_a;
     /* Community points: only real human-vs-human scenes that actually
        happened (both talked a bit, not abandoned). Idempotent per match. */
-    if (partnerId && !is_ai_match && (human_message_count ?? 0) >= 6 && params.reason !== "partner_afk" && params.reason !== "i_left") {
+    if (partnerId && !is_ai_match && (human_message_count ?? 0) >= 6 && params.reason !== "partner_afk" && params.reason !== "i_left" && (await isEstablished(user.id)) && (await isEstablished(partnerId))) {
       await awardPoints(user.id, POINTS.match_completed, "match_completed", matchId);
     }
     if (partnerId) {

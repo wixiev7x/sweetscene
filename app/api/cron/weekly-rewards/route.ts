@@ -37,19 +37,23 @@ async function handle(req: Request) {
     const { error: claimErr } = await admin.from("leaderboard_rewards").insert({ week_start: week, user_id: r.user_id, rank: r.rank, reward: prize.reward });
     if (claimErr) continue; // already rewarded for this week
     const ref = `lb-${week}-${r.user_id}`;
-    try {
-      if (prize.days) await admin.rpc("grant_vip", { p_user_id: r.user_id, p_days: prize.days, p_payment_id: ref } as never);
-      if (prize.tokens) await admin.rpc("credit_tokens", { p_user_id: r.user_id, p_amount: prize.tokens, p_reason: "leaderboard", p_payment_id: ref } as never);
-      await admin.from("notifications").insert({
-        user_id: r.user_id,
-        type: "leaderboard_reward",
-        title: `You placed #${r.rank} this week`,
-        body: prize.days ? "Your reward is active now. Enjoy the heat." : `${prize.tokens!.toLocaleString("en-US")} tokens added to your balance.`,
-      });
-      granted++;
-    } catch (err) {
-      logger.error("weekly_rewards_grant", { err, user: r.user_id });
+    const undo = () => admin.from("leaderboard_rewards").delete().eq("week_start", week).eq("user_id", r.user_id);
+    const res = prize.days
+      ? await admin.rpc("grant_vip", { p_user_id: r.user_id, p_days: prize.days, p_payment_id: ref } as never)
+      : await admin.rpc("credit_tokens", { p_user_id: r.user_id, p_amount: prize.tokens!, p_reason: "leaderboard", p_payment_id: ref } as never);
+    if (res.error) {
+      /* Release the claim so the next run retries this winner. */
+      await undo();
+      logger.error("weekly_rewards_grant", { err: res.error, user: r.user_id });
+      continue;
     }
+    await admin.from("notifications").insert({
+      user_id: r.user_id,
+      type: "leaderboard_reward",
+      title: `You placed #${r.rank} this week`,
+      body: prize.days ? "Your reward is active now. Enjoy the heat." : `${prize.tokens!.toLocaleString("en-US")} tokens added to your balance.`,
+    });
+    granted++;
   }
   return NextResponse.json({ week, granted });
 }

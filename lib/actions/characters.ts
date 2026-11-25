@@ -394,7 +394,10 @@ export async function createCharacter(
   const systemPrompt = wrapSystemPrompt(safePrompt, params.is_nsfw);
 
   try {
-    const { data: inserted, error: insertError } = await supabase
+    /* Writes go through the service role: direct PostgREST INSERT/UPDATE on
+       characters is revoked (2026-11-25-02) so every write passes the
+       validation and moderation above. creator_id is set explicitly. */
+    const { data: inserted, error: insertError } = await createAdminClient()
       .from("characters")
       .insert({
         creator_id: user.id,
@@ -662,13 +665,25 @@ export async function updateCharacter(
     update.status = "draft";
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await createAdminClient()
     .from("characters")
     .update(update)
     .eq("id", characterId)
     .eq("creator_id", user.id);
 
   if (updateError) return { error: "Failed to update character" };
+
+  /* Service-role writes bypass the trigger's auth.uid() branch, so queue
+     image review for live characters explicitly. */
+  if (avatarChanged && existingStatus === "published" && update.avatar_url) {
+    await createAdminClient().from("moderation_queue").insert({
+      content_type: "character",
+      content_id: characterId,
+      reported_by: null,
+      reason: "auto: image changed",
+      status: "pending",
+    });
+  }
 
   return { characterId };
 }

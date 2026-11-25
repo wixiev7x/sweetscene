@@ -18,7 +18,7 @@ export function useAuthModal() {
 }
 
 function safePath(p: string | null | undefined) {
-  return p && p.startsWith("/") && !p.startsWith("//") ? p : undefined;
+  return p && p.startsWith("/") && !p.startsWith("//") && !p.includes("\\") ? p : undefined;
 }
 
 export function AuthModalProvider({ children }: { children: React.ReactNode }) {

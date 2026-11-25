@@ -14,7 +14,7 @@ function inline(text: string, key: string): ReactNode[] {
     const k = `${key}-${i++}`;
     if (m[1]) {
       const href = m[2];
-      if (href.startsWith("/")) out.push(<Link key={k} href={href}>{m[1]}</Link>);
+      if (href.startsWith("/") && !href.startsWith("//") && !href.startsWith("/\\")) out.push(<Link key={k} href={href}>{m[1]}</Link>);
       else if (/^https:\/\//.test(href)) out.push(<a key={k} href={href} target="_blank" rel="noopener noreferrer">{m[1]}</a>);
       else out.push(m[1]);
     } else if (m[3]) out.push(<strong key={k}>{m[3]}</strong>);
