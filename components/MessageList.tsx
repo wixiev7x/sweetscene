@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
+import Reveal from "@/components/chat/Reveal";
 
 type ChatMessage = {
   id: string;
@@ -33,6 +34,7 @@ export default function MessageList({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+  const follow = useCallback(() => bottomRef.current?.scrollIntoView({ block: "end" }), []);
 
   /**
    * Formats an ISO timestamp to a short locale time string (HH:mm).
@@ -105,7 +107,7 @@ export default function MessageList({
 
                 {/* bubble */}
                 <div className="max-w-[80%] px-4 py-3 bg-accent-candle/10 border border-accent-candle/25 rounded-xl italic font-light text-foreground text-sm leading-relaxed transition-all duration-300">
-                  {msg.content}
+                  <Reveal id={msg.id} text={msg.content} animate={!msg.id.startsWith("loaded-") && Date.now() - new Date(msg.created_at).getTime() < 15000} onTick={follow} />
                 </div>
 
                 {/* timestamp */}

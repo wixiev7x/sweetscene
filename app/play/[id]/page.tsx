@@ -21,6 +21,7 @@ import { TOKEN_PACKAGES } from "@/lib/billing/constants";
 import { SOLO_TOKEN_BUDGET as TOKEN_BUDGET } from "@/lib/config/constants";
 import { getCharacterPreview } from "@/lib/actions/character-preview";
 import ChatSidePanel from "@/components/character/ChatSidePanel";
+import { PacePicker } from "@/components/chat/Reveal";
 
 /* ── local types (MessageList does not export ChatMessage) ── */
 type ChatMessage = {
@@ -470,6 +471,7 @@ export default function PlayPage() {
 
           {/* right */}
           <div className="flex items-center gap-4 shrink-0">
+            <div className="hidden md:block"><PacePicker /></div>
             <div className="hidden sm:flex flex-col items-end">
               <span className="text-sm text-brand-light font-medium">
                 &#9670; {tokensUsed.toLocaleString()} /{" "}
