@@ -107,7 +107,7 @@ export default function MessageList({
 
                 {/* bubble */}
                 <div className="max-w-[80%] px-4 py-3 bg-accent-candle/10 border border-accent-candle/25 rounded-xl italic font-light text-foreground text-sm leading-relaxed transition-all duration-300">
-                  <Reveal id={msg.id} text={msg.content} animate={!msg.id.startsWith("loaded-") && Date.now() - new Date(msg.created_at).getTime() < 15000} onTick={follow} />
+                  <Reveal id={msg.id} text={msg.content} animate={!msg.id.startsWith("loaded-")} createdAt={msg.created_at} onTick={follow} />
                 </div>
 
                 {/* timestamp */}

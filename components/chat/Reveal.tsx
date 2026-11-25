@@ -43,9 +43,11 @@ export function usePace(): [Pace, (p: Pace) => void] {
 const done = new Set<string>();
 
 /** Types a message out at the reader's chosen pace. Click to finish instantly. */
-export default function Reveal({ id, text, animate, onTick }: { id: string; text: string; animate: boolean; onTick?: () => void }) {
+export default function Reveal({ id, text, animate, createdAt, onTick }: { id: string; text: string; animate: boolean; createdAt?: string; onTick?: () => void }) {
   const [pace] = usePace();
-  const skip = !animate || done.has(id);
+  /* Only messages that just arrived type out; history renders instantly. */
+  const [fresh] = useState(() => !createdAt || Date.now() - new Date(createdAt).getTime() < 15000);
+  const skip = !animate || !fresh || done.has(id);
   const [n, setN] = useState(skip ? text.length : 0);
   const raf = useRef<number | null>(null);
 
