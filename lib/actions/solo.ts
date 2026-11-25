@@ -6,7 +6,8 @@ import { createAdminClient } from "@/lib/supabase/server-admin";
 import { rateLimit } from "@/lib/utils/ratelimit";
 import { scrubInjection, sanitizeMessage, sanitizeAndScrub } from "@/lib/utils/safety";
 import { moderateText, screenOutput } from "@/lib/utils/moderation";
-import { buildCharacterChatPrompt, parseExampleDialog } from "@/lib/ai/prompts";
+import { buildCharacterChatPrompt, parseExampleDialog, postHistoryReminder } from "@/lib/ai/prompts";
+import { viewerCanSeeAdult } from "@/lib/home/feed";
 import { getProvider } from "@/lib/ai";
 import { assertNotBanned } from "@/lib/utils/ban";
 import { isNsfwAccessAllowed } from "@/lib/verification/gate";
@@ -55,6 +56,9 @@ type ResolvedCharacter = {
   short_description: string | null;
   full_personality: string | null;
   backstory: string | null;
+  tagline?: string | null;
+  tags?: string[];
+  age?: number | null;
 };
 
 type SessionResult = {
@@ -100,7 +104,7 @@ async function resolveCharacter(
   const { data } = await supabase
     .from("characters")
     .select(
-      "id, name, user_prompt, scenario_tags, is_nsfw, first_message, example_dialog, alternate_greetings, avatar_url, short_description, full_personality, backstory"
+      "id, name, user_prompt, scenario_tags, is_nsfw, first_message, example_dialog, alternate_greetings, avatar_url, short_description, full_personality, backstory, tagline, tags, age"
     )
     .eq("id", characterId)
     .single();
@@ -172,6 +176,9 @@ async function resolveCharacter(
     short_description: (data.short_description as string) ?? null,
     full_personality: (data.full_personality as string) ?? null,
     backstory: (data.backstory as string) ?? null,
+    tagline: (data.tagline as string) ?? null,
+    tags: (data.tags as string[]) ?? [],
+    age: (data.age as number) ?? null,
   };
 }
 
@@ -484,8 +491,12 @@ export async function appendSoloMessage(
      gate (nsfwGateError above) to open, so adult content in that scene
      is the product working. The categories that are refused regardless —
      sexual/minors first among them — do not consult this flag. */
+  /* Adult framing needs BOTH an 18+ character and a viewer who is an
+     opted-in adult right now (they may have switched 18+ off since). */
+  const adultScene = char.is_nsfw && (await viewerCanSeeAdult());
+
   const verdict = await moderateText(content, {
-    nsfwAllowed: char.is_nsfw,
+    nsfwAllowed: adultScene,
     surface: "solo",
   });
   if (!verdict.allowed) return { error: verdict.reason };
@@ -532,7 +543,11 @@ export async function appendSoloMessage(
     short_description: char.short_description,
     full_personality: char.full_personality,
     backstory: char.backstory,
-    is_nsfw: char.is_nsfw,
+    tagline: char.tagline,
+    tags: char.tags,
+    first_message: char.first_message,
+    age: char.age,
+    is_nsfw: adultScene,
   });
 
   const aiMessages: AIMessage[] = [{ role: "system", content: fullSystemPrompt }];
@@ -542,17 +557,25 @@ export async function appendSoloMessage(
     aiMessages.push({ role: ex.role, content: ex.content });
   }
 
-  for (const m of allMessages) {
+  /* Only the recent window goes to the model: bounded cost, and old
+     injected text ages out. The opening line anchors the scene. */
+  const HISTORY_WINDOW = 24;
+  const recent = allMessages.slice(-HISTORY_WINDOW);
+  if (allMessages.length > HISTORY_WINDOW && char.first_message) {
+    aiMessages.push({ role: "assistant", content: char.first_message.slice(0, 800) });
+  }
+  for (const m of recent) {
     if (m.role === "user") {
       aiMessages.push({ role: "user", content: sanitizeAndScrub(m.content) });
     } else {
       aiMessages.push({ role: "assistant", content: m.content });
     }
   }
+  aiMessages.push({ role: "system", content: postHistoryReminder(adultScene, char.name) });
 
   const provider = await getProvider();
   const aiResult = await provider.generate(aiMessages, {
-    maxTokens: 200,
+    maxTokens: 380,
     temperature: 0.9,
   });
 
@@ -573,7 +596,7 @@ export async function appendSoloMessage(
      nothing publishable. */
   const aiText = await screenOutput(
     scrubInjection(sanitizeMessage(aiResult.content)),
-    { nsfwAllowed: char.is_nsfw, surface: "solo_ai" }
+    { nsfwAllowed: adultScene, surface: "solo_ai" }
   );
   const aiMessage: SoloMessage = {
     role: "assistant",
