@@ -1,96 +1,173 @@
-"use client";
-
 import Link from "next/link";
-import { playSound } from "@/lib/utils/sound";
+import { createAdminClient } from "@/lib/supabase/server-admin";
+import { createClient } from "@/lib/supabase/server";
+import { POINTS } from "@/lib/community/points";
 
-function ConfessionIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
-      <path d="M4 5h16v14l-4-3H4V5z" stroke="var(--accent-candle)" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M7 9h10M7 12h6" stroke="var(--accent-rose)" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
+export const dynamic = "force-dynamic";
 
-function TrophyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
-      <path d="M7 4h10v5a5 5 0 0 1-10 0V4z" stroke="var(--accent-candle)" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4" stroke="var(--accent-rose)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 13h4M9 20h6M12 14v6" stroke="var(--accent-candle)" strokeWidth="1.4" strokeLinecap="round" />
-    </svg>
-  );
-}
+type Row = { rank: number; user_id: string; username: string; avatar_url: string | null; points: number };
+type Creator = { user_id: string; username: string; avatar_url: string | null; characters: number; chats: number; likes: number };
+type Confession = { id: string; text: string; mood: string | null; likes: number | null; created_at: string };
 
-function ScrollIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
-      <path d="M6 4h11a2 2 0 0 1 2 2v12a2 2 0 0 0 2 2H8a2 2 0 0 1-2-2V4z" stroke="var(--accent-candle)" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M6 4a2 2 0 0 0-2 2v2h2" stroke="var(--accent-rose)" strokeWidth="1.4" strokeLinejoin="round" />
-      <path d="M10 9h5M10 12.5h5M10 16h3" stroke="var(--accent-candle)" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6" aria-hidden="true">
-      <rect x="4" y="6" width="16" height="14" rx="2" stroke="var(--accent-candle)" strokeWidth="1.4" />
-      <path d="M4 10h16M8 4v4M16 4v4" stroke="var(--accent-candle)" strokeWidth="1.4" strokeLinecap="round" />
-      <circle cx="9" cy="14" r="1.1" fill="var(--accent-rose)" />
-      <circle cx="13" cy="16.5" r="1.1" fill="var(--accent-candle)" />
-    </svg>
-  );
-}
-
-const DESTINATIONS = [
-  { href: "/confessions", title: "Anonymous Confessions", desc: "Share your stories anonymously.", icon: <ConfessionIcon /> },
-  { href: "/leaderboard", title: "Creator Leaderboard", desc: "Top creators ranked by engagement.", icon: <TrophyIcon /> },
-  { href: "/bounties", title: "Bounty Board", desc: "Post and respond to match requests.", icon: <ScrollIcon /> },
-  { href: "/events", title: "Events", desc: "Blind date countdowns and live events.", icon: <CalendarIcon /> },
+const PRIZES = [
+  { place: "#1", prize: "1 month of Flame" },
+  { place: "#2–3", prize: "1 month of Ember" },
+  { place: "#4–10", prize: "20,000 tokens" },
 ];
 
-export default function CommunityPage() {
-  return (
-    <div className="min-h-screen bg-background text-foreground px-4 sm:px-6 py-10">
-      <div className="max-w-3xl mx-auto">
-        <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent-candle mb-2">
-          The gathering
-        </p>
-        <h1 className="font-display text-3xl sm:text-4xl leading-tight mb-3">
-          The <span className="gradient-text">community.</span>
-        </h1>
-        <p className="text-muted text-sm sm:text-base mb-8">
-          Stories, standings, and open invitations, all anonymous.
-        </p>
+/** Whole days until the Monday 00:00 UTC reset. */
+function daysUntilReset(now: Date): number {
+  const days = (8 - now.getUTCDay()) % 7 || 7;
+  const reset = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + days);
+  return Math.max(1, Math.ceil((reset - now.getTime()) / 864e5));
+}
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          {DESTINATIONS.map((d) => (
-            <Link
-              key={d.href}
-              href={d.href}
-              onClick={() => playSound("click")}
-              className="group bg-surface border border-line rounded-[var(--radius-card)] p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-accent-candle/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <span className="flex items-center justify-center w-10 h-10 rounded-full bg-accent-candle/10 border border-accent-candle/25 group-hover:bg-accent-candle/15 transition-colors">
-                  {d.icon}
-                </span>
-                <h2 className="font-display text-base">{d.title}</h2>
+function k(n: number) {
+  return n >= 1000 ? `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k` : String(n);
+}
+
+function Avatar({ url, name, size = 48 }: { url: string | null; name: string; size?: number }) {
+  return url ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt="" width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />
+  ) : (
+    <span className="flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand to-accent-candle text-white" style={{ width: size, height: size, fontSize: size / 2.6 }}>
+      {name.charAt(0).toUpperCase()}
+    </span>
+  );
+}
+
+export default async function CommunityPage() {
+  const admin = createAdminClient();
+  const [{ data: board }, { data: creators }, { data: confessions }] = await Promise.all([
+    admin.rpc("weekly_leaderboard", { p_limit: 50 } as never),
+    admin.rpc("top_creators", { p_limit: 12 } as never),
+    admin.from("confessions").select("id, text, mood, likes, created_at").order("created_at", { ascending: false }).limit(6),
+  ]);
+  const rows = (board ?? []) as Row[];
+  let me: string | null = null;
+  try {
+    me = (await (await createClient()).auth.getUser()).data.user?.id ?? null;
+  } catch {}
+  const mine = me ? rows.find((r) => r.user_id === me) : undefined;
+  const daysLeft = daysUntilReset(new Date());
+  const podium = [rows[1], rows[0], rows[2]];
+
+  return (
+    <div className="min-h-screen bg-background px-4 pb-24 pt-8 text-foreground sm:px-6 md:pt-10">
+      <div className="mx-auto max-w-6xl">
+        {/* Hero */}
+        <section className="relative overflow-hidden rounded-[2rem] p-7 ring-1 ring-white/[.07] sm:p-10" style={{ background: "radial-gradient(90% 120% at 0% 100%, rgba(225,36,92,.4), transparent 60%), radial-gradient(60% 80% at 100% 0%, rgba(217,179,122,.18), transparent), #0b0b0d" }}>
+          <p className="text-sm uppercase tracking-[0.25em] text-brand-light">This week</p>
+          <h1 className="mt-2 font-display text-[clamp(2rem,5vw,3.4rem)] leading-[1.05]">The most desired</h1>
+          <p className="mt-3 max-w-lg text-[16px] text-muted-strong">Play, create and get loved. The top 10 every week win free plans and tokens.</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            {PRIZES.map((p) => (
+              <div key={p.place} className="rounded-2xl bg-black/35 px-4 py-3 backdrop-blur">
+                <p className="text-sm text-accent-candle">{p.place}</p>
+                <p className="text-[15px] text-white">{p.prize}</p>
               </div>
-              <p className="text-sm text-muted">{d.desc}</p>
+            ))}
+            <div className="rounded-2xl bg-black/35 px-4 py-3 backdrop-blur">
+              <p className="text-sm text-muted">Resets in</p>
+              <p className="text-[15px] text-white">{daysLeft} day{daysLeft === 1 ? "" : "s"}</p>
+            </div>
+          </div>
+        </section>
+
+        <div className="mt-8 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
+          {/* Leaderboard */}
+          <section>
+            <h2 className="font-display text-2xl">Leaderboard</h2>
+            {rows.length === 0 ? (
+              <p className="mt-4 rounded-[1.5rem] bg-white/[.03] p-6 text-muted-strong ring-1 ring-white/[.06]">No one has scored yet this week. Be the first.</p>
+            ) : (
+              <>
+                <div className="mt-5 grid grid-cols-3 items-end gap-3">
+                  {podium.map((r, i) =>
+                    r ? (
+                      <div key={r.user_id} className={`flex flex-col items-center rounded-[1.5rem] bg-white/[.03] p-4 text-center ring-1 ${i === 1 ? "pb-8 ring-accent-candle/40" : "ring-white/[.06]"}`}>
+                        <span className={`mb-2 text-sm ${i === 1 ? "text-accent-candle" : "text-muted"}`}>#{r.rank}</span>
+                        <Avatar url={r.avatar_url} name={r.username} size={i === 1 ? 72 : 56} />
+                        <p className="mt-2 w-full truncate text-[15px]">@{r.username}</p>
+                        <p className="text-sm text-brand-light">{k(r.points)} pts</p>
+                      </div>
+                    ) : (
+                      <div key={i} />
+                    ),
+                  )}
+                </div>
+                <ol className="mt-4 divide-y divide-white/[.06] rounded-[1.5rem] bg-white/[.02] ring-1 ring-white/[.06]">
+                  {rows.slice(3).map((r) => (
+                    <li key={r.user_id} className={`flex items-center gap-3 px-4 py-3 ${r.user_id === me ? "bg-brand/10" : ""}`}>
+                      <span className="w-8 text-sm text-muted">#{r.rank}</span>
+                      <Avatar url={r.avatar_url} name={r.username} size={36} />
+                      <span className="flex-1 truncate">@{r.username}</span>
+                      <span className="text-sm text-foreground-dim">{k(r.points)} pts</span>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
+            <div className="mt-4 rounded-[1.5rem] bg-white/[.03] p-5 ring-1 ring-white/[.06]">
+              <p className="text-[15px]">{mine ? <>You&rsquo;re <span className="text-brand-light">#{mine.rank}</span> with {mine.points} points</> : "How to earn points"}</p>
+              <ul className="mt-2 grid gap-1 text-sm text-muted-strong sm:grid-cols-2">
+                <li>Finish a scene with a stranger · +{POINTS.match_completed}</li>
+                <li>Someone rates your character · +{POINTS.review_received_per_flame} per flame</li>
+                <li>A new chat on your character · +{POINTS.creator_new_chat}</li>
+                <li>First chat of the day · +{POINTS.daily_first_chat}</li>
+              </ul>
+            </div>
+          </section>
+
+          {/* Creators */}
+          <section>
+            <h2 className="font-display text-2xl">Top creators</h2>
+            <ol className="mt-5 space-y-2">
+              {((creators ?? []) as Creator[]).map((c, i) => (
+                <li key={c.user_id} className="flex items-center gap-3 rounded-2xl bg-white/[.03] px-4 py-3 ring-1 ring-white/[.06]">
+                  <span className="w-6 text-sm text-muted">{i + 1}</span>
+                  <Avatar url={c.avatar_url} name={c.username} size={40} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate">@{c.username}</span>
+                    <span className="text-xs text-muted">{c.characters} characters · {k(c.chats)} chats · {k(c.likes)} likes</span>
+                  </span>
+                </li>
+              ))}
+              {(creators ?? []).length === 0 && <p className="text-muted-strong">Create a character to appear here.</p>}
+            </ol>
+          </section>
+        </div>
+
+        {/* Confessions */}
+        <section className="mt-12">
+          <div className="flex items-end justify-between">
+            <h2 className="font-display text-2xl">Confessions</h2>
+            <Link href="/confessions" className="text-sm text-brand-light hover:underline">See all</Link>
+          </div>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {((confessions ?? []) as Confession[]).map((c) => (
+              <article key={c.id} className="rounded-[1.5rem] bg-white/[.03] p-5 ring-1 ring-white/[.06]">
+                {c.mood && <p className="text-xs uppercase tracking-[0.18em] text-brand-light">{c.mood}</p>}
+                <p className="mt-2 line-clamp-5 text-[15px] leading-relaxed text-foreground-dim">&ldquo;{c.text}&rdquo;</p>
+                <p className="mt-3 text-xs text-muted">♥ {c.likes ?? 0}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        {/* More */}
+        <section className="mt-12 grid gap-3 sm:grid-cols-2">
+          {[
+            { href: "/bounties", t: "Bounty board", d: "Post a scene you want played, or answer someone else's." },
+            { href: "/events", t: "Events", d: "Themed nights and blind-date countdowns." },
+          ].map((x) => (
+            <Link key={x.href} href={x.href} className="group rounded-[1.5rem] bg-white/[.03] p-6 ring-1 ring-white/[.06] transition-colors hover:ring-brand/40">
+              <p className="text-[17px]">{x.t} <span className="text-muted transition-transform group-hover:translate-x-1">→</span></p>
+              <p className="mt-1 text-sm text-muted-strong">{x.d}</p>
             </Link>
           ))}
-        </div>
-
-        <div className="mt-10 text-center">
-          <Link
-            href="/how"
-            className="text-sm text-accent-candle hover:text-accent-candle-deep transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-line-focus rounded"
-          >
-            How it works →
-          </Link>
-        </div>
+        </section>
       </div>
     </div>
   );
