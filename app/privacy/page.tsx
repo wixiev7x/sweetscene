@@ -172,7 +172,7 @@ export default function PrivacyPage() {
           <p className="type-body">We disclose personal information to:</p>
           <ul className="list-disc pl-6 space-y-2 type-body">
             <li><strong className="text-foreground">The community, by design:</strong> your anonymous username, public confessions, and bounty posts are visible to other users. Nothing on your profile reveals your identity.</li>
-            <li><strong className="text-foreground">Service providers:</strong> hosting and database (Vercel, Supabase), AI text generation (DeepSeek), optional image generation (Google Gemini), card payment processing and reselling (Paddle, merchant of record), bot protection (Cloudflare Turnstile), rate limiting (Upstash), and the age-verification provider. Providers process data only on our instructions under data-processing agreements where required.</li>
+            <li><strong className="text-foreground">Service providers:</strong> hosting and database (Vercel, Supabase), AI text generation (DeepSeek), card payment processing and reselling (Paddle, merchant of record), bot protection (Cloudflare Turnstile), rate limiting (Upstash), and the age-verification provider. Providers process data only on our instructions under data-processing agreements where required.</li>
             <li><strong className="text-foreground">Sign-in providers:</strong> Google and Discord, when you choose them, their own policies govern those services.</li>
             <li><strong className="text-foreground">Legal successors:</strong> in a merger, acquisition, or sale of assets.</li>
             <li><strong className="text-foreground">Authorities:</strong> regulators, public authorities, and law enforcement where we reasonably believe disclosure is required to comply with law, enforce our Terms (including safety enforcement), detect or prevent illegal activity, or protect the rights, property, or safety of our users or others.</li>
@@ -261,6 +261,55 @@ export default function PrivacyPage() {
             of the match or scene and deleted with it. Where we no longer need information, we
             delete it, and we delete account data upon a verified deletion request (some data may
             be retained to meet legal obligations).
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl text-white font-medium">14a. How AI Processing Works</h2>
+          <p className="type-body">
+            To generate replies, the text of your current scene (the recent messages and the character&rsquo;s
+            description) is sent to our AI model provider. We send no email address, real name or payment data with
+            it, and we use providers that don&rsquo;t use API traffic to train public models where that option is
+            available. Messages are screened by automated safety filters before and after generation. We do not sell
+            conversations, and we only read them when they are reported, flagged by our filters, or required by law.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl text-white font-medium">14b. Images and Characters You Upload</h2>
+          <p className="type-body">
+            Images you upload are resized and re-encoded in your browser, which removes location (GPS), camera and other
+            hidden metadata before upload. Public characters and their images are visible to everyone; private ones
+            only to you. Reported or newly published images may be viewed by our moderators. Deleting a character
+            deletes its image from public view; backups are cleared on their normal cycle.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl text-white font-medium">14c. Community Points and Leaderboards</h2>
+          <p className="type-body">
+            If you take part in matches, ratings or creating characters, we record points against your account. The
+            weekly leaderboard shows only your anonymous username, avatar and points, never your email or identity.
+            Prizes are applied to your account automatically.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl text-white font-medium">14d. Security</h2>
+          <p className="type-body">
+            We use encryption in transit (HTTPS) and at rest for messages, access controls that limit staff access to
+            what moderation requires, row-level security in our database, rate limiting and bot protection. No system is
+            perfectly secure; if we learn of a breach affecting your data we will notify you and the relevant
+            authorities as the law requires.
+          </p>
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="text-xl text-white font-medium">14e. Data of Members Aged 16–17</h2>
+          <p className="type-body">
+            We collect the same minimal data from members aged 16 and 17 as from adults, never show them adult
+            content, and never use their data for targeted advertising. A parent or guardian may ask us to review or
+            delete a teen&rsquo;s account at <a href="mailto:safety@sweetscene.love" className="text-accent-candle underline">safety@sweetscene.love</a>.
           </p>
         </section>
 

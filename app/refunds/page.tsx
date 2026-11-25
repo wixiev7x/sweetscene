@@ -88,6 +88,50 @@ const sections: LegalSection[] = [
       </>
     ),
   },
+  {
+    id: "chargebacks",
+    title: "Chargebacks and disputes",
+    body: (
+      <p>
+        Please contact us or Paddle before disputing a charge with your bank; we can usually resolve it faster. Filing a
+        chargeback for a purchase you used may lead to your account being suspended while the dispute is reviewed, and
+        tokens from disputed purchases are removed.
+      </p>
+    ),
+  },
+  {
+    id: "tokens",
+    title: "Tokens and plan changes",
+    body: (
+      <ul>
+        <li>Tokens have no cash value and can&rsquo;t be exchanged or transferred.</li>
+        <li>Upgrading takes effect immediately; Paddle charges or credits the difference for the rest of your billing period.</li>
+        <li>Downgrading takes effect at your next renewal.</li>
+        <li>Leaderboard rewards and promotional tokens are not refundable.</li>
+      </ul>
+    ),
+  },
+  {
+    id: "outages",
+    title: "Service problems",
+    body: (
+      <p>
+        If an outage or a fault on our side stops you from using a paid plan for more than 48 hours in a row, contact us
+        and we&rsquo;ll extend your plan or refund the affected time.
+      </p>
+    ),
+  },
+  {
+    id: "rights",
+    title: "Your consumer rights",
+    body: (
+      <p>
+        If you live in the UK, EU or another region with a statutory right to cancel digital purchases, that right still
+        applies. By starting to use tokens or paid features right away you agree that the service begins immediately,
+        which may limit the cancellation period where the law allows.
+      </p>
+    ),
+  },
 ];
 
 export default function RefundsPage() {

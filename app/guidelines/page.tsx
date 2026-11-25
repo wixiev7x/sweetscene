@@ -87,6 +87,54 @@ const sections: LegalSection[] = [
     ),
   },
   {
+    id: "dms",
+    title: "Reveals and DMs",
+    body: (
+      <ul>
+        <li>Revealing is a gift, not an obligation. Never guilt anyone into it.</li>
+        <li>Don&rsquo;t ask for photos, socials, phone numbers or meetups in the first conversation.</li>
+        <li>Never share screenshots of private chats to embarrass or identify someone.</li>
+        <li>No selling, advertising or sending people to paid content elsewhere.</li>
+      </ul>
+    ),
+  },
+  {
+    id: "teens",
+    title: "Members aged 16–17",
+    body: (
+      <ul>
+        <li>Teens play in their own space with other teens only, and everything stays safe-for-work.</li>
+        <li>Romance between teens is fine when it&rsquo;s respectful and non-sexual.</li>
+        <li>Adults trying to reach teens, or teens claiming to be adults, are banned permanently.</li>
+      </ul>
+    ),
+  },
+  {
+    id: "wellbeing",
+    title: "Look after yourself",
+    body: (
+      <p>
+        Roleplay can get intense. Take breaks, set your own limits, and step away from anything that stops feeling good.
+        If you&rsquo;re struggling, free and confidential support is at{" "}
+        <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer">findahelpline.com</a>.
+      </p>
+    ),
+  },
+  {
+    id: "strikes",
+    title: "Strikes",
+    body: (
+      <table>
+        <thead><tr><th>Severity</th><th>Examples</th><th>Usual action</th></tr></thead>
+        <tbody>
+          <tr><td>Minor</td><td>Spam, mild rudeness, mislabelled tags</td><td>Warning, content edited or removed</td></tr>
+          <tr><td>Serious</td><td>Harassment, unmarked adult content, real-person images</td><td>Temporary suspension, publishing removed</td></tr>
+          <tr><td>Severe</td><td>Anything involving minors, threats, doxxing, age lying</td><td>Permanent ban, reported where required</td></tr>
+        </tbody>
+      </table>
+    ),
+  },
+  {
     id: "enforcement",
     title: "Reporting and enforcement",
     body: (

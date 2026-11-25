@@ -2,13 +2,16 @@ import Link from "next/link";
 
 export type LegalSection = { id: string; title: string; body: React.ReactNode };
 
-export const LEGAL_UPDATED = "November 21, 2026";
+export const LEGAL_UPDATED = "November 25, 2026";
 export const SUPPORT_EMAIL = "support@sweetscene.love";
 
 const LEGAL_LINKS = [
   { href: "/terms", label: "Terms of Service" },
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/refunds", label: "Refund Policy" },
+  { href: "/cookies", label: "Cookie Policy" },
+  { href: "/dmca", label: "Copyright & Takedown" },
+  { href: "/content-statement", label: "Content & Age Statement" },
   { href: "/guidelines", label: "Community Guidelines" },
   { href: "/safety", label: "Safety Center" },
   { href: "/contact", label: "Contact" },

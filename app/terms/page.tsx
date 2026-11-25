@@ -182,8 +182,79 @@ const sections: LegalSection[] = [
     ),
   },
   {
+    id: "matching",
+    title: "9. Matching, reveal and direct messages",
+    body: (
+      <>
+        <p>
+          Matched scenes pair you with another member in your age group. Either member may skip or leave at any time.
+          Profiles are only shown to each other if both members choose to reveal. Direct messages are available only
+          after a mutual reveal.
+        </p>
+        <ul>
+          <li>Don&rsquo;t pressure anyone to reveal, share personal details, move to another app, or send images.</li>
+          <li>Don&rsquo;t record, screenshot or share another member&rsquo;s messages outside SweetScene to embarrass or identify them.</li>
+          <li>We are not responsible for what members choose to share with each other, or for any contact that happens off SweetScene.</li>
+          <li>Use Skip, Block and Report freely. Blocking is permanent and mutual.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "ai",
+    title: "10. AI-generated content",
+    body: (
+      <>
+        <p>
+          AI replies are generated automatically and may be inaccurate, inconsistent, offensive or unexpected. They do not
+          reflect our views. You are responsible for how you use them and must not present AI output as statements by a
+          real person.
+        </p>
+        <ul>
+          <li>Do not try to make the AI produce prohibited content, reveal its instructions, or bypass its safeguards. Attempts are logged and may lead to restrictions.</li>
+          <li>AI output is not professional, medical, legal, financial or mental-health advice.</li>
+          <li>We may filter, shorten or refuse AI output to keep the Service safe.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "security",
+    title: "11. Security and acceptable use",
+    body: (
+      <ul>
+        <li>Keep your password private and turn on the security options we offer.</li>
+        <li>Tell us right away at <a href="mailto:safety@sweetscene.love">safety@sweetscene.love</a> if you think your account was accessed without permission.</li>
+        <li>No bots, scrapers, automated accounts, load testing, or attempts to access other members&rsquo; data.</li>
+        <li>If you find a security issue, report it privately to us and give us reasonable time to fix it before disclosure.</li>
+      </ul>
+    ),
+  },
+  {
+    id: "ip",
+    title: "12. Our intellectual property",
+    body: (
+      <p>
+        The SweetScene name, logo, design, software and our own characters and text are owned by us or our licensors.
+        You may not copy, resell, frame or create derivative services from them. Feedback you send us may be used freely
+        to improve the Service.
+      </p>
+    ),
+  },
+  {
+    id: "third-parties",
+    title: "13. Third-party services",
+    body: (
+      <p>
+        The Service relies on third parties such as hosting, databases, AI model providers, bot protection and our
+        payment reseller Paddle. Their terms may also apply. We are not responsible for third-party sites linked from
+        member content.
+      </p>
+    ),
+  },
+  {
     id: "termination",
-    title: "9. Ending your account",
+    title: "14. Ending your account",
     body: (
       <p>
         You can delete your account at any time from your profile settings or by contacting us. We may suspend or end
@@ -194,7 +265,7 @@ const sections: LegalSection[] = [
   },
   {
     id: "disclaimers",
-    title: "10. Disclaimers",
+    title: "15. Disclaimers",
     body: (
       <p>
         The Service is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo;. To the fullest extent permitted by law,
@@ -207,7 +278,7 @@ const sections: LegalSection[] = [
   },
   {
     id: "liability",
-    title: "11. Limitation of liability",
+    title: "16. Limitation of liability",
     body: (
       <p>
         To the fullest extent permitted by law, we will not be liable for any indirect, incidental, special,
@@ -218,8 +289,44 @@ const sections: LegalSection[] = [
     ),
   },
   {
+    id: "indemnity",
+    title: "17. Indemnity",
+    body: (
+      <p>
+        To the extent permitted by law, you agree to defend and hold us harmless from claims arising from Your Content,
+        your use of the Service, or your breach of these Terms or anyone else&rsquo;s rights.
+      </p>
+    ),
+  },
+  {
+    id: "disputes",
+    title: "18. Disputes and governing law",
+    body: (
+      <>
+        <p>
+          Before starting any formal claim, please contact us so we can try to resolve it informally within 30 days. If
+          we can&rsquo;t, disputes are resolved by the courts that have jurisdiction over us, unless the law where you
+          live gives you the right to bring a claim locally. Nothing here removes rights you have as a consumer.
+        </p>
+        <p>Claims must be brought individually, not as part of a class or representative action, where the law allows this.</p>
+      </>
+    ),
+  },
+  {
+    id: "general",
+    title: "19. General",
+    body: (
+      <ul>
+        <li>If part of these Terms is unenforceable, the rest still applies.</li>
+        <li>Not enforcing a right right away doesn&rsquo;t waive it.</li>
+        <li>You may not transfer your rights under these Terms; we may transfer ours as part of a reorganisation or sale.</li>
+        <li>These Terms, together with the policies they link to, are the whole agreement between you and us about the Service.</li>
+      </ul>
+    ),
+  },
+  {
     id: "changes",
-    title: "12. Changes to these Terms",
+    title: "20. Changes to these Terms",
     body: (
       <p>
         We may update these Terms from time to time. If a change is material we will notify you in the app or by email
@@ -230,7 +337,7 @@ const sections: LegalSection[] = [
   },
   {
     id: "contact",
-    title: "13. Contact",
+    title: "21. Contact",
     body: (
       <p>
         Questions about these Terms? Email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a> or visit our{" "}

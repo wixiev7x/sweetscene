@@ -40,6 +40,9 @@ const COLS: { title: string; links: [string, string][] }[] = [
     links: [
       ["/terms", "Terms of Service"],
       ["/privacy", "Privacy Policy"],
+      ["/cookies", "Cookie Policy"],
+      ["/dmca", "Copyright & DMCA"],
+      ["/content-statement", "Content Statement"],
     ],
   },
 ];
