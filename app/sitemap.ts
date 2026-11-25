@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
+import { listPosts } from "@/lib/blog";
+import { POLICIES } from "@/lib/safety/policies";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.sweetscene.love";
   const now = new Date();
   const publicRoutes: { path: string; priority: number }[] = [
@@ -12,9 +14,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/community", priority: 0.7 },
     { path: "/confessions", priority: 0.7 },
     { path: "/store", priority: 0.7 },
-    { path: "/premium", priority: 0.7 },
     { path: "/bounties", priority: 0.6 },
-    { path: "/leaderboard", priority: 0.6 },
     { path: "/events", priority: 0.6 },
     { path: "/trending", priority: 0.5 },
     { path: "/achievements", priority: 0.5 },
@@ -24,8 +24,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/create", priority: 0.6 },
     { path: "/signup", priority: 0.5 },
     { path: "/login", priority: 0.4 },
+    { path: "/blog", priority: 0.8 },
     { path: "/terms", priority: 0.3 },
     { path: "/privacy", priority: 0.3 },
+    { path: "/refunds", priority: 0.3 },
+    { path: "/cookies", priority: 0.2 },
+    { path: "/dmca", priority: 0.2 },
+    { path: "/content-statement", priority: 0.2 },
+    { path: "/guidelines", priority: 0.3 },
+    { path: "/contact", priority: 0.3 },
+    ...POLICIES.map((p) => ({ path: `/safety/${p.slug}`, priority: 0.3 })),
+    ...(await listPosts()).map((p) => ({ path: `/blog/${p.slug}`, priority: 0.7 })),
   ];
   return publicRoutes.map((r) => ({
     url: `${site}${r.path}`,
