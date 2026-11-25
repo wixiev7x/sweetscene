@@ -8,6 +8,7 @@ import { scrubInjection, sanitizeMessage, sanitizeAndScrub } from "@/lib/utils/s
 import { moderateText, screenOutput } from "@/lib/utils/moderation";
 import { buildCharacterChatPrompt, parseExampleDialog, postHistoryReminder } from "@/lib/ai/prompts";
 import { viewerCanSeeAdult } from "@/lib/home/feed";
+import { awardPoints, POINTS } from "@/lib/community/points";
 import { getProvider } from "@/lib/ai";
 import { assertNotBanned } from "@/lib/utils/ban";
 import { isNsfwAccessAllowed } from "@/lib/verification/gate";
@@ -278,6 +279,14 @@ export async function startSoloSession(
     await admin.rpc("increment_chat_count", {
       p_character_id: characterId,
     } as never);
+    /* Community points: the creator earns for a new chat (not their own),
+       and the chatter earns once per day for their first chat. */
+    const { data: owner } = await admin.from("characters").select("creator_id").eq("id", characterId).maybeSingle();
+    const creatorId = (owner as { creator_id: string | null } | null)?.creator_id;
+    if (creatorId && creatorId !== user.id) {
+      await awardPoints(creatorId, POINTS.creator_new_chat, "creator_new_chat", `${characterId}:${user.id}`);
+    }
+    await awardPoints(user.id, POINTS.daily_first_chat, "daily_first_chat", new Date().toISOString().slice(0, 10));
   } catch {
     /* Non-fatal — chat_count is cosmetic. */
   }

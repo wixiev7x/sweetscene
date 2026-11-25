@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server-admin";
 import { notifySubscriptionRenewalDue } from "@/lib/notifications/dispatch";
 import { logger } from "@/lib/utils/logger";
+import { isCronAuthorized } from "@/lib/utils/cron-auth";
 
 /* ════════════════════════════════════════════════════════════════════
  * Subscription renewal reminders — daily cron (vercel.json).
@@ -22,7 +23,8 @@ import { logger } from "@/lib/utils/logger";
 
 const WINDOW_DAYS = 3;
 
-export async function POST() {
+async function handle(req: Request) {
+  if (!isCronAuthorized(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
     return await run();
   } catch (err) {
@@ -30,6 +32,9 @@ export async function POST() {
     return NextResponse.json({ error: "Internal error" }, { status: 500 });
   }
 }
+
+export const GET = handle;
+export const POST = handle;
 
 async function run(): Promise<NextResponse> {
   const admin = createAdminClient();

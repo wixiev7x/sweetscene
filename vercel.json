@@ -1,6 +1,8 @@
 {
   "framework": "nextjs",
-  "regions": ["syd1"],
+  "regions": [
+    "syd1"
+  ],
   "crons": [
     {
       "path": "/api/matchmake/tick",
@@ -9,6 +11,10 @@
     {
       "path": "/api/cron/subscription-reminders",
       "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/weekly-rewards",
+      "schedule": "5 0 * * 1"
     }
   ]
 }

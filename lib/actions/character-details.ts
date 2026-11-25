@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server-admin";
 import { createClient } from "@/lib/supabase/server";
 import { viewerCanSeeAdult } from "@/lib/home/feed";
 import { moderateText } from "@/lib/utils/moderation";
+import { awardPoints, POINTS } from "@/lib/community/points";
 
 export type CharacterReview = { name: string; rating: number; comment: string | null; created_at: string };
 export type CharacterDetails = {
@@ -112,7 +113,13 @@ export async function submitCharacterReview(
       { character_id: id, user_id: user.id, rating, comment: text || null, updated_at: new Date().toISOString() },
       { onConflict: "character_id,user_id" },
     );
-  return error ? { error: "Couldn't save your review" } : { ok: true };
+  if (error) return { error: "Couldn't save your review" };
+  const { data: owner } = await createAdminClient().from("characters").select("creator_id").eq("id", id).maybeSingle();
+  const creatorId = (owner as { creator_id: string | null } | null)?.creator_id;
+  if (creatorId && creatorId !== user.id) {
+    await awardPoints(creatorId, rating * POINTS.review_received_per_flame, "review_received", `${id}:${user.id}`);
+  }
+  return { ok: true };
 }
 
 export type CharacterPublicCard = {
