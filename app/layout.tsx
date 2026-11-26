@@ -6,6 +6,7 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
 import { Suspense } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { AuthModalProvider } from "@/components/auth/AuthModal";
 
 const varela = Varela_Round({
@@ -110,6 +111,7 @@ export default function RootLayout({
             },
           }}
         />
+        <Analytics />
       </body>
     </html>
   );

@@ -101,6 +101,7 @@ function row(c, avatar) {
     visibility: "public",
     status: "published",
     avatar_url: avatar,
+    ...(c.age ? { age: c.age } : {}),
   };
 }
 
