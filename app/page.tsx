@@ -14,6 +14,20 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+/** TEMP (2026-11-27): homepage hidden until the owner says it's finished. Set false to restore. */
+const HOME_HIDDEN = true;
+
+function HiddenHome() {
+  return (
+    <main className="fixed inset-0 z-[20000] flex flex-col items-center justify-center bg-red-600 px-6 text-center text-white">
+      <h1 className="text-3xl font-semibold uppercase tracking-[0.25em] sm:text-5xl">Invite only</h1>
+      <a href="mailto:support@sweetscene.love" className="mt-4 text-sm text-white/85 underline underline-offset-4 sm:text-base">
+        support@sweetscene.love
+      </a>
+    </main>
+  );
+}
+
 type Continue = { id: string; name: string; avatar_url: string | null };
 
 /** Signed-in only: characters from the viewer's most recent solo scenes. */
@@ -44,7 +58,14 @@ async function getContinue(): Promise<Continue[]> {
   }
 }
 
-export default async function Home({
+export default async function Home(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  if (HOME_HIDDEN) return <HiddenHome />;
+  return RealHome(props);
+}
+
+async function RealHome({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
