@@ -134,7 +134,7 @@ export async function signUpWithEmail(
     options: code ? { data: { invite_code: code } } : undefined,
   });
   if (error) {
-    if (/database error saving new user/i.test(error.message)) {
+    if (/database error saving new user|invite_required|invite_invalid/i.test(error.message)) {
       return { error: "That invite code is invalid or already used up." };
     }
     return { error: error.message };
