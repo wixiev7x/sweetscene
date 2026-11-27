@@ -5,6 +5,7 @@ import "./globals.css";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import SiteNav from "@/components/SiteNav";
 import SiteFooter from "@/components/SiteFooter";
+import InviteOnlyBanner from "@/components/InviteOnlyBanner";
 import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/next";
 import { AuthModalProvider } from "@/components/auth/AuthModal";
@@ -72,6 +73,7 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <InviteOnlyBanner />
         {stagingBanner ? (
           <div
             role="banner"
