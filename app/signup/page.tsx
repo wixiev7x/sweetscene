@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useState, useTransition } from "react";
+import { Suspense, useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { signInWithProvider, signUpWithEmail } from "@/lib/actions/auth";
+import { isInviteOnly, signInWithProvider, signUpWithEmail } from "@/lib/actions/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import OAuthButtons from "@/components/auth/OAuthButtons";
 import { playSound } from "@/lib/utils/sound";
@@ -29,7 +29,13 @@ function SignupPageInner() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [invite, setInvite] = useState("");
+  const [inviteOnly, setInviteOnly] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
+
+  useEffect(() => {
+    isInviteOnly().then(setInviteOnly).catch(() => {});
+  }, []);
 
   function applyRemember() {
     if (rememberMe) {
@@ -80,7 +86,7 @@ function SignupPageInner() {
     playSound("matchFound");
     applyRemember();
     startTransition(async () => {
-      const result = await signUpWithEmail(email, password, turnstileToken ?? "", username, nextPath || undefined);
+      const result = await signUpWithEmail(email, password, turnstileToken ?? "", username, nextPath || undefined, invite.trim() || undefined);
       if (result?.error) setError(result.error);
     });
   }
@@ -141,6 +147,19 @@ function SignupPageInner() {
               </div>
 
               <form onSubmit={handleEmailSignUp} className="w-full mt-6 flex flex-col gap-3 animate-slide-up">
+                {inviteOnly && (
+                  <input
+                    type="text"
+                    placeholder="Invite code"
+                    value={invite}
+                    onChange={(e) => setInvite(e.target.value)}
+                    className={`${inputClass} uppercase`}
+                    autoComplete="off"
+                    disabled={pending}
+                    maxLength={64}
+                    required
+                  />
+                )}
                 <input
                   type="text"
                   placeholder="Username (2+ characters)"

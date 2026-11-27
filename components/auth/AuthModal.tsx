@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, useTransition } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { signInWithProvider, signInWithEmail, signUpWithEmail } from "@/lib/actions/auth";
+import { isInviteOnly, signInWithProvider, signInWithEmail, signUpWithEmail } from "@/lib/actions/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
 import OAuthButtons from "@/components/auth/OAuthButtons";
 
@@ -68,10 +68,16 @@ function AuthDialog({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [invite, setInvite] = useState("");
+  const [inviteOnly, setInviteOnly] = useState(false);
   const [agree, setAgree] = useState(false);
   const [token, setToken] = useState("");
   const [error, setError] = useState("");
   const [pending, start] = useTransition();
+
+  useEffect(() => {
+    isInviteOnly().then(setInviteOnly).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -104,7 +110,7 @@ function AuthDialog({
     start(async () => {
       const r =
         mode === "signup"
-          ? await signUpWithEmail(email.trim(), password, token, username.trim() || undefined, next)
+          ? await signUpWithEmail(email.trim(), password, token, username.trim() || undefined, next, invite.trim() || undefined)
           : await signInWithEmail(email.trim(), password, token, next);
       if (r?.error) setError(r.error);
     });
@@ -143,6 +149,9 @@ function AuthDialog({
           </div>
 
           <form onSubmit={submit} className="space-y-3">
+            {isSignup && inviteOnly && (
+              <input value={invite} onChange={(e) => setInvite(e.target.value)} required placeholder="Invite code" autoComplete="off" autoCapitalize="characters" className="h-14 w-full rounded-full bg-white/[.06] px-6 text-[16px] uppercase tracking-wider text-foreground placeholder:normal-case placeholder:tracking-normal placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/60" />
+            )}
             {isSignup && (
               <input value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Anonymous name" autoComplete="nickname" className="h-14 w-full rounded-full bg-white/[.06] px-6 text-[16px] text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-brand/60" />
             )}

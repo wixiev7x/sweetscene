@@ -83,12 +83,24 @@ export async function signInWithProvider(
  * the service-role admin client (so the user doesn't have to check
  * their inbox), then signs them in immediately.
  */
+/** True while the platform only accepts signups with an invite code (DB flag `signup_gate`). */
+export async function isInviteOnly(): Promise<boolean> {
+  try {
+    const admin = createAdminClient();
+    const { data } = await admin.from("signup_gate").select("invite_only").eq("id", true).maybeSingle();
+    return Boolean(data?.invite_only);
+  } catch {
+    return false;
+  }
+}
+
 export async function signUpWithEmail(
   email: string,
   password: string,
   turnstileToken: string,
   username?: string,
-  next?: string
+  next?: string,
+  inviteCode?: string
 ): Promise<{ error?: string }> {
   const headerList = await headers();
   const req = new Request("https://internal/auth-check", { headers: headerList });
@@ -107,8 +119,26 @@ export async function signUpWithEmail(
 
   const supabase = await createClient();
 
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error) return { error: error.message };
+  /* Invite-only: friendly pre-check here; the auth.users trigger is the real enforcement. */
+  const code = (inviteCode ?? "").trim().toUpperCase().slice(0, 64);
+  if (await isInviteOnly()) {
+    if (!code) return { error: "SweetScene is invite-only right now. Enter your invite code." };
+    const { data: inv } = await createAdminClient()
+      .from("signup_invites").select("uses_left").eq("code", code).maybeSingle();
+    if (!inv || inv.uses_left <= 0) return { error: "That invite code is invalid or already used up." };
+  }
+
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: code ? { data: { invite_code: code } } : undefined,
+  });
+  if (error) {
+    if (/database error saving new user/i.test(error.message)) {
+      return { error: "That invite code is invalid or already used up." };
+    }
+    return { error: error.message };
+  }
   if (!data.user) return { error: "Signup failed — no user returned." };
 
   try {
