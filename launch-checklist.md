@@ -30,6 +30,10 @@ Rule: nothing touches MAIN (sweetscene.love, Supabase `vnugflrlzrvngopweixe`) un
 - MAIN env present: Supabase, AI key, moderation, Turnstile, Upstash, error webhook, NOWPayments, encryption key.
 - MAIN env stale (remove at go-live): `PAYRAM_*`.
 
+## Invite-only launch (2026-11-27, owner approved)
+- Done by Claude: MAIN data backup (`backups/main-2026-11-27-pre-launch.json`), env `NEXT_PUBLIC_SFW_MODE=1` + `CRON_SECRET`, all 18 migrations 2026-11-06 → 2026-11-27 (dry-run then commit), `signup_gate.invite_only = true`, 5 invite codes × 5 uses.
+- Owner runs `scripts/go-live.sh`: seed cast → `vercel deploy --prod` → smoke test. Rollback id `dpl_2HJNvEpVY4dfwB9MHoK4Y3xbVF15`.
+
 ## GO PRODUCTION runbook (only after "GO PRODUCTION")
 1. Dump MAIN DB → `./backups/main-<date>.sql`; note current deployment id for rollback.
 2. Set MAIN env: `NEXT_PUBLIC_SFW_MODE=1`, `CRON_SECRET`, `PADDLE_*` (`PADDLE_ENV=production`).
