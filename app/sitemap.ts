@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { listPosts } from "@/lib/blog";
 import { POLICIES } from "@/lib/safety/policies";
+import { isProtectedPath } from "@/lib/routes";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.sweetscene.love";
@@ -10,7 +11,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/matchmake", priority: 0.9 },
     { path: "/scenarios", priority: 0.8 },
     { path: "/explore", priority: 0.8 },
-    { path: "/characters", priority: 0.8 },
     { path: "/community", priority: 0.7 },
     { path: "/confessions", priority: 0.7 },
     { path: "/store", priority: 0.7 },
@@ -36,7 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...POLICIES.map((p) => ({ path: `/safety/${p.slug}`, priority: 0.3 })),
     ...(await listPosts()).map((p) => ({ path: `/blog/${p.slug}`, priority: 0.7 })),
   ];
-  return publicRoutes.map((r) => ({
+  return publicRoutes.filter((r) => !isProtectedPath(r.path)).map((r) => ({
     url: `${site}${r.path}`,
     lastModified: now,
     changeFrequency: "weekly",

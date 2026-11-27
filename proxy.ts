@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isProtectedPath } from "@/lib/routes";
 
 /**
  * Proxy (Next 16 successor to middleware.ts). Redirects unauthenticated
@@ -22,21 +23,6 @@ import { createServerClient } from "@supabase/ssr";
  * POST calls. Always verify auth inside each Server Function rather than
  * relying on proxy alone.
  */
-
-const PROTECTED_PREFIXES = [
-  "/lobby",
-  "/chat",
-  "/dm",
-  "/characters",
-  "/create-character",
-  "/profile",
-  "/complete-profile",
-  "/age-verify",
-  "/reset-password",
-  "/admin",
-];
-
-const PUBLIC_EXCEPTIONS = ["/admin/login"];
 
 function hasSessionCookie(req: NextRequest): boolean {
   const cookies = req.cookies.getAll();
@@ -149,11 +135,9 @@ function withSecurityHeaders(res: NextResponse, req: NextRequest): NextResponse 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  const isProtected = PROTECTED_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`)
-  );
+  const isProtected = isProtectedPath(pathname);
 
-  if (isProtected && !hasSessionCookie(req) && !PUBLIC_EXCEPTIONS.includes(pathname)) {
+  if (isProtected && !hasSessionCookie(req)) {
     const url = req.nextUrl.clone();
     /* Admin keeps its own login; everything else opens the auth popup
        on the homepage and returns to `next` afterwards. */
@@ -170,11 +154,11 @@ export async function proxy(req: NextRequest) {
   }
 
   /* Phase 17: signed-in + banned + visiting a protected page → /banned.
-     /banned is not in PROTECTED_PREFIXES, so there is no redirect loop.
+     /banned is not in PROTECTED_PREFIXES (lib/routes.ts), so there is no redirect loop.
      Shadow bans are deliberately NOT routed — a shadow-banned user must
      experience the site normally (their content is filtered out by the
      messages SELECT policy and claim_match instead). */
-  if (isProtected && hasSessionCookie(req) && !PUBLIC_EXCEPTIONS.includes(pathname)) {
+  if (isProtected && hasSessionCookie(req)) {
     if (await isBanned(req)) {
       const url = req.nextUrl.clone();
       url.pathname = "/banned";
