@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState, useTransition } from "react";
+import { Suspense, createContext, useCallback, useContext, useEffect, useState, useTransition } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { isInviteOnly, signInWithProvider, signInWithEmail, signUpWithEmail } from "@/lib/actions/auth";
 import TurnstileWidget from "@/components/TurnstileWidget";
@@ -21,9 +21,23 @@ function safePath(p: string | null | undefined) {
   return p && p.startsWith("/") && !p.startsWith("//") && !p.includes("\\") ? p : undefined;
 }
 
+/* ?auth=signup|login (from server fallbacks) opens the popup on load.
+   Kept in its own leaf under a local <Suspense> so useSearchParams() only
+   bails this null-rendering component out of static prerender, not the whole
+   provider subtree (which is every page's content, see app/layout.tsx). */
+function AuthQueryOpener({ openAuth }: { openAuth: Ctx["openAuth"] }) {
+  const search = useSearchParams();
+  useEffect(() => {
+    const a = search?.get("auth");
+    if (a === "signup" || a === "login" || a === "1") {
+      openAuth(a === "login" ? "login" : "signup", safePath(search?.get("next")));
+    }
+  }, [search, openAuth]);
+  return null;
+}
+
 export function AuthModalProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const search = useSearchParams();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<Mode>("signup");
   const [next, setNext] = useState<string | undefined>();
@@ -37,17 +51,11 @@ export function AuthModalProvider({ children }: { children: React.ReactNode }) {
     [pathname],
   );
 
-  /* ?auth=signup|login (from server fallbacks) opens the popup on load. */
-  useEffect(() => {
-    const a = search?.get("auth");
-    if (a === "signup" || a === "login" || a === "1") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      openAuth(a === "login" ? "login" : "signup", safePath(search?.get("next")));
-    }
-  }, [search, openAuth]);
-
   return (
     <AuthCtx.Provider value={{ openAuth }}>
+      <Suspense fallback={null}>
+        <AuthQueryOpener openAuth={openAuth} />
+      </Suspense>
       {children}
       {open && <AuthDialog mode={mode} setMode={setMode} next={next} onClose={() => setOpen(false)} />}
     </AuthCtx.Provider>
