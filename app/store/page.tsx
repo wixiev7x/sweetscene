@@ -149,22 +149,22 @@ export default function StorePage() {
         {/* Compare */}
         <section className="mt-10">
           <h2 className="mb-3 text-lg">Compare</h2>
-          <div className="overflow-hidden rounded-[1.5rem] ring-1 ring-white/[.08]">
-            <table className="w-full text-center text-[13px]">
+          <div className="overflow-x-auto rounded-[1.5rem] ring-1 ring-white/[.08]">
+            <table className="w-full text-center text-[12px] sm:text-[13px]">
               <thead>
                 <tr className="bg-white/[.04] text-muted-strong">
-                  <th className="px-3 py-3 text-left font-normal" />
+                  <th className="px-2.5 py-3 text-left font-normal sm:px-3" />
                   {TIERS.map((t) => (
-                    <th key={t.id} className={`px-2 py-3 font-normal ${pick === t.id ? "text-brand-light" : ""}`}>{t.name}</th>
+                    <th key={t.id} className={`px-1.5 py-3 font-normal sm:px-2 ${pick === t.id ? "text-brand-light" : ""}`}>{t.name}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[.06]">
                 {COMPARE.map((row) => (
                   <tr key={row.label}>
-                    <td className="px-3 py-3 text-left text-foreground-dim">{row.label}</td>
+                    <td className="px-2.5 py-3 text-left text-foreground-dim sm:px-3">{row.label}</td>
                     {TIERS.map((t) => (
-                      <td key={t.id} className={`px-2 py-3 ${pick === t.id ? "bg-brand/[.06]" : ""}`}><Tick on={row.values[t.id]} /></td>
+                      <td key={t.id} className={`px-1.5 py-3 sm:px-2 ${pick === t.id ? "bg-brand/[.06]" : ""}`}><Tick on={row.values[t.id]} /></td>
                     ))}
                   </tr>
                 ))}
